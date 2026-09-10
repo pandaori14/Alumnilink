@@ -128,6 +128,20 @@ $is_super = ($current_role === 'super_admin');
                             </ul>
                         </div>
                     </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-emerald-500"></i> Peta Persebaran &amp; Privasi Anda</h3>
+                        <div class="space-y-4 text-sm text-slate-600">
+                            <p>Menu <b>Peta Persebaran</b> menampilkan sebaran alumni di seluruh Indonesia. Titik Anda berasal dari alamat yang Anda isi di Profil.</p>
+                            <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                                <p class="font-bold text-emerald-800 mb-1">Yang dilihat sesama alumni tentang Anda</p>
+                                <p class="text-emerald-700">Hanya <b>nama, program studi, angkatan, dan lokasi perkiraan</b> dengan radius sekitar 10&nbsp;km. Alamat lengkap Anda <b>tidak pernah</b> ditampilkan kepada sesama alumni.</p>
+                            </div>
+                            <p>Staf fakultas tetap melihat data lengkap &mdash; sama seperti yang sudah ada di Database Alumni, dan sesuai keperluan pengiriman berkas legalisir.</p>
+                            <p><strong>Cara menyembunyikan diri dari peta:</strong> buka <b>Profil</b>, lalu hapus centang pada <b>&ldquo;Tampilkan saya di Peta Persebaran Alumni&rdquo;</b> dan simpan. Titik Anda langsung dihapus dari peta, berikut koordinat yang tersimpan.</p>
+                            <p class="text-xs text-slate-500">Alamat dikumpulkan untuk pengiriman berkas legalisir. Memakainya untuk menandai posisi di peta adalah tujuan yang berbeda, jadi Anda berhak menolaknya tanpa kehilangan layanan apa pun.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -184,6 +198,22 @@ $is_super = ($current_role === 'super_admin');
                     </div>
 
                     <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2">Menangani Banyak Permohonan Sekaligus</h3>
+                        <div class="space-y-4 text-sm text-slate-600">
+                            <p>Daftar permohonan kini dapat <b>dicari</b> (nama, NIM, e-mail, nomor permohonan) dan <b>disaring</b> per status, sehingga tidak perlu lagi menggulir seluruh daftar.</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li><b>Umur permohonan (SLA).</b> Setiap baris menampilkan sudah berapa hari permohonan itu menunggu. Yang melewati batas ditandai agar tidak terlewat.</li>
+                                <li><b>Tindakan massal.</b> Centang beberapa permohonan sekaligus, lalu ubah statusnya dalam satu langkah. Notifikasi tetap terkirim ke masing-masing alumni.</li>
+                                <li><b>Label batch.</b> Beri tanda pada sekelompok permohonan yang diproses bersamaan &mdash; berguna saat mengantar berkas ke pimpinan untuk ditandatangani secara kolektif.</li>
+                            </ul>
+                            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                                <p class="font-bold text-amber-800 mb-1">Penolakan wajib disertai alasan</p>
+                                <p class="text-amber-700">Alasan yang Anda tulis <b>dibaca langsung oleh alumni</b> pada halaman permohonannya. Tulis yang jelas dan dapat ditindaklanjuti &mdash; misalnya &ldquo;Berkas ijazah buram, mohon unggah ulang hasil pindaian yang lebih terang&rdquo; &mdash; bukan sekadar &ldquo;tidak memenuhi syarat&rdquo;.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm hover:shadow-md transition-shadow">
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Repositori Dokumen Digital</h3>
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Anda dapat mengelola dokumen *softcopy* terenkripsi di menu <b>Repositori Dokumen</b> sebagai basis pengecekan keabsahan sebelum melegalisir berkas.</p>
@@ -256,6 +286,56 @@ $is_super = ($current_role === 'super_admin');
                             <ul class="list-disc pl-5 space-y-1">
                                 <li><b>Template Email (Layouts):</b> Rancang tata letak HTML email perusahaan. Beberapa preset standar (seperti *Newsletter* dan *Invoice*) telah disediakan dengan desain responsif.</li>
                                 <li><b>Broadcast:</b> Pilih penerima berdasarkan Angkatan/Prodi, tulis pesan Anda dengan editor visual, pilih *Layout*, dan sistem akan mengirimkan pesan massal.</li>
+                            </ul>
+                            <div class="p-4 rounded-2xl bg-blue-50 border border-blue-200 mt-3">
+                                <p class="font-bold text-blue-800 mb-1">Broadcast tidak terkirim seketika &mdash; ia mengantre</p>
+                                <p class="text-blue-700">Menekan &ldquo;Kirim&rdquo; hanya memasukkan e-mail ke antrean. Yang benar-benar mengirimkannya adalah pekerjaan terjadwal <b>Antrean E-mail</b>. Pantau jalannya di menu <b>Kemajuan Broadcast</b>: berapa terkirim, berapa gagal, dan berapa yang masih menunggu.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="upload-cloud" class="w-5 h-5 text-indigo-500"></i> Impor Massal Alumni</h3>
+                        <div class="space-y-4 text-sm text-slate-600">
+                            <p>Menambahkan alumni satu per satu tidak masuk akal untuk ribuan lulusan. Menu <b>Impor Massal Alumni</b> menerima satu berkas CSV.</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li><b>Kolom wajib hanya dua:</b> <code>nama</code> dan <code>email</code>. Nama kolom Indonesia dikenali (<code>nama</code>, <code>surel</code>), begitu pula bahasa Inggris.</li>
+                                <li><b>NIM opsional</b>, tetapi sangat dianjurkan &mdash; NIM dipakai untuk verifikasi legalisir dan pelaporan akreditasi.</li>
+                                <li>Kolom lain seperti angkatan, program studi, dan nomor telepon ikut terbaca bila ada.</li>
+                            </ul>
+                            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                                <p class="font-bold text-slate-700 mb-1">Pratinjau selalu wajib</p>
+                                <p>Tidak ada satu baris pun yang tersimpan sebelum Anda melihat pratinjaunya dan menekan konfirmasi. Pratinjau menandai baris bermasalah, e-mail ganda, dan NIM yang sudah dipakai alumni lain. Pratinjau kedaluwarsa setelah 30 menit &mdash; unggah ulang bila terlewat.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="clock" class="w-5 h-5 text-rose-500"></i> Tugas Terjadwal (Cron) &mdash; wajib disiapkan</h3>
+                        <div class="space-y-4 text-sm text-slate-600">
+                            <p>Empat pekerjaan berjalan di latar belakang. Tanpa penjadwalan di server, keempatnya <b>tidak pernah berjalan</b> &mdash; dan kegagalannya tidak memunculkan pesan galat apa pun.</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li><b>Antrean E-mail</b> &mdash; tiap 5 menit. Tanpa ini, <b>broadcast tidak pernah sampai ke penerimanya.</b></li>
+                                <li><b>Peta Persebaran</b> &mdash; tiap 30 menit. Menerjemahkan alamat alumni menjadi titik koordinat.</li>
+                                <li><b>Pengingat Tracer</b> &mdash; sebulan sekali.</li>
+                                <li><b>Cadangan Basis Data</b> &mdash; sehari sekali, tersimpan ke folder <code>backups/</code>.</li>
+                            </ul>
+                            <p>URL keempatnya sudah lengkap berikut tokennya di <b>Konfigurasi Sistem &rarr; Tugas Terjadwal (Cron)</b>, dengan tombol salin. Tempelkan ke penjadwal cron di panel hosting.</p>
+                            <div class="p-4 rounded-2xl bg-red-50 border border-red-200">
+                                <p class="font-bold text-red-800 mb-1">Perlakukan URL itu seperti kata sandi</p>
+                                <p class="text-red-700">Siapa pun yang memilikinya dapat memicu pengiriman e-mail ke seluruh alumni. Jangan tempelkan ke dokumen bersama atau grup obrolan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5 text-emerald-500"></i> Cadangan Basis Data</h3>
+                        <div class="space-y-4 text-sm text-slate-600">
+                            <p>Di <b>Konfigurasi Sistem</b> tersedia tombol untuk membuat cadangan seketika, selain yang berjalan terjadwal setiap hari.</p>
+                            <p>Berkas cadangan memuat hash kata sandi, e-mail, nomor telepon, dan alamat rumah <b>seluruh alumni</b>. Satu berkas yang bocor setara dengan seluruh basis data bocor.</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li>Folder <code>backups/</code> sudah diblokir dari akses web.</li>
+                                <li>Unduh cadangan secara berkala ke penyimpanan di luar server &mdash; cadangan yang hanya ada di server yang sama tidak menolong saat servernya bermasalah.</li>
                             </ul>
                         </div>
                     </div>
