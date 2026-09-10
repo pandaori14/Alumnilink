@@ -16,6 +16,25 @@ function loadEnv($path) {
 }
 loadEnv(dirname(__DIR__) . '/.env');
 
+/**
+ * Penimpaan khusus mesin pengembang.
+ *
+ * ── Mengapa ini ada ────────────────────────────────────────────────────
+ * Selama ini folder kerja lokal memakai .env yang SAMA dengan server:
+ * DB_HOST menunjuk <host-basis-data> dan APP_URL menunjuk alamat produksi.
+ * Akibatnya setiap uji, setiap migrasi, dan setiap skrip yang dijalankan
+ * di komputer pengembang menulis LANGSUNG ke basis data produksi —
+ * tanpa satu pun tanda di layar bahwa itu yang sedang terjadi.
+ *
+ * .env.local dimuat SESUDAH .env sehingga nilainya menang. Berkas itu
+ * ada di .gitignore dan TIDAK boleh diunggah ke server; bila kebetulan
+ * tidak ada — seperti di server — perilaku kembali persis seperti semula.
+ *
+ * Konvensinya sengaja meniru Laravel/Symfony agar tidak perlu dijelaskan
+ * kepada pengembang berikutnya.
+ */
+loadEnv(dirname(__DIR__) . '/.env.local');
+
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'alumnilink');

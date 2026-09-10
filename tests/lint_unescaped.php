@@ -70,11 +70,18 @@ foreach ($it as $f) {
     if (substr($p, -4) !== '.php') continue;
     if (strpos($p, '/_dev/') !== false || strpos($p, '/node_modules/') !== false) continue;
     if (strpos($p, '/backups/') !== false) continue;
-    // Skrip cron mencetak ke terminal, bukan ke HTML. Tidak ada peramban
-    // yang menafsirkannya, jadi escape di sana justru merusak keterbacaan
-    // log. Dikenali dari penjagaan cron-nya, bukan dari nama folder.
+    // Skrip yang HANYA berjalan di CLI mencetak ke terminal, bukan ke HTML.
+    // Tidak ada peramban yang menafsirkannya, jadi escape di sana justru
+    // merusak keterbacaan log. Dikenali dari penjagaannya sendiri, bukan
+    // dari nama folder — dengan begitu berkas baru yang lupa dikecualikan
+    // tetap ikut diperiksa selama ia memang melayani web.
     $awal = (string)@file_get_contents($p, false, null, 0, 2000);
     if (strpos($awal, 'cron_require_auth') !== false) continue;
+    if (strpos($awal, "PHP_SAPI !== 'cli'") !== false) continue;
+    if (strpos($awal, "php_sapi_name() !== 'cli'") !== false) continue;
+    // Suite uji: dijalankan dari baris perintah, dan sudah diblokir dari
+    // web lewat aturan ^(_dev|scratch|logs|tail|tests)/ di .htaccess.
+    if (strpos($p, '/tests/suite/') !== false) continue;
     $berkas[] = $p;
 }
 sort($berkas);

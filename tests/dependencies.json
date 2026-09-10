@@ -1,0 +1,51 @@
+{
+  "_catatan": [
+    "Daftar pustaka pihak ketiga yang disalin manual ke dalam proyek.",
+    "Dibaca tests/check_versions.php dan dibandingkan dengan berkas yang",
+    "benar-benar ada, sehingga _dev/DEPENDENSI.md tidak dapat diam-diam",
+    "menyimpang dari kenyataan.",
+    "",
+    "Versi pustaka JavaScript tidak tertulis di dalam berkas minified-nya,",
+    "jadi yang dijadikan patokan adalah sha256. Itu justru lebih kuat: ia",
+    "menangkap penggantian berkas dan kerusakan unduhan, bukan hanya",
+    "perubahan nomor versi.",
+    "",
+    "Setelah memperbarui pustaka, jalankan:",
+    "  php tests/check_versions.php --perbarui",
+    "lalu periksa selisihnya sebelum di-commit."
+  ],
+  "php": [
+    {
+      "nama": "PHPMailer",
+      "versi": "7.1.1",
+      "sumber": "https://github.com/PHPMailer/PHPMailer/releases",
+      "lisensi": "LGPL-2.1",
+      "berkas": [
+        { "path": "includes/PHPMailer/PHPMailer.php", "sha256": "45599a196ae7944e" },
+        { "path": "includes/PHPMailer/SMTP.php",      "sha256": "522bcf0d07be7e7e" },
+        { "path": "includes/PHPMailer/Exception.php", "sha256": "22ab858ae438d98f" }
+      ],
+      "cara_perbarui": "Unduh rilis, salin HANYA src/PHPMailer.php, src/SMTP.php, src/Exception.php ke includes/PHPMailer/. Tidak perlu Composer maupun autoloader.",
+      "versi_konstanta": "PHPMailer.php mendeklarasikan const VERSION; check_versions.php membacanya langsung."
+    }
+  ],
+  "js": [
+    { "nama": "ApexCharts",         "versi": "3.54.1",  "path": "assets/js/apexcharts.min.js",          "sha256": "56fb1229fe77c8cc", "sumber": "https://github.com/apexcharts/apexcharts.js/releases" },
+    { "nama": "html2pdf.js",        "versi": "0.10.1",  "path": "assets/js/html2pdf.bundle.min.js",     "sha256": "85e6ee9ce246e3ae", "sumber": "https://github.com/eKoopmans/html2pdf.js/releases" },
+    { "nama": "Leaflet",            "versi": "1.9.4",   "path": "assets/js/leaflet.js",                 "sha256": "db49d009c841f5ca", "sumber": "https://github.com/Leaflet/Leaflet/releases" },
+    { "nama": "Leaflet.markercluster", "versi": "1.5.3", "path": "assets/js/leaflet.markercluster.js",  "sha256": "1e4e1d22972a3926", "sumber": "https://github.com/Leaflet/Leaflet.markercluster/releases" },
+    { "nama": "Lucide",             "versi": "1.31.0",  "path": "assets/js/lucide.min.js",              "sha256": "f96167bbf0e73ae1", "sumber": "https://github.com/lucide-icons/lucide/releases" },
+    { "nama": "pdf.js",             "versi": "3.4.120", "path": "assets/js/pdf.min.js",                 "sha256": "519415484a0c6c9f", "sumber": "https://github.com/mozilla/pdf.js/releases" },
+    { "nama": "pdf.js worker",      "versi": "3.4.120", "path": "assets/js/pdf.worker.min.js",          "sha256": "e6a7f30b71ca739e", "sumber": "Harus SAMA VERSI dengan pdf.min.js — versi yang tidak cocok gagal diam-diam saat memuat dokumen." },
+    { "nama": "SortableJS",         "versi": "1.15.0",  "path": "assets/js/sortable.min.js",            "sha256": "8a9889aecc2f011e", "sumber": "https://github.com/SortableJS/Sortable/releases" },
+    { "nama": "SweetAlert2",        "versi": "11.26.25","path": "assets/js/sweetalert2.min.js",         "sha256": "4e86f0e22e4771b5", "sumber": "https://github.com/sweetalert2/sweetalert2/releases" }
+  ],
+  "build": [
+    {
+      "nama": "tailwindcss",
+      "versi": "^3.4.19",
+      "path": "_dev/build/package.json",
+      "catatan": "Hanya untuk membangun assets/css/app.css di lokal. Server tidak menjalankan npm; yang di-deploy adalah app.css hasil build."
+    }
+  ]
+}
