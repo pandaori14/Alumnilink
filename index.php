@@ -200,9 +200,19 @@ if (!preg_match('/^[a-z0-9_]{1,50}$/', $page)) {
     $page = 'dashboard';
 }
 
-// Redirect to login if not logged in and trying to access protected pages
-// Allow 'landing', 'login', 'register', 'forgot_password', 'reset_password', 'news_detail', 'all_news', 'terms' for public access
-if (!$is_logged_in && !in_array($page, ['login', 'register', 'forgot_password', 'reset_password', 'landing', 'maintenance', 'news_detail', 'all_news', 'terms'])) {
+// Halaman yang boleh dibuka tanpa masuk.
+//
+// 'email_unsubscribe' WAJIB ada di sini. Setiap e-mail broadcast memuat
+// tautan berhenti-berlangganan dan header List-Unsubscribe yang menunjuk
+// halaman itu — dan penerimanya hampir selalu TIDAK sedang masuk. Selama
+// halaman itu tidak terdaftar, tautannya mengalihkan orang ke halaman depan
+// tanpa penjelasan apa pun.
+//
+// Akibatnya bukan sekadar tidak nyaman: penerima yang tidak menemukan cara
+// berhenti akan menekan tombol "laporkan spam" di penyedia e-mailnya, dan
+// itulah yang paling cepat menghancurkan reputasi pengirim. Halaman ini
+// aman dibuka publik karena dijaga token bertanda tangan, bukan oleh sesi.
+if (!$is_logged_in && !in_array($page, ['login', 'register', 'forgot_password', 'reset_password', 'landing', 'maintenance', 'news_detail', 'all_news', 'terms', 'email_unsubscribe'])) {
     header("Location: index.php?page=landing");
     exit();
 }

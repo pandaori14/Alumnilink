@@ -10,9 +10,9 @@ batch 20 e-mail × jeda 1,5 detik  = 30 detik per jalan cron
 cron tiap 5 menit                 = 240 e-mail/jam = 5.760/hari
 ```
 
-Tetapi penghambat sesungguhnya bukan antreannya. `smtp_host` menunjuk
-`smtp.gmail.com` dengan akun `@ums.ac.id`, yaitu **Google Workspace**, yang
-membatasi **±2.000 e-mail per hari**.
+Tetapi penghambat sesungguhnya bukan antreannya. `smtp_host` menunjuk `smtp.gmail.com`
+dengan akun berdomain institusi, yaitu **Google Workspace**, yang membatasi
+**±2.000 e-mail per hari**.
 
 | Penerima | Lewat Google Workspace |
 |---|---|
@@ -53,7 +53,7 @@ dalam hitungan **jam**, bukan hari.
 
 ### Langkah pindah
 
-1. Daftar, verifikasi domain `ums.ac.id` (butuh akses DNS).
+1. Daftar, verifikasi domain `<domain-institusi>` (butuh akses DNS).
 2. Ambil kredensial **SMTP relay** — bukan kunci API; sistem ini memakai SMTP.
 3. Pengaturan Sistem → isi `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`.
 4. Naikkan kecepatan — **hanya setelah** langkah 1–3 selesai:
@@ -78,21 +78,21 @@ Mengganti penyedia tanpa ini akan membuat keadaan **lebih buruk**, bukan
 lebih baik. Mengirim 20.000 e-mail dari domain yang tidak terotentikasi adalah
 pola persis yang dicari penyaring spam.
 
-Tiga catatan DNS pada `ums.ac.id` — minta ke pengelola DNS universitas:
+Tiga catatan DNS pada `<domain-institusi>` — minta ke pengelola DNS universitas:
 
 **SPF** — menyatakan server mana yang boleh mengirim atas nama domain.
 ```
-ums.ac.id.  TXT  "v=spf1 include:_spf.google.com include:<penyedia-baru> ~all"
+<domain-institusi>.  TXT  "v=spf1 include:_spf.google.com include:<penyedia-baru> ~all"
 ```
 Satu domain hanya boleh punya **satu** baris SPF. Tambahkan `include:` penyedia
 baru ke baris yang sudah ada; jangan membuat baris kedua.
 
 **DKIM** — tanda tangan kriptografis pada setiap e-mail. Penyedia memberi
-nilainya; biasanya berbentuk `<pemilih>._domainkey.ums.ac.id`.
+nilainya; biasanya berbentuk `<pemilih>._domainkey.<domain-institusi>`.
 
 **DMARC** — memberi tahu penerima apa yang harus dilakukan bila SPF/DKIM gagal.
 ```
-_dmarc.ums.ac.id.  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@ums.ac.id;"
+_dmarc.<domain-institusi>.  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@<domain-institusi>;"
 ```
 Mulai dengan `p=none` (hanya melapor). Setelah beberapa minggu laporan
 menunjukkan semuanya lolos, naikkan ke `p=quarantine`.
@@ -120,19 +120,29 @@ tidak dapat dikembalikan admin — itu keputusan mereka.
 
 ---
 
+## Token tautan e-mail
+
+Tautan berhenti-langganan ditandatangani `hash_hmac('sha256', ...)` dengan
+rahasia yang dibuat acak saat pemasangan pertama dan disimpan di basis data
+(`includes/token_lib.php`). Sebelumnya memakai `md5($email . <salt tetap>)`
+dengan salt yang tertulis di kode sumber — setiap pemasangan memakai salt
+yang sama, sehingga siapa pun yang membaca sumbernya dapat memalsukan tautan
+untuk alamat mana pun.
+
+Tautan lama yang sudah terlanjur ada di kotak masuk alumni **masih diterima**
+selama pengaturan `legacy_unsubscribe_token` bernilai `1` (bawaan). Matikan
+setelah beberapa siklus broadcast. Alasannya bukan kenyamanan: tombol
+berhenti-langganan yang rusak mendorong orang menekan "laporkan spam", dan
+itu jauh lebih merugikan daripada salt lama yang sudah bocor.
+
+> Halaman `email_unsubscribe` juga baru dibuka untuk pengunjung anonim.
+> Sebelumnya ia tidak ada di daftar halaman publik `index.php`, sehingga
+> setiap tautan berhenti-langganan mengalihkan penerima ke halaman depan
+> tanpa penjelasan — persis keadaan yang memicu laporan spam.
+
 ## Yang belum dikerjakan
 
-**Token berhenti langganan masih lemah.** `pages/email_unsubscribe.php`
-memakai `md5($email . 'alumnilink_salt')` dengan salt yang **tertulis di kode
-sumber**. Karena kode ini dilisensikan ke pelanggan, setiap pemasangan memakai
-salt yang sama — siapa pun yang punya sumbernya dapat memalsukan tautan
-berhenti-langganan untuk alamat mana pun di pemasangan mana pun.
-
-Perbaikannya kecil: `hash_hmac('sha256', $email, <rahasia per-pemasangan>)`,
-memakai pola yang sama dengan `cron_token` di `includes/cron_auth.php`.
-Belum dikerjakan karena berada di luar cakupan yang disetujui.
-
-**Bounce dibaca dari kegagalan SMTP, bukan dari laporan penyedia.** Cara ini
+**Bounce hanya terbaca dari kegagalan SMTP.** Cara ini
 menangkap alamat yang ditolak saat pengiriman, tetapi tidak menangkap *soft
 bounce* yang dilaporkan belakangan lewat webhook. Bila kelak pindah ke Mailgun
 atau SES, keduanya menyediakan webhook bounce yang jauh lebih akurat dan layak

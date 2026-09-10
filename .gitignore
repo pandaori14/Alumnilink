@@ -71,3 +71,24 @@ Thumbs.db
 # nol INSERT, nol hash, nol e-mail. Diperiksa sebelum dikecualikan dari
 # pengecualian ini.
 !schema.sql
+
+# ── Dokumen internal — TIDAK untuk repositori publik ─────────────────
+#
+# Repo ini publik. Yang berikut bukan rahasia teknis, melainkan informasi
+# yang tidak ada gunanya bagi orang yang membaca kodenya, dan merugikan
+# bila tersebar:
+#
+#   _dev/docs/     proposal penawaran, rincian pembayaran, nilai kontrak,
+#                  dan checklist deploy khusus server ini
+#   _dev/scratch/  security_spec.md berisi daftar payload serangan
+#                  terhadap sistem ini — peta jalan bagi penyerang —
+#                  ditambah skrip debug lama yang tidak dipelihara
+#   _dev/UPLOAD.md langkah upload khusus pemasangan ini: alamat server,
+#                  id akun sungguhan, dan alamat e-mail pengelola
+_dev/docs/
+_dev/scratch/
+_dev/UPLOAD.md
+
+# Yang TETAP ikut dari _dev/: build/ (satu-satunya cara membangun ulang
+# CSS), DEPENDENSI.md, dan EMAIL.md — ketiganya berguna bagi siapa pun
+# yang mengerjakan kode ini dan tidak memuat data siapa pun.

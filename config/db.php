@@ -63,7 +63,7 @@ define('BASE_URL', getenv('APP_URL') ?: $default_url);
  * Naikkan nomor versi di bawah setiap kali menambahkan migrasi baru, agar
  * migrasi tersebut ikut berjalan sekali di server setelah di-upload.
  */
-define('ALUMNILINK_SCHEMA_VERSION', '2026.09.10.4');
+define('ALUMNILINK_SCHEMA_VERSION', '2026.09.10.5');
 
 /**
  * Benar bila skema database sudah sesuai versi yang diharapkan kode ini.
@@ -474,10 +474,9 @@ try {
     // NIM adalah identitas LULUSAN. Lima baris berikut adalah akun staf,
     // akun uji, atau akun IT fakultas yang memakai NIM milik orang lain.
     //
-    // Yang paling penting dipahami: alumni_6a0d761f16121 ("Support IT FK UMS",
-    // <email-pengelola>, MARS 2027) dan l200160042 ("Pandu Egi Ferdian",
-    // <email-alumnus>, J500 2021) adalah DUA ORANG BERBEDA yang
-    // kebetulan berbagi satu NIM — bukan akun ganda. Karena itu ini BUKAN
+    // Yang paling penting dipahami: kedua akun ber-NIM l200160042 adalah
+    // DUA ORANG BERBEDA yang kebetulan berbagi satu NIM — beda nama, beda
+    // e-mail, beda prodi, beda tahun lulus — bukan akun ganda. Karena itu ini BUKAN
     // penggabungan akun: tidak ada riwayat yang dipindahkan, tidak ada baris
     // users yang dihapus, dan tidak ada users.id yang diubah. Hanya satu
     // kolom yang dikosongkan pada akun yang salah memakainya.
@@ -573,6 +572,17 @@ try {
     // mematikannya kembali lewat Pengaturan Sistem bila perlu.
     $pdo->exec("INSERT INTO settings (setting_key, setting_value) VALUES ('rbac_enforce', '1')
                 ON DUPLICATE KEY UPDATE setting_value = '1'");
+
+    // ── Rahasia penanda-tangan tautan e-mail ─────────────────────────
+    //
+    // Menggantikan salt 'alumnilink_salt' yang tertulis di kode. Dibuat
+    // acak per pemasangan, jadi membaca kode sumber tidak lagi cukup untuk
+    // memalsukan tautan berhenti-langganan orang lain.
+    require_once dirname(__DIR__) . '/includes/token_lib.php';
+    app_signing_secret($pdo);
+
+    $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value)
+                VALUES ('legacy_unsubscribe_token', '1')");
 
     // ── Token pemicu cron ────────────────────────────────────────────
     //
@@ -686,4 +696,9 @@ require_once dirname(__DIR__) . '/includes/tracer_lib.php';
 // di-require satu per satu, halaman yang lupa akan gagal saat dijalankan
 // padahal `php -l` tetap bersih.
 require_once dirname(__DIR__) . '/includes/pagination.php';
+
+// Tanda tangan token untuk tautan di e-mail. Dimuat global karena dipakai
+// baik oleh sisi pembuat tautan (mailer) maupun sisi pemeriksa (halaman
+// berhenti berlangganan) — keduanya WAJIB memakai rahasia yang sama.
+require_once dirname(__DIR__) . '/includes/token_lib.php';
 ?>

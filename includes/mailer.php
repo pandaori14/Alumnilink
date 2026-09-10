@@ -136,7 +136,7 @@ function send_email_generic($to_email, $to_name, $subject, $body_html) {
 
         // Anti-Spam Headers
         $app_base_url = defined('BASE_URL') ? rtrim(BASE_URL, '/') : (isset($_SERVER['HTTP_HOST']) ? 'http://' . $_SERVER['HTTP_HOST'] . '/alumnilink' : 'http://localhost/alumnilink');
-        $unsubscribe_url = $app_base_url . '/index.php?page=email_unsubscribe&e=' . urlencode($to_email) . '&t=' . md5($to_email . 'alumnilink_salt');
+        $unsubscribe_url = $app_base_url . '/index.php?page=email_unsubscribe&e=' . urlencode($to_email) . '&t=' . sign_token($to_email, 'unsubscribe');
         $mail->addCustomHeader('List-Unsubscribe', '<' . $unsubscribe_url . '>');
         $mail->addCustomHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         $mail->addCustomHeader('Precedence', 'list');
@@ -652,7 +652,7 @@ function send_html_email(string $to_email, string $to_name, string $subject, str
 
         // Anti-Spam Headers
         $app_base_url = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'http://localhost/alumnilink';
-        $unsubscribe_url = $app_base_url . '/index.php?page=email_unsubscribe&e=' . urlencode($to_email) . '&t=' . md5($to_email . 'alumnilink_salt');
+        $unsubscribe_url = $app_base_url . '/index.php?page=email_unsubscribe&e=' . urlencode($to_email) . '&t=' . sign_token($to_email, 'unsubscribe');
         $mail->addCustomHeader('List-Unsubscribe', '<' . $unsubscribe_url . '>');
         $mail->addCustomHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         $mail->addCustomHeader('Precedence', 'list');

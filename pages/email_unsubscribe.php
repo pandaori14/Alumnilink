@@ -7,13 +7,17 @@ if (!isset($pdo)) {
 $email = $_GET['e'] ?? '';
 $token = $_GET['t'] ?? '';
 
-// Basic validation
-$expected_token = md5($email . 'alumnilink_salt');
-
+// Token diperiksa lewat includes/token_lib.php: HMAC-SHA256 dengan rahasia
+// per-pemasangan, dibandingkan berwaktu tetap. Salt lama yang tertulis di
+// kode ('alumnilink_salt') masih diterima sementara agar tautan yang sudah
+// terlanjur ada di kotak masuk alumni tidak mendadak berhenti bekerja —
+// tombol berhenti-langganan yang rusak justru mendorong orang menandai
+// e-mail kita sebagai spam. Matikan lewat pengaturan
+// legacy_unsubscribe_token setelah beberapa siklus broadcast.
 $error = null;
 $success = null;
 
-if (empty($email) || empty($token) || $token !== $expected_token) {
+if (empty($email) || empty($token) || !verify_token($email, $token, 'unsubscribe')) {
     $error = "Tautan tidak valid atau telah kedaluwarsa.";
 } else {
     try {
