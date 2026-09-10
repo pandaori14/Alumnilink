@@ -27,6 +27,7 @@ $page_titles = [
     'admin_majors'       => 'Kelola Program Studi',
     'admin_analytics'    => 'Analitik Tracer Alumni',
     'admin_email_layouts'=> 'Template Email (Layouts)',
+    'admin_broadcast_status' => 'Kemajuan Broadcast',
     'alumni_map'         => 'Peta Persebaran Alumni',
     'guide'              => 'Panduan Pengguna',
 ];

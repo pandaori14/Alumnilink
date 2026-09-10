@@ -48,8 +48,14 @@ try {
         $params[] = (int)$filter_graduation_year;
     }
 
+    // Alamat yang berhenti berlangganan atau sudah ditandai mati tidak akan
+    // dikirimi. Menghitungnya di sini membuat angka yang dilihat admin —
+    // dan perkiraan waktu yang diturunkan darinya — sama dengan kenyataan.
+    // Penyaring yang sama ada di handlers/admin_broadcast_handler.php.
+    $where_conditions[] = "NOT EXISTS (SELECT 1 FROM unsubscribes s WHERE s.email = users.email)";
+
     $where_sql = implode(' AND ', $where_conditions);
-    
+
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE $where_sql");
     $stmt->execute($params);
     $count = (int)$stmt->fetchColumn();

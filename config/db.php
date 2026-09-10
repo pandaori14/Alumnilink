@@ -63,7 +63,7 @@ define('BASE_URL', getenv('APP_URL') ?: $default_url);
  * Naikkan nomor versi di bawah setiap kali menambahkan migrasi baru, agar
  * migrasi tersebut ikut berjalan sekali di server setelah di-upload.
  */
-define('ALUMNILINK_SCHEMA_VERSION', '2026.09.10.3');
+define('ALUMNILINK_SCHEMA_VERSION', '2026.09.10.4');
 
 /**
  * Benar bila skema database sudah sesuai versi yang diharapkan kode ini.
@@ -252,6 +252,8 @@ try {
                 // mendapat menu Impor Massal — kapabilitasnya sama persis
                 // (alumni.kelola), jadi tidak ada hak baru yang diberikan.
                 'admin_alumni'        => 'admin_alumni_import',
+                // Kemajuan Broadcast untuk peran yang sudah boleh mengirim.
+                'admin_broadcast'     => 'admin_broadcast_status',
                 // Audit Trail memang dirancang terbuka untuk seluruh staf —
                 // page_capability_map() sengaja tidak mendaftarkannya dan
                 // capability_super_admin_only() tidak menguncinya, sehingga
@@ -392,6 +394,55 @@ try {
     $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
         ('legalisir_sla_warn_days', '3'),
         ('legalisir_sla_breach_days', '7')");
+
+    // ── Samakan collation dua tabel yang menyimpang ──────────────────
+    //
+    // 24 tabel memakai utf8mb4_general_ci; hanya `unsubscribes` dan
+    // `email_delivery_log` yang utf8mb4_unicode_ci. Selisih itu tidak
+    // pernah terasa sampai ada kueri yang MEMBANDINGKAN kolom antar-tabel:
+    //
+    //     WHERE unsubscribes.email = users.email
+    //     -> SQLSTATE[HY000] 1267 Illegal mix of collations
+    //
+    // Penyaringan penerima broadcast dan penandaan alamat mati keduanya
+    // membutuhkan perbandingan itu. Menaburkan COLLATE di setiap kueri
+    // hanya menyembunyikan penyebabnya dan akan terlupakan pada kueri
+    // berikutnya; yang benar adalah menyamakan tabelnya.
+    //
+    // Aman dilakukan: unsubscribes kosong, email_delivery_log kecil, dan
+    // general_ci tidak lebih ketat daripada unicode_ci untuk alamat e-mail
+    // (keduanya tidak peka huruf besar-kecil), jadi kunci UNIQUE pada
+    // unsubscribes.email tidak akan bertabrakan.
+    foreach (['unsubscribes', 'email_delivery_log'] as $tabel_col) {
+        try {
+            $col = $pdo->query(
+                "SELECT table_collation FROM information_schema.tables
+                 WHERE table_schema = DATABASE() AND table_name = '$tabel_col'"
+            )->fetchColumn();
+            if ($col && $col !== 'utf8mb4_general_ci') {
+                $pdo->exec("ALTER TABLE `$tabel_col`
+                            CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+            }
+        } catch (PDOException $e) {
+            error_log("Gagal menyamakan collation $tabel_col: " . $e->getMessage());
+        }
+    }
+
+    // Halaman kemajuan broadcast menyaring email_queue per broadcast_id.
+    try {
+        $idx_bc = $pdo->query("SHOW INDEX FROM email_queue WHERE Key_name = 'idx_broadcast'")->fetch();
+        if (!$idx_bc) {
+            $pdo->exec("ALTER TABLE email_queue ADD INDEX idx_broadcast (broadcast_id)");
+        }
+    } catch (PDOException $e) {
+        error_log('Gagal membuat idx_broadcast: ' . $e->getMessage());
+    }
+
+    // ── Pengaturan broadcast berskala ────────────────────────────────
+    $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
+        ('email_throttle_ms', '1500'),
+        ('email_daily_limit', '2000'),
+        ('email_bounce_threshold', '3')");
 
     // ── Indeks preventif pada tabel yang tumbuh ──────────────────────
     //

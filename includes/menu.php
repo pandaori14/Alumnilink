@@ -48,6 +48,7 @@ function all_menu_definitions()
             ['key' => 'admin_alumni_import',  'label' => 'Impor Massal Alumni',    'icon' => 'upload-cloud',    'group' => 'Informasi & Alumni'],
             ['key' => 'admin_news',           'label' => 'Kelola Berita & Event',  'icon' => 'newspaper',       'group' => 'Informasi & Alumni'],
             ['key' => 'admin_broadcast',      'label' => 'Broadcast',              'icon' => 'megaphone',       'group' => 'Informasi & Alumni'],
+            ['key' => 'admin_broadcast_status','label' => 'Kemajuan Broadcast',   'icon' => 'activity',        'group' => 'Informasi & Alumni'],
             ['key' => 'admin_email_layouts',  'label' => 'Template Email',         'icon' => 'layout-template', 'group' => 'Informasi & Alumni'],
 
             // Group 2: Tracer Study

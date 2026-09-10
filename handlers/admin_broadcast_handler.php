@@ -99,6 +99,19 @@ if ($action === 'send' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $params[] = (int)$target_value;
         }
 
+        // Alamat yang sudah berhenti berlangganan ATAU sudah ditandai mati
+        // (bounce) tidak ikut diantrekan sejak awal.
+        //
+        // Disaring DI SINI, bukan saat mengirim, supaya jumlah penerima yang
+        // ditampilkan kepada admin sama dengan jumlah yang benar-benar akan
+        // dikirimi. Angka yang lebih besar dari kenyataan membuat estimasi
+        // waktu ikut salah, dan itu justru angka yang dipakai orang untuk
+        // memutuskan.
+        //
+        // Ditambahkan ke $where, bukan ditempel ke $where_sql, karena
+        // $where_sql bisa kosong sama sekali bila tidak ada penyaring lain.
+        $where[] = "NOT EXISTS (SELECT 1 FROM unsubscribes s WHERE s.email = users.email)";
+
         $where_sql  = count($where) ? 'WHERE ' . implode(' AND ', $where) : '';
         $rec_stmt   = $pdo->prepare("SELECT id, name, email, email_notifications FROM users $where_sql");
         $rec_stmt->execute($params);

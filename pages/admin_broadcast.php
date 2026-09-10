@@ -844,6 +844,32 @@ $custom_layouts_json   = json_encode($custom_layouts_raw, JSON_HEX_TAG | JSON_HE
                             </div>
                         </div>
 
+                        <!-- Perkiraan waktu pengiriman.
+                             Ini bagian terpenting dari layar ini. Proposal
+                             sistem menjanjikan kirim ke "puluhan ribu alumni
+                             sekali klik", padahal batas penyedia SMTP membuat
+                             20.000 penerima memakan sepuluh hari. Angka itu
+                             harus terlihat DI SINI, pada saat keputusan
+                             diambil — bukan ditemukan tiga hari kemudian. -->
+                        <?php
+                            $b_batas   = setting_int('email_daily_limit', 2000, 1);
+                            $b_batch   = setting_int('email_batch_size', 20, 1);
+                            $b_jeda    = setting_int('email_throttle_ms', 1500, 0);
+                        ?>
+                        <div id="estimasi-kirim"
+                             class="hidden mb-4 p-4 rounded-2xl border text-xs leading-relaxed"
+                             data-batas="<?= e($b_batas) ?>"
+                             data-batch="<?= e($b_batch) ?>"
+                             data-jeda="<?= e($b_jeda) ?>">
+                            <div class="flex items-start gap-2.5">
+                                <i data-lucide="clock" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <span class="font-bold block mb-0.5" id="estimasi-judul"></span>
+                                    <span id="estimasi-rincian"></span>
+                                </div>
+                            </div>
+                        </div>
+
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2.5">Penerima Eksternal Tambahan</label>
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                             <p class="text-xs text-slate-500 mb-3">Paste list email (pisahkan dengan koma/baris baru) atau upload file CSV/TXT.</p>
@@ -1502,6 +1528,68 @@ function doSaveLayout() {
 }
 
 // ── Target filter ───────────────────────────────
+/* ── Perkiraan lama pengiriman ────────────────────────────────────────
+   Penghambat sesungguhnya BUKAN kecepatan sistem ini, melainkan batas
+   harian penyedia SMTP. Google Workspace membatasi sekitar 2.000 e-mail
+   per hari; pada angka itu 20.000 penerima memakan sepuluh hari.
+
+   Perhitungan ini sengaja memakai angka yang PALING MEMBATASI di antara
+   batas harian dan kecepatan antrean — memberi tahu orang angka yang
+   terlalu optimistis lebih buruk daripada tidak memberi tahu sama sekali. */
+function perkiraanKirim(jumlah) {
+    const el = document.getElementById('estimasi-kirim');
+    if (!el) return;
+
+    if (!jumlah || jumlah < 1) { el.classList.add('hidden'); return; }
+
+    const batasHarian = parseInt(el.dataset.batas, 10) || 2000;
+    const batch       = parseInt(el.dataset.batch, 10) || 20;
+    const jedaMs      = parseInt(el.dataset.jeda, 10);
+
+    // Kapasitas antrean bila cron berjalan tiap 5 menit.
+    const perJam    = batch * 12;
+    const perHariQ  = perJam * 24;
+    // Yang benar-benar berlaku adalah yang terkecil di antara keduanya.
+    const perHari   = Math.min(batasHarian, perHariQ);
+    const hari      = jumlah / perHari;
+
+    let waktu;
+    if (hari <= 1 / 24) {
+        waktu = 'kurang dari satu jam';
+    } else if (hari < 1) {
+        waktu = '±' + Math.ceil(hari * 24) + ' jam';
+    } else {
+        const h = Math.floor(hari);
+        const j = Math.round((hari - h) * 24);
+        waktu = '±' + h + ' hari' + (j > 0 ? ' ' + j + ' jam' : '');
+    }
+
+    const cepat = hari < 1;
+    el.className = 'mb-4 p-4 rounded-2xl border text-xs leading-relaxed ' +
+        (cepat ? 'bg-slate-50 border-slate-200 text-slate-600'
+               : 'bg-amber-50 border-amber-200 text-amber-800');
+
+    document.getElementById('estimasi-judul').textContent =
+        jumlah.toLocaleString('id-ID') + ' penerima · perkiraan selesai ' + waktu;
+
+    let rincian = 'Batas penyedia ' + batasHarian.toLocaleString('id-ID') +
+        ' e-mail/hari; antrean memproses ' + batch + ' e-mail tiap 5 menit.';
+    if (perHariQ < batasHarian) {
+        rincian += ' Yang membatasi saat ini adalah antreannya, bukan penyedia — ' +
+                   'naikkan ukuran batch di Pengaturan.';
+    } else if (!cepat) {
+        rincian += ' Yang membatasi adalah penyedia SMTP. Untuk pengiriman ' +
+                   'massal, pindah ke penyedia e-mail transaksional (lihat _dev/EMAIL.md).';
+    }
+    if (jedaMs > 0 && perHariQ < batasHarian) {
+        rincian += ' Jeda antar e-mail kini ' + jedaMs + ' ms.';
+    }
+    document.getElementById('estimasi-rincian').textContent = rincian;
+
+    el.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+}
+
 function handleTargetTypeChange() {
     const type = document.getElementById('target-type').value;
     const wrap  = document.getElementById('target-val-wrap');
@@ -1513,6 +1601,7 @@ function handleTargetTypeChange() {
         'major': 'Alumni — Filter: Program Studi',
         'year':  'Alumni — Filter: Tahun Angkatan',
         'role':  'Semua Pengguna (Alumni + Staff)',
+
         'external': 'Hanya Penerima Eksternal'
     };
 
@@ -1526,6 +1615,7 @@ function handleTargetTypeChange() {
 
     if (type === 'major') setTargetValue(maj.value, maj.options[maj.selectedIndex].text);
     if (type === 'year')  setTargetValue(yr.value);
+    hitungPenerima();
 }
 
 function setTargetValue(val, label) {
@@ -1534,7 +1624,44 @@ function setTargetValue(val, label) {
     const toLabel = document.getElementById('to-label');
     if (type === 'major') toLabel.textContent = 'Alumni — Prodi: ' + (label || val);
     if (type === 'year')  toLabel.textContent = 'Alumni — Angkatan: ' + val;
+    hitungPenerima();
 }
+
+/* Tanyakan jumlah penerima ke server, lalu tampilkan perkiraan waktunya.
+   Memakai api/email_blast_count.php yang sudah ada — endpoint itu menghitung
+   dengan penyaring yang sama seperti pengiriman sungguhan, jadi angkanya
+   tidak akan menyimpang dari kenyataan. */
+function hitungPenerima() {
+    const type = document.getElementById('target-type').value;
+    const val  = document.getElementById('h-target-value').value;
+    const el   = document.getElementById('estimasi-kirim');
+    if (!el) return;
+
+    // Penerima eksternal dihitung dari daftar yang diketik, bukan dari
+    // basis data.
+    if (type === 'external') {
+        // Daftar eksternal disimpan sebagai JSON di input tersembunyi
+        // h-external-emails, bukan sebagai teks bebas.
+        const kotak = document.getElementById('h-external-emails');
+        let n = 0;
+        try { n = (JSON.parse(kotak ? kotak.value : '[]') || []).length; } catch (e) { n = 0; }
+        perkiraanKirim(n);
+        return;
+    }
+
+    const q = new URLSearchParams({ filter_role: type === 'role' ? 'all' : 'alumni' });
+    if (type === 'major' && val) q.set('filter_major', val);
+    if (type === 'year'  && val) q.set('filter_graduation_year', val);
+
+    fetch('api/email_blast_count.php?' + q.toString())
+        .then(r => r.json())
+        .then(d => perkiraanKirim(d && d.success ? (d.count || 0) : 0))
+        .catch(() => { el.classList.add('hidden'); });
+}
+
+// Hitung sekali saat halaman siap, supaya angkanya sudah ada sebelum
+// pengguna menyentuh apa pun.
+document.addEventListener('DOMContentLoaded', hitungPenerima);
 
 // ── Modal helpers ───────────────────────────────
 function openMo(id) {

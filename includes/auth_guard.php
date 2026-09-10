@@ -280,6 +280,9 @@ function page_capability_map()
         'admin_majors'        => 'master.kelola',
         'admin_news'          => 'konten.kelola',
         'admin_broadcast'     => 'broadcast.kirim',
+        // Halaman kemajuan menampilkan alamat e-mail penerima, jadi
+        // dijaga kapabilitas yang sama dengan yang boleh mengirim.
+        'admin_broadcast_status' => 'broadcast.kirim',
         'admin_email_layouts' => 'broadcast.kirim',
         'admin_analytics'     => 'analitik.lihat',
         'admin_tracer'        => 'tracer.lihat',

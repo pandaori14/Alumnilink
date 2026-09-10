@@ -71,6 +71,56 @@ if ($n_macet > 0) {
 // yang baru saja dipulihkan di atas.
 @set_time_limit(0);
 
+// 0b. Berhenti mengirimi alamat yang berkali-kali menolak.
+//
+// email_queue.status = 'failed' sudah terisi setelah MAX_ATTEMPTS habis,
+// tetapi selama ini tidak pernah dibaca lagi. Akibatnya alamat mati terus
+// dicoba pada setiap broadcast berikutnya.
+//
+// Pada volume kecil itu hanya pemborosan. Pada volume besar, justru
+// itulah yang menghancurkan reputasi pengirim: penyedia e-mail menilai
+// pengirim dari rasio bouncenya, dan begitu reputasi jatuh, e-mail yang
+// SAH pun mulai masuk folder spam. Jadi ini bukan soal efisiensi,
+// melainkan soal apakah broadcast berikutnya sampai atau tidak.
+//
+// Ambangnya dihitung per ALAMAT lintas broadcast, bukan per broadcast —
+// satu broadcast yang gagal seluruhnya biasanya masalah di sisi kita
+// (SMTP mati), bukan alamat penerimanya yang salah.
+$ambang = setting_int('email_bounce_threshold', 3, 1);
+
+$mati = $pdo->prepare(
+    "SELECT q.to_email, COUNT(DISTINCT COALESCE(q.broadcast_id, q.id)) AS n
+     FROM email_queue q
+     WHERE q.status = 'failed'
+       AND q.to_email IS NOT NULL AND q.to_email <> ''
+       AND NOT EXISTS (SELECT 1 FROM unsubscribes u WHERE u.email = q.to_email)
+     GROUP BY q.to_email
+     HAVING n >= ?"
+);
+$mati->execute([$ambang]);
+$daftar_mati = $mati->fetchAll();
+
+if ($daftar_mati) {
+    // Dicatat di tabel unsubscribes yang sudah ada, bukan tabel baru:
+    // alasan orang berhenti menerima e-mail berbeda — memilih sendiri atau
+    // alamatnya mati — tetapi akibatnya sama, dan admin perlu melihat
+    // keduanya di satu tempat agar bisa mengembalikan yang keliru.
+    $tandai = $pdo->prepare(
+        "INSERT IGNORE INTO unsubscribes (email, reason, created_at) VALUES (?, ?, NOW())"
+    );
+    foreach ($daftar_mati as $m) {
+        $tandai->execute([$m->to_email, 'bounce: gagal pada ' . (int)$m->n . ' pengiriman']);
+        $log("Berhenti mengirimi {$m->to_email} — gagal pada {$m->n} pengiriman.");
+    }
+    // Terlihat oleh manusia, bukan hanya di log yang tidak pernah dibuka.
+    if (function_exists('notify_roles')) {
+        notify_roles(['super_admin'], 'Alamat e-mail dinonaktifkan otomatis',
+            count($daftar_mati) . ' alamat berhenti dikirimi karena berkali-kali gagal. '
+            . 'Periksa dan kembalikan bila ada yang keliru.',
+            'warning', 'index.php?page=admin_broadcast_status');
+    }
+}
+
 // 1. Fetch a batch of pending emails (lock them for processing)
 try {
     $pdo->beginTransaction();
@@ -185,8 +235,20 @@ foreach ($batch as $item) {
         $failed++;
     }
 
-    // Delay between emails to prevent SMTP block / rate-limiting (1.5 seconds)
-    usleep(1500000);
+    // Jeda antar e-mail, agar penyedia SMTP tidak memblokir pengiriman.
+    //
+    // Dulu ter-hardcode 1,5 detik. Angka itu masuk akal untuk Gmail, tetapi
+    // ia juga menjadi LANGIT-LANGIT yang tidak dapat dinaikkan: berpindah ke
+    // penyedia transaksional yang sanggup ratusan e-mail per detik pun tidak
+    // akan mempercepat apa pun selama jedanya tetap 1,5 detik per surat.
+    //
+    // Nilai 0 diizinkan dan memang benar untuk penyedia semacam itu.
+    // Bawaannya tetap 1500 sehingga perilaku TIDAK berubah sampai seseorang
+    // sengaja mengubahnya bersamaan dengan pindah penyedia.
+    $jeda_ms = setting_int('email_throttle_ms', 1500, 0);
+    if ($jeda_ms > 0) {
+        usleep($jeda_ms * 1000);
+    }
 }
 
 $elapsed = round(microtime(true) - $start, 2);

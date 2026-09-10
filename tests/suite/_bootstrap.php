@@ -56,6 +56,37 @@ function uji_base_url()
 
 $BASE = uji_base_url();
 
+/**
+ * Pagar: uji tidak boleh dapat mengirim e-mail sungguhan.
+ *
+ * Ini bukan kehati-hatian teoretis. Kotak-pasir e-mail di
+ * includes/mailer.php hanya aktif bila APP_ENV === 'local'; selama .env
+ * menyetel APP_ENV="production", smtp_force_real = 0 sama sekali tidak
+ * mencegah pengiriman. Sebelum pagar ini ada, 132 e-mail uji benar-benar
+ * terkirim — tiga di antaranya ke alumni sungguhan.
+ *
+ * Berhenti di sini lebih baik daripada mengirimi orang surat palsu.
+ */
+if ((getenv('APP_ENV') ?: 'local') !== 'local'
+    && !in_array('--izinkan-kirim-email', $argv ?? [], true)) {
+    fwrite(STDERR,
+        "
+  BERHENTI: APP_ENV = '" . getenv('APP_ENV') . "', bukan 'local'.
+
+" .
+        "  Kotak-pasir e-mail di includes/mailer.php hanya aktif pada APP_ENV
+" .
+        "  'local'. Menjalankan uji sekarang akan MENGIRIM E-MAIL SUNGGUHAN
+" .
+        "  ke alamat yang ada di basis data.
+
+" .
+        "  Perbaiki dengan menambahkan APP_ENV=local ke .env.local
+
+");
+    exit(2);
+}
+
 // ── Penghitung hasil ─────────────────────────────────────────────────
 $pass = 0;
 $fail = 0;
