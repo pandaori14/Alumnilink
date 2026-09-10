@@ -140,4 +140,14 @@ if ($langkah_gagal) {
 }
 
 echo "  Seluruh pemeriksaan lulus.\n\n";
+
+// Berkas ini menguji SALINAN LOKAL. Ia tidak dapat mengatakan apa pun
+// tentang apa yang sebenarnya berjalan di server — dan pada sistem yang
+// di-deploy dengan menimpa berkas lewat FTP, keduanya kerap berbeda jauh
+// lebih lama daripada yang disangka siapa pun.
+echo "
+  Untuk memeriksa SERVER (hanya GET, aman terhadap produksi):
+";
+echo "      php tests/verify_deploy.php <url-server>
+";
 exit(0);

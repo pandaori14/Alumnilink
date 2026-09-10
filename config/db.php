@@ -35,6 +35,44 @@ loadEnv(dirname(__DIR__) . '/.env');
  */
 loadEnv(dirname(__DIR__) . '/.env.local');
 
+/**
+ * Ke mana galat PHP diarahkan.
+ *
+ * ── Mengapa ini perlu diatur di sini ───────────────────────────────────
+ * Sebelumnya tidak diatur di mana pun, jadi ia mengikuti php.ini server —
+ * dan di server itu display_errors menyala. Akibatnya setiap pengunjung
+ * dapat melihat peringatan PHP lengkap dengan jalur berkasnya:
+ *
+ *     Warning: Undefined variable $page in
+ *     /var/www/html/alumnilink/includes/header.php on line 43
+ *
+ * Jalur itu memberi tahu tata letak server kepada siapa pun yang melihat,
+ * dan pada kondisi galat yang lain pesannya dapat memuat potongan SQL
+ * beserta nama kolomnya.
+ *
+ * Galat TIDAK disembunyikan — hanya dipindahkan dari layar pengunjung ke
+ * log server. log_errors dinyalakan di baris yang sama, bukan sebagai
+ * gantinya, supaya masalahnya tetap dapat didiagnosis.
+ *
+ * Diatur lewat ini_set(), BUKAN php_flag di .htaccess: direktif itu
+ * menuntut AllowOverride Options dan memicu HTTP 500 pada hosting yang
+ * membatasinya, sedangkan ini_set() bekerja di mana pun.
+ */
+if ((getenv('APP_ENV') ?: 'local') === 'local') {
+    // Di mesin pengembang, galat justru harus terlihat seketika.
+    ini_set('display_errors', '1');
+    ini_set('log_errors', '1');
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+    ini_set('log_errors', '1');
+    // E_DEPRECATED dan E_NOTICE dibiarkan tidak dicatat: keduanya berisik
+    // pada kode selama ini dan akan menenggelamkan galat yang sungguhan
+    // di dalam log.
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+}
+
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'alumnilink');
