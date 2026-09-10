@@ -253,7 +253,7 @@ if (isset($_GET['error'])) {
                     $paid = $req->payment_status == 'settlement';
                 ?>
                 <tr class="hover:bg-white/30 transition-all">
-                    <td class="px-6 py-4 font-mono text-xs text-slate-500">#<?php echo strtoupper(substr($req->id, -12)); ?></td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">#<?php echo e(strtoupper(substr($req->id, -12))); ?></td>
                     <td class="px-6 py-4 text-sm text-slate-600"><?php echo date('d M Y', strtotime($req->created_at)); ?></td>
                     <td class="px-6 py-4">
                         <div class="flex flex-col gap-1">

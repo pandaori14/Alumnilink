@@ -329,7 +329,7 @@ $docs = json_decode($req->documents);
                         <div class="<?php echo e($steps['paid'] ? '' : 'opacity-40'); ?>">
                             <h5 class="font-bold text-slate-800">Pembayaran Terverifikasi</h5>
                             <p class="text-sm text-slate-600 mt-1">
-                                <?php echo $paid ? ('Lunas via ' . strtoupper($req->payment_method)) : 'Menunggu konfirmasi pembayaran.'; ?>
+                                <?php echo e($paid ? ('Lunas via ' . strtoupper($req->payment_method)) : 'Menunggu konfirmasi pembayaran.'); ?>
                             </p>
                         </div>
                     </div>

@@ -348,7 +348,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                                     </div>
                                 <?php else: ?>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 opacity-50">
-                                        VIA <?php echo strtoupper($req->payment_method); ?>
+                                        VIA <?php echo e(strtoupper($req->payment_method)); ?>
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -434,7 +434,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                         <h2 class="font-black text-slate-800 outfit text-lg"><?php echo e($req->user_name); ?></h2>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider <?php echo e($badge_m); ?>"><?php echo legalisir_age_text($umur_m); ?></span>
-                            <span class="text-[10px] font-extrabold text-slate-400 tracking-widest uppercase font-mono">ID: <?php echo strtoupper(substr($req->id, -8)); ?></span>
+                            <span class="text-[10px] font-extrabold text-slate-400 tracking-widest uppercase font-mono">ID: <?php echo e(strtoupper(substr($req->id, -8))); ?></span>
                             <?php if($req->user_nim): ?>
                                 <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[9px] font-bold border border-emerald-100">NIM Verified</span>
                             <?php endif; ?>
@@ -493,7 +493,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                                 </form>
                             <?php else: ?>
                                 <span class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
-                                    VIA <?php echo strtoupper($req->payment_method); ?>
+                                    VIA <?php echo e(strtoupper($req->payment_method)); ?>
                                 </span>
                             <?php endif; ?>
                         </div>

@@ -70,7 +70,7 @@ $db_majors = $pdo->query("SELECT major_code, major_name FROM majors ORDER BY maj
                 </div>
 
                 <h2 class="text-2xl font-black outfit text-slate-800 tracking-tight mb-1"><?php echo e($user->name); ?></h2>
-                <p class="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full mb-8 border border-blue-100 shadow-sm"><?php echo strtoupper($user->role); ?></p>
+                <p class="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full mb-8 border border-blue-100 shadow-sm"><?php echo e(strtoupper($user->role)); ?></p>
                 
                 <!-- Quick Info List -->
                 <div class="w-full space-y-3 text-left pt-6 border-t border-slate-200/60">

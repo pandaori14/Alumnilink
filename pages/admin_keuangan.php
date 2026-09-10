@@ -164,7 +164,7 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
             </div>
             <div class="flex items-center justify-between pt-3 border-t border-white/30">
                 <div class="text-xs text-slate-500">
-                    <span class="font-semibold text-slate-700"><?php echo strtoupper($r->payment_method); ?></span>
+                    <span class="font-semibold text-slate-700"><?php echo e(strtoupper($r->payment_method)); ?></span>
                     &bull; <?php echo implode(', ', $docNames); ?>
                 </div>
                 <span class="font-bold text-blue-600 text-sm">Rp <?php echo number_format($net_amount, 0, ',', '.'); ?></span>
@@ -208,7 +208,7 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
                     <td class="px-5 py-4 text-slate-600"><?php echo implode(', ', $docNames); ?></td>
                     <td class="px-5 py-4">
                         <span class="px-2 py-1 rounded-lg text-[10px] font-bold <?php echo e($r->payment_method === 'cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'); ?>">
-                            <?php echo strtoupper($r->payment_method); ?>
+                            <?php echo e(strtoupper($r->payment_method)); ?>
                         </span>
                     </td>
                     <td class="px-5 py-4">
@@ -218,7 +218,7 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
                     </td>
                     <td class="px-5 py-4">
                         <span class="px-2 py-1 rounded-lg text-[10px] font-bold <?php echo e($statusColors[$r->status] ?? 'bg-slate-100 text-slate-600'); ?>">
-                            <?php echo $statusLabels[$r->status] ?? ucfirst($r->status); ?>
+                            <?php echo e($statusLabels[$r->status] ?? ucfirst($r->status)); ?>
                         </span>
                     </td>
                     <td class="px-5 py-4 text-right font-bold text-slate-800 whitespace-nowrap">

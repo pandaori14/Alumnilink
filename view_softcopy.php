@@ -323,7 +323,7 @@ $qr_api = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=png&m
                             </div>
                             <div class="pl-0.5">
                                 <span class="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] outfit">
-                                    <?php echo strtoupper(substr($request->id, -12)); ?>
+                                    <?php echo e(strtoupper(substr($request->id, -12))); ?>
                                 </span>
                             </div>
                         </div>

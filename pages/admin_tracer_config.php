@@ -42,7 +42,7 @@ $questions_json = json_encode($questions);
                         </div>
                         <h2 class="text-lg font-bold text-slate-800 <?php echo e(!$q->is_active ? 'text-slate-400 line-through decoration-slate-300' : ''); ?>"><?php echo e($q->question_text); ?></h2>
                         <?php if ($q->options): ?>
-                            <p class="text-xs text-slate-400 mt-1">Pilihan: <?php echo implode(', ', json_decode($q->options)); ?></p>
+                            <p class="text-xs text-slate-400 mt-1">Pilihan: <?php echo e(implode(', ', json_decode($q->options))); ?></p>
                         <?php endif; ?>
                     </div>
                 </div>

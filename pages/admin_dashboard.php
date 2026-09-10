@@ -276,7 +276,7 @@ $is_maintenance = ($sys_settings['maintenance_mode'] ?? '0') == '1';
                         </div>
                     </div>
                     <span class="text-[10px] font-bold px-2 py-1 rounded-lg <?php echo e($sColors[$rl->status] ?? 'bg-slate-100 text-slate-500'); ?>">
-                        <?php echo $sLabels[$rl->status] ?? ucfirst($rl->status); ?>
+                        <?php echo e($sLabels[$rl->status] ?? ucfirst($rl->status)); ?>
                     </span>
                 </div>
                 <?php endforeach; ?>
@@ -296,7 +296,7 @@ $is_maintenance = ($sys_settings['maintenance_mode'] ?? '0') == '1';
                 <div class="flex items-center justify-between p-3 rounded-2xl hover:bg-white/40 transition-all">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0">
-                            <?php echo strtoupper(substr($ru->name, 0, 2)); ?>
+                            <?php echo e(strtoupper(substr($ru->name, 0, 2))); ?>
                         </div>
                         <div>
                             <p class="text-sm font-bold text-slate-800 leading-tight"><?php echo htmlspecialchars($ru->name); ?></p>

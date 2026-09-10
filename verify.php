@@ -79,7 +79,7 @@ if (empty($token)) {
                     </div>
                     <div class="flex items-center justify-between p-4 bg-white/60 rounded-2xl border border-slate-100">
                         <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">ID Dokumen</span>
-                        <span class="text-xs font-black text-slate-400 font-mono text-right">#<?php echo strtoupper(substr($request->id, -12)); ?></span>
+                        <span class="text-xs font-black text-slate-400 font-mono text-right">#<?php echo e(strtoupper(substr($request->id, -12))); ?></span>
                     </div>
                 </div>
 
