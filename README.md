@@ -136,5 +136,23 @@ SMTP dibaca dari basis data.
 
 ## Lisensi
 
-Belum ditentukan. Tanpa berkas lisensi, hak cipta tetap sepenuhnya pada
-pemilik dan tidak ada izin penggunaan yang diberikan kepada siapa pun.
+**Hak milik. Bukan perangkat lunak bebas.** Lihat [LICENSE](LICENSE).
+
+Hak Cipta (c) 2026 Pandu Egi Ferdian. Seluruh hak dilindungi
+undang-undang.
+
+Repositori ini publik agar kodenya dapat **dibaca**. Keterbacaan itu bukan
+pemberian izin: menjalankan, memasang, menyalin sebagian, atau menurunkan
+karya dari perangkat lunak ini memerlukan izin tertulis terlebih dahulu.
+
+Fakultas Kedokteran Universitas Muhammadiyah Surakarta memegang lisensi
+pemasangan berdasarkan perjanjian terpisah. Lisensi itu tidak berpindah
+kepada pihak ketiga.
+
+Melaporkan kerentanan keamanan tidak memerlukan izin dan selalu diterima.
+
+---
+
+**Proprietary — source-available, not open source.** Reading is permitted;
+using, deploying, copying, or deriving from this code is not, without prior
+written permission. See [LICENSE](LICENSE).

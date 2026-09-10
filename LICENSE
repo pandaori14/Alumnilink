@@ -1,0 +1,139 @@
+AlumniLink — Lisensi Hak Milik (Proprietary License)
+
+Hak Cipta (c) 2026 Pandu Egi Ferdian. Seluruh hak dilindungi undang-undang.
+Copyright (c) 2026 Pandu Egi Ferdian. All rights reserved.
+
+Dipasang dan digunakan di Fakultas Kedokteran, Universitas Muhammadiyah
+Surakarta.
+
+================================================================================
+BAHASA INDONESIA
+================================================================================
+
+1. KODE INI DAPAT DIBACA, TETAPI BUKAN PERANGKAT LUNAK BEBAS
+
+   Repositori ini bersifat publik agar kodenya dapat dibaca dan ditelaah.
+   Keterbacaan itu BUKAN pemberian izin.
+
+   Tidak ada satu pun izin yang diberikan kepada siapa pun untuk memakai,
+   menyalin, menggandakan, mengubah, menggabungkan, menerbitkan,
+   mendistribusikan, mensublisensikan, menjual, atau membuat karya turunan
+   dari perangkat lunak ini, baik sebagian maupun seluruhnya, kecuali
+   dengan izin tertulis terlebih dahulu dari pemegang hak cipta.
+
+2. YANG SECARA TEGAS TIDAK DIIZINKAN
+
+   a. Menjalankan perangkat lunak ini untuk keperluan apa pun, termasuk
+      keperluan internal, evaluasi, maupun pendidikan.
+   b. Memasang perangkat lunak ini pada peladen mana pun.
+   c. Menyalin sebagian kode ke dalam proyek lain, termasuk potongan
+      kecil, tata letak antarmuka, skema basis data, dan alur kerjanya.
+   d. Menawarkan perangkat lunak ini, atau turunannya, sebagai jasa.
+   e. Menghapus atau mengubah pemberitahuan hak cipta ini.
+
+3. YANG DIIZINKAN TANPA PERMINTAAN IZIN
+
+   a. Membaca kode di repositori ini.
+   b. Mengutip potongan kode secukupnya untuk keperluan ulasan, kritik,
+      pemberitaan, penelitian, atau pengajaran, disertai penyebutan
+      sumber — sepanjang tercakup dalam pembatasan hak cipta yang berlaku
+      menurut hukum Republik Indonesia.
+   c. Melaporkan kerentanan keamanan kepada pemegang hak cipta.
+
+4. LISENSI PEMASANGAN
+
+   Fakultas Kedokteran, Universitas Muhammadiyah Surakarta memegang lisensi
+   untuk memasang dan menjalankan perangkat lunak ini sesuai perjanjian
+   terpisah antara fakultas dan pemegang hak cipta. Lisensi tersebut tidak
+   berpindah kepada pihak ketiga mana pun dan tidak diberikan oleh berkas
+   ini.
+
+5. KONTRIBUSI
+
+   Kontribusi dalam bentuk apa pun yang dikirimkan ke repositori ini
+   dianggap diserahkan hak ciptanya kepada pemegang hak cipta di atas,
+   kecuali disepakati lain secara tertulis sebelumnya.
+
+6. TANPA JAMINAN
+
+   PERANGKAT LUNAK INI DISEDIAKAN "SEBAGAIMANA ADANYA", TANPA JAMINAN
+   DALAM BENTUK APA PUN, BAIK TERSURAT MAUPUN TERSIRAT, TERMASUK NAMUN
+   TIDAK TERBATAS PADA JAMINAN KELAYAKAN JUAL, KESESUAIAN UNTUK TUJUAN
+   TERTENTU, DAN TIDAK ADANYA PELANGGARAN HAK. PEMEGANG HAK CIPTA TIDAK
+   BERTANGGUNG JAWAB ATAS TUNTUTAN, KERUSAKAN, ATAU KEWAJIBAN LAIN YANG
+   TIMBUL DARI PERANGKAT LUNAK INI ATAU PENGGUNAANNYA.
+
+7. HUKUM YANG BERLAKU
+
+   Lisensi ini tunduk pada hukum Republik Indonesia, termasuk Undang-Undang
+   Nomor 28 Tahun 2014 tentang Hak Cipta.
+
+8. PERMINTAAN IZIN
+
+   Permintaan lisensi, kerja sama, atau izin penggunaan dapat diajukan
+   kepada pemegang hak cipta melalui repositori ini.
+
+================================================================================
+ENGLISH
+================================================================================
+
+1. SOURCE-AVAILABLE, NOT OPEN SOURCE
+
+   This repository is public so that the code can be read and reviewed.
+   Readability is NOT a grant of permission.
+
+   No permission is granted to any person to use, copy, reproduce, modify,
+   merge, publish, distribute, sublicense, sell, or create derivative works
+   from this software, in whole or in part, without the prior written
+   permission of the copyright holder.
+
+2. EXPLICITLY NOT PERMITTED
+
+   a. Running this software for any purpose, including internal,
+      evaluation, or educational use.
+   b. Deploying this software on any server.
+   c. Copying any portion of the code into another project, including
+      small excerpts, interface layouts, the database schema, and its
+      workflows.
+   d. Offering this software, or anything derived from it, as a service.
+   e. Removing or altering this copyright notice.
+
+3. PERMITTED WITHOUT ASKING
+
+   a. Reading the code in this repository.
+   b. Quoting reasonable excerpts for review, criticism, news reporting,
+      research, or teaching, with attribution, to the extent permitted by
+      applicable copyright limitations.
+   c. Reporting security vulnerabilities to the copyright holder.
+
+4. DEPLOYMENT LICENSE
+
+   The Faculty of Medicine, Universitas Muhammadiyah Surakarta holds a
+   license to deploy and operate this software under a separate agreement
+   with the copyright holder. That license does not transfer to any third
+   party and is not granted by this file.
+
+5. CONTRIBUTIONS
+
+   Any contribution submitted to this repository is deemed assigned to the
+   copyright holder named above, unless otherwise agreed in writing
+   beforehand.
+
+6. NO WARRANTY
+
+   THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
+   OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. GOVERNING LAW
+
+   This license is governed by the laws of the Republic of Indonesia,
+   including Law No. 28 of 2014 on Copyright.
+
+8. LICENSING ENQUIRIES
+
+   Requests for licensing, collaboration, or permission to use may be
+   directed to the copyright holder through this repository.
