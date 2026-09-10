@@ -88,6 +88,8 @@ Thumbs.db
 _dev/docs/
 _dev/scratch/
 _dev/UPLOAD.md
+# Sama alasannya: menyebut alamat server produksi dan tata letak berkasnya.
+_dev/CHECKLIST_UPLOAD.md
 
 # Yang TETAP ikut dari _dev/: build/ (satu-satunya cara membangun ulang
 # CSS), DEPENDENSI.md, dan EMAIL.md — ketiganya berguna bagi siapa pun
