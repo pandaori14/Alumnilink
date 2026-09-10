@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────────────
+# AlumniLink — berkas yang TIDAK boleh masuk kendali versi
+#
+# Dua kategori yang paling menentukan ada di sini: rahasia, dan data
+# milik orang lain. Sekali salah satu dari keduanya ter-commit,
+# menghapusnya menuntut menulis ulang riwayat — dan bila repo sudah
+# pernah dibagikan, tidak bisa ditarik kembali sama sekali.
+# ─────────────────────────────────────────────────────────────────────
+
+# ── Rahasia ──────────────────────────────────────────────────────────
+# Kredensial server berbeda dari lokal, dan .env di server tidak boleh
+# pernah tertimpa oleh salinan siapa pun.
+.env
+.env.*
+!.env.example
+
+# ── Data milik pengguna ──────────────────────────────────────────────
+# 33 MB berisi pindaian IJAZAH dan TRANSKRIP alumni, bukti pembayaran,
+# serta foto profil. Ini dokumen pribadi orang sungguhan; tidak ada
+# alasan apa pun untuk menyimpannya di riwayat versi.
+uploads/
+
+# Dump basis data lengkap — memuat hash kata sandi, e-mail, nomor
+# telepon, dan alamat rumah SETIAP alumni. Satu berkas yang bocor
+# setara dengan seluruh basis data bocor.
+backups/
+
+# ── Log & artefak ────────────────────────────────────────────────────
+logs/
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
+
+# ── PERINGATAN untuk siapa pun yang menyunting berkas ini ────────────
+#
+# JANGAN menambahkan pola "build/" polos.
+#
+# Pola tanpa garis miring di depan akan mencocokkan direktori bernama
+# build di KEDALAMAN MANA PUN — termasuk _dev/build/, yang berisi
+# tailwind.config.js dan input.css. Keduanya adalah satu-satunya cara
+# membangun ulang assets/css/app.css. Mengeluarkannya dari repo berarti
+# siapa pun yang meng-clone tidak akan pernah bisa mengubah tampilan,
+# dan tidak ada pesan galat apa pun yang memberi tahu mengapa.
+#
+# Hal yang sama berlaku untuk "dist/" dan "coverage/" — proyek ini tidak
+# memakainya, jadi tidak perlu ada di sini sama sekali.
+
+# ── Yang SENGAJA ikut masuk, jangan dikecualikan ─────────────────────
+#
+#   assets/css/app.css              hasil build Tailwind; server tidak
+#                                   menjalankan npm, jadi berkas jadi
+#                                   inilah yang di-deploy
+#   _dev/build/tailwind.config.js   konfigurasi build + safelist warna
+#   _dev/build/input.css            sumber build
+#   includes/PHPMailer/             vendor manual, tanpa Composer
+#   assets/js/*                     pustaka terkunci versi
+#   tests/                          uji asap & lint; diblokir dari web
+#                                   lewat .htaccess, bukan lewat .gitignore
+
+# ── Dump SQL ─────────────────────────────────────────────────────────
+# Ditemukan saat commit pertama disiapkan: alumnilink.sql dan
+# _dev/scratch/a.sql masing-masing memuat 5 hash kata sandi dan alamat
+# e-mail sungguhan. Keduanya dump lama yang tertinggal di folder proyek.
+#
+# Dikecualikan sebagai POLA, bukan per-nama, supaya dump berikutnya yang
+# dibuat siapa pun ikut tertahan tanpa perlu mengingat berkas ini.
+*.sql
+
+# schema.sql adalah pengecualian yang disengaja: hanya struktur tabel,
+# nol INSERT, nol hash, nol e-mail. Diperiksa sebelum dikecualikan dari
+# pengecualian ini.
+!schema.sql

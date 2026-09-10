@@ -1,0 +1,26 @@
+# Normalkan akhir baris.
+#
+# Proyek disunting di Windows tetapi dijalankan di server Linux. Tanpa
+# berkas ini, git melaporkan SELURUH berkas berubah setiap kali berpindah
+# mesin — dan riwayat yang penuh perubahan palsu sama tidak bergunanya
+# dengan tidak punya riwayat sama sekali.
+* text=auto eol=lf
+
+# Berkas biner: jangan pernah disentuh.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.pdf  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.gz   binary
+
+# Pustaka pihak ketiga: tandai agar tidak mengotori statistik bahasa dan
+# tidak ikut ditampilkan pada diff secara bawaan.
+assets/js/*.min.js       linguist-vendored
+includes/PHPMailer/*.php linguist-vendored
+assets/css/app.css       linguist-generated

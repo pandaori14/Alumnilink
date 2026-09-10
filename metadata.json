@@ -1,0 +1,8 @@
+{
+  "name": "AlumniLink: Tracer & Legalisir Terintegrasi",
+  "description": "Sistem informasi modular untuk penelusuran alumni (tracer alumni) dan pengajuan legalisir dokumen terpadu dengan status tracking real-time.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

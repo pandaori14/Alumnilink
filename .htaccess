@@ -1,0 +1,81 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Ubah RewriteBase /alumnilink/ menjadi RewriteBase / jika di-deploy ke domain utama (production)
+    RewriteBase /alumnilink/
+
+    # =====================================================================
+    # BLOKIR AKSES LANGSUNG KE FILE & FOLDER SENSITIF
+    # ---------------------------------------------------------------------
+    # Sengaja memakai mod_rewrite (bukan "Require all denied") agar tidak
+    # membutuhkan AllowOverride tambahan di server. Direktif otorisasi bisa
+    # memicu HTTP 500 pada hosting yang membatasi AllowOverride, sedangkan
+    # mod_rewrite sudah pasti aktif karena routing di bawah bergantung padanya.
+    #
+    # Aturan ini HARUS tetap berada di atas aturan routing.
+    # =====================================================================
+
+    # Kredensial & metadata versi (.env, .env.local, .gitignore, .htpasswd, ...)
+    RewriteRule (^|/)\.env - [F,L]
+    RewriteRule (^|/)\.git - [F,L]
+    RewriteRule (^|/)\.ht  - [F,L]
+
+    # Dump database, dokumentasi internal, log, dan berkas cadangan
+    RewriteRule \.(sql|md|log|bak|old|dist|dart|sqlite|db)$ - [F,L]
+
+    # Direktori yang tidak boleh dijangkau publik
+    #   _dev/  = seluruh berkas pengembangan (dokumen, skrip debug,
+    #            konfigurasi build, berkas Docker, rujukan)
+    #   logs/  = log aplikasi
+    #   tests/ = smoke test, hanya untuk dijalankan lewat CLI
+    #   tail/  = proyek terpisah, dipertahankan bila suatu saat muncul kembali
+    RewriteRule ^(_dev|scratch|logs|tail|tests)/ - [F,L]
+
+    #   pages/    = badan halaman; SELALU dimuat lewat index.php, yang
+    #               menerapkan penjagaan sesi, verifikasi, mode perawatan,
+    #               dan RBAC sebelum menyertakannya. Membukanya langsung
+    #               melewati seluruh penjagaan itu dan merender halaman
+    #               tanpa tata letak. Tidak ada satu pun tautan di sistem
+    #               yang menunjuk ke sini -- routing memakai ?page=.
+    #   includes/ = pustaka bersama, hanya untuk di-require dari PHP.
+    # Keduanya tetap bisa di-include dari sisi server; aturan mod_rewrite
+    # hanya berlaku pada permintaan HTTP.
+    RewriteRule ^(pages|includes)/ - [F,L]
+
+    #   backups/ = dump basis data. Memuat hash kata sandi, e-mail, telepon,
+    #              dan alamat rumah SETIAP alumni — satu berkas yang bocor
+    #              sama saja dengan seluruh basis data bocor. Folder itu juga
+    #              menaruh .htaccess-nya sendiri, tetapi aturan di sini tidak
+    #              bergantung pada AllowOverride di subfolder.
+    RewriteRule ^backups/ - [F,L]
+
+    # Skrip migrasi sekali-pakai yang tertinggal di root
+    RewriteRule ^scratch_migrate_.*\.php$ - [F,L]
+
+    # Berkas orkestrasi container
+    RewriteRule ^(Dockerfile|docker-compose\.yml)$ - [F,L]
+
+    # =====================================================================
+    # ROUTING APLIKASI
+    # =====================================================================
+
+    # Izinkan akses langsung ke file/folder yang ada (assets, uploads, handlers, dll)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([^/]+)/([^/]+)/([^/]+)/?$ index.php?page=$1&id=$2&action=$3 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([^/]+)/([^/]+)/?$ index.php?page=$1&id=$2 [L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([^/]+)/?$ index.php?page=$1 [L,QSA]
+</IfModule>
+
+# Matikan penjelajahan direktori (directory browsing).
+# CATATAN: baris ini membutuhkan "AllowOverride Options" (atau All) di server.
+# Jika setelah upload muncul HTTP 500, cukup hapus blok ini -- proteksi utama
+# di atas tidak bergantung padanya.
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
