@@ -293,8 +293,27 @@ lapor(empty($bocor), 'nol galat/jalur server di halaman publik',
 
 // ═══ 8. Aset ═════════════════════════════════════════════════════════
 echo "\n  8. Aset\n";
-$r = ambil("$base/assets/css/app.css");
-lapor($r['code'] === 200, 'assets/css/app.css tersedia', 'HTTP ' . $r['code']);
+// Memeriksa app.css SAJA tidak cukup. Diperiksa hari ini terhadap produksi:
+// SELURUH folder assets/ tidak ada di sana — nol dari 34 berkas. Sebuah
+// pemeriksaan yang hanya melihat app.css akan lulus pada server yang punya
+// CSS tetapi kehilangan lucide.min.js, dan hasilnya ikon hilang di setiap
+// halaman tanpa satu pun galat yang tercatat.
+//
+// Daftar di bawah adalah persis yang dirujuk includes/header.php. Bila
+// berkas itu berubah, daftar ini harus ikut berubah.
+foreach ([
+    'assets/css/app.css'          => 'gaya seluruh situs',
+    'assets/fonts/fonts.css'      => 'huruf',
+    'assets/js/lucide.min.js'     => 'ikon',
+    'assets/js/sweetalert2.min.js' => 'dialog',
+] as $aset => $guna) {
+    $r = ambil("$base/$aset");
+    $ok = $r['code'] === 200;
+    lapor($ok, $aset . ' (' . $guna . ')', 'HTTP ' . $r['code'],
+        'Dirujuk includes/header.php tetapi tidak ada di server. '
+        . 'Unggah SELURUH folder assets/ — dan lakukan sebelum includes/, '
+        . 'sebab header yang baru merujuk berkas-berkas ini.');
+}
 
 $r = ambil("$base/index.php?page=landing");
 $cdn = preg_match_all('#(src|href)="https?://(cdn|unpkg|cdnjs|ajax|fonts\.googleapis|ui-avatars)#i', $r['body']);
@@ -302,6 +321,50 @@ lapor($cdn === 0, 'nol aset dari CDN / ui-avatars',
     $cdn === 0 ? 'bersih' : "$cdn rujukan",
     'Halaman masih memuat aset pihak ketiga. ui-avatars mengirimkan NAMA ASLI '
     . 'alumni ke server luar pada setiap pemuatan halaman.');
+
+// ═══ 9. Jam server ═══════════════════════════════════════════════════
+//
+// Diukur di produksi pada 10 September 2026: PHP berjalan di UTC (06:24)
+// sedangkan basis datanya — mesin lain, 172.16.10.244 — di WIB (13:24).
+// Selisih tujuh jam itu tidak memunculkan satu pun galat; ia hanya membuat
+// setiap hitungan yang mencampur keduanya salah:
+//
+//   - tautan atur-ulang sandi berlaku 8 jam alih-alih 1 jam;
+//   - umur SLA legalisir menjadi negatif;
+//   - label "x menit lalu" menjadi negatif.
+//
+// api/bridge.php tidak menyentuh basis data, jadi ia dapat ditanya tanpa
+// kredensial dan tanpa efek samping. Bila ia menyebutkan zonanya, berarti
+// includes/bootstrap_env.php sudah naik.
+echo "\n  9. Jam server\n";
+$r = ambil("$base/api/bridge.php");
+$j = json_decode($r['body'], true);
+
+if (!is_array($j)) {
+    lapor(false, 'api/bridge.php menjawab JSON', 'HTTP ' . $r['code'],
+        'Endpoint status tidak menjawab JSON yang sah.');
+} elseif (!isset($j['timezone'])) {
+    // Kode lama: bridge.php tidak memuat apa pun, jadi zonanya mengikuti
+    // php.ini dan tidak disebutkan sama sekali.
+    lapor(false, 'zona waktu dinyatakan', 'kunci timezone tidak ada — kode lama',
+        'api/bridge.php dan includes/bootstrap_env.php belum naik. Selama '
+        . 'itu PHP dan basis data berjalan di zona berbeda, dan tautan '
+        . 'atur-ulang sandi berlaku jauh lebih lama daripada semestinya.');
+} else {
+    lapor(true, 'zona waktu dinyatakan', $j['timezone'] . ' (' . ($j['utc_offset'] ?? '?') . ')');
+
+    // Header Date selalu GMT, jadi ia menjadi pembanding yang tidak
+    // bergantung pada mesin ini.
+    if (preg_match('/^Date:\s*(.+)$/mi', $r['head'], $m)) {
+        $utc   = strtotime(trim($m[1]));
+        $php   = strtotime($j['server_time'] . ' ' . ($j['utc_offset'] ?? '+00:00'));
+        $beda  = abs($php - $utc);
+        lapor($beda <= 120, 'jam PHP cocok dengan waktu sesungguhnya',
+            'selisih ' . $beda . ' detik',
+            'Jam PHP server menyimpang dari waktu sesungguhnya. Periksa jam '
+            . 'sistem server, bukan kodenya.');
+    }
+}
 
 // ═══ Ringkasan ═══════════════════════════════════════════════════════
 echo "\n  " . str_repeat('─', 62) . "\n";

@@ -17,6 +17,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// Zona waktu dan pemuatan .env — TANPA menyentuh basis data.
+//
+// Endpoint ini melaporkan keadaan server, jadi ia harus tetap menjawab
+// ketika basis data sedang mati. config/db.php memanggil die() dalam
+// keadaan itu, karena itu yang dimuat hanya prolognya.
+//
+// Sebelum ini, bridge.php tidak memuat apa pun dan melaporkan server_time
+// dalam zona php.ini — di produksi UTC, sementara seluruh sistem lain
+// memakai WIB. Klien Flutter yang menyamakan jamnya dengan nilai ini akan
+// meleset tujuh jam.
+require_once dirname(__DIR__) . '/includes/bootstrap_env.php';
+
 // 3. Bangun Payload JSON
 $response = [
     'status' => 'success',
@@ -24,6 +36,8 @@ $response = [
     'api_version' => '1.0.0',
     'timestamp' => time(),
     'server_time' => date('Y-m-d H:i:s'),
+    'timezone'    => date_default_timezone_get(),
+    'utc_offset'  => date('P'),
     'environment' => (getenv('APP_ENV') ?: 'production')
 ];
 

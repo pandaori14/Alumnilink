@@ -1,77 +1,8 @@
 <?php
-// Environment Loader
-function loadEnv($path) {
-    if (!file_exists($path)) return;
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) === 2) {
-            $name = trim($parts[0]);
-            $value = trim($parts[1], " \"'");
-            putenv(sprintf('%s=%s', $name, $value));
-            $_ENV[$name] = $value;
-        }
-    }
-}
-loadEnv(dirname(__DIR__) . '/.env');
+// Env, zona waktu, dan penanganan galat. Tanpa ketergantungan basis
+// data, sehingga api/bridge.php dapat memakainya juga.
+require_once dirname(__DIR__) . '/includes/bootstrap_env.php';
 
-/**
- * Penimpaan khusus mesin pengembang.
- *
- * ── Mengapa ini ada ────────────────────────────────────────────────────
- * Selama ini folder kerja lokal memakai .env yang SAMA dengan server:
- * DB_HOST menunjuk <host-basis-data> dan APP_URL menunjuk alamat produksi.
- * Akibatnya setiap uji, setiap migrasi, dan setiap skrip yang dijalankan
- * di komputer pengembang menulis LANGSUNG ke basis data produksi —
- * tanpa satu pun tanda di layar bahwa itu yang sedang terjadi.
- *
- * .env.local dimuat SESUDAH .env sehingga nilainya menang. Berkas itu
- * ada di .gitignore dan TIDAK boleh diunggah ke server; bila kebetulan
- * tidak ada — seperti di server — perilaku kembali persis seperti semula.
- *
- * Konvensinya sengaja meniru Laravel/Symfony agar tidak perlu dijelaskan
- * kepada pengembang berikutnya.
- */
-loadEnv(dirname(__DIR__) . '/.env.local');
-
-/**
- * Ke mana galat PHP diarahkan.
- *
- * ── Mengapa ini perlu diatur di sini ───────────────────────────────────
- * Sebelumnya tidak diatur di mana pun, jadi ia mengikuti php.ini server —
- * dan di server itu display_errors menyala. Akibatnya setiap pengunjung
- * dapat melihat peringatan PHP lengkap dengan jalur berkasnya:
- *
- *     Warning: Undefined variable $page in
- *     /var/www/html/alumnilink/includes/header.php on line 43
- *
- * Jalur itu memberi tahu tata letak server kepada siapa pun yang melihat,
- * dan pada kondisi galat yang lain pesannya dapat memuat potongan SQL
- * beserta nama kolomnya.
- *
- * Galat TIDAK disembunyikan — hanya dipindahkan dari layar pengunjung ke
- * log server. log_errors dinyalakan di baris yang sama, bukan sebagai
- * gantinya, supaya masalahnya tetap dapat didiagnosis.
- *
- * Diatur lewat ini_set(), BUKAN php_flag di .htaccess: direktif itu
- * menuntut AllowOverride Options dan memicu HTTP 500 pada hosting yang
- * membatasinya, sedangkan ini_set() bekerja di mana pun.
- */
-if ((getenv('APP_ENV') ?: 'local') === 'local') {
-    // Di mesin pengembang, galat justru harus terlihat seketika.
-    ini_set('display_errors', '1');
-    ini_set('log_errors', '1');
-    error_reporting(E_ALL);
-} else {
-    ini_set('display_errors', '0');
-    ini_set('display_startup_errors', '0');
-    ini_set('log_errors', '1');
-    // E_DEPRECATED dan E_NOTICE dibiarkan tidak dicatat: keduanya berisik
-    // pada kode selama ini dan akan menenggelamkan galat yang sungguhan
-    // di dalam log.
-    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-}
 
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
@@ -141,6 +72,25 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     // Set default fetch mode to object
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_OBJ);
+
+    // Samakan jam MySQL dengan jam PHP di atas. Dikirim sebagai selisih
+    // numerik (misalnya '+07:00'), BUKAN nama zona seperti 'Asia/Jakarta':
+    // nama zona hanya dikenali bila tabel zona waktu MySQL sudah dimuat
+    // (mysql_tzinfo_to_sql), dan pada banyak server tabel itu kosong —
+    // SET time_zone dengan nama akan gagal di sana. Selisih numerik selalu
+    // dikenali.
+    //
+    // Dihitung dari zona yang sama, jadi DST (bila kelak dipasang di zona
+    // yang mengenalnya) ikut terbawa.
+    try {
+        $pdo->exec("SET time_zone = '"
+            . (new DateTime('now', new DateTimeZone(ALUMNILINK_TIMEZONE)))->format('P')
+            . "'");
+    } catch (Throwable $e) {
+        // Bukan alasan untuk menggagalkan koneksi. Dicatat saja; sistem
+        // tetap jalan, hanya kembali ke perilaku lama yang tidak sinkron.
+        error_log('Gagal menyamakan zona waktu MySQL: ' . $e->getMessage());
+    }
 
     // Seluruh blok migrasi di bawah hanya berjalan sekali per versi skema.
     if (!alumnilink_schema_is_current($pdo)) {

@@ -9,6 +9,33 @@ require_once __DIR__ . '/_bootstrap.php';
 
 $BASE = uji_base_url();
 
+// ── Kosongkan jatah rate-limit milik uji ini sebelum mulai ────────────
+// employer_survey.php membatasi 20 permintaan per 15 menit per IP, dan uji
+// ini memakai 12 di antaranya. Dua kali menjalankan run_all.php dalam 15
+// menit karena itu menabrak batasnya, dan seluruh uji di bawah gagal dengan
+// gejala yang menyesatkan: "HTTP 302", "token sah membuka formulir GAGAL" —
+// seolah-olah kodenya rusak, padahal yang terjadi hanya uji sebelumnya
+// belum membereskan jejaknya.
+//
+// Tidak memakai reset_rate_limit(): fungsi itu menghapus berdasarkan
+// get_client_ip(), yang di CLI tidak menghasilkan IP yang sama dengan yang
+// dicatat server web saat melayani permintaan uji.
+$pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+    ip_address VARCHAR(45) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    attempts INT DEFAULT 1,
+    last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (ip_address, action)
+)");
+$pdo->exec("DELETE FROM rate_limits WHERE action = 'EMPLOYER_SURVEY'");
+
+// Dibereskan lagi di akhir, apa pun yang terjadi di tengah — termasuk bila
+// uji berhenti karena exit() atau galat fatal.
+register_shutdown_function(function () use ($pdo) {
+    try { $pdo->exec("DELETE FROM rate_limits WHERE action = 'EMPLOYER_SURVEY'"); }
+    catch (Throwable $e) { /* bukan bagian dari yang diuji */ }
+});
+
 function check($ok, $label, $detail = '') {
     global $pass, $fail;
     if ($ok) { $pass++; printf("  LULUS  %-44s %s\n", $label, $detail); }
