@@ -55,7 +55,74 @@ loadEnv(dirname(__DIR__) . '/.env');
  * Konvensinya sengaja meniru Laravel/Symfony agar tidak perlu dijelaskan
  * kepada pengembang berikutnya.
  */
-loadEnv(dirname(__DIR__) . '/.env.local');
+/**
+ * .env.local dimuat DI MANA SAJA, KECUALI di host produksi.
+ *
+ * ── Mengapa penjagaan ini ada ──────────────────────────────────────────
+ * Berkas ini sudah DUA KALI ikut terunggah ke server produksi, dan
+ * keduanya melumpuhkan seluruh situs:
+ *
+ *   DB_HOST=localhost    server mencari MySQL di dirinya sendiri; setiap
+ *                        halaman menjawab "Koneksi database gagal".
+ *   APP_ENV=local        kotak-pasir e-mail menyala: SELURUH e-mail
+ *                        berhenti terkirim, tanpa satu pun pesan galat.
+ *   APP_URL=localhost    setiap tautan di e-mail menunjuk ke komputer
+ *                        penerima.
+ *
+ * Ia ada di .gitignore, tetapi FileZilla tidak membaca .gitignore — dan
+ * namanya diawali titik sehingga mudah luput dari pandangan. Mengandalkan
+ * orang untuk selalu ingat bukan penjagaan.
+ *
+ * ── Mengapa arah logikanya begini, bukan sebaliknya ────────────────────
+ * Percobaan pertama memakai daftar putih "yang dianggap lokal": localhost,
+ * 127.0.0.1, *.local, *.test. Arah itu SALAH, dan salahnya berbahaya.
+ * Membuka situs pengembangan lewat alamat LAN — misalnya dari ponsel ke
+ * 192.168.1.5/alumnilink — tidak cocok dengan daftar itu, sehingga
+ * .env.local diabaikan dan koneksinya jatuh ke BASIS DATA PRODUKSI tanpa
+ * ada tanda apa pun.
+ *
+ * Arah yang benar adalah mengenali satu hal yang memang diketahui pasti:
+ * alamat produksi, yang tertulis di APP_URL pada .env. Host mana pun yang
+ * bukan itu diperlakukan sebagai pengembangan. Kesalahan penilaian
+ * karenanya jatuh ke sisi yang aman: memakai basis data lokal.
+ */
+function alumnilink_host_produksi()
+{
+    // Skrip baris perintah tidak punya host. Uji dan alat pengembangan
+    // berjalan lewat jalur ini, jadi tidak pernah dianggap produksi.
+    if (PHP_SAPI === 'cli') {
+        return false;
+    }
+
+    $host = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+    if ($host === '') {
+        return false;
+    }
+
+    // APP_URL di .env adalah alamat pemasangan sungguhan. Nilai ini dibaca
+    // SEBELUM .env.local dimuat, jadi ia belum sempat ditimpa.
+    $app_url = (string)getenv('APP_URL');
+    $host_prod = strtolower((string)parse_url($app_url, PHP_URL_HOST));
+
+    if ($host_prod === '' || $host_prod === 'localhost' || $host_prod === '127.0.0.1') {
+        // .env pun menunjuk ke lokal: tidak ada host produksi yang dikenali.
+        return false;
+    }
+
+    return $host === $host_prod;
+}
+
+if (alumnilink_host_produksi()) {
+    if (file_exists(dirname(__DIR__) . '/.env.local')) {
+        // Bukan alasan untuk menghentikan situs — justru sebaliknya, seluruh
+        // maksud penjagaan ini adalah agar situs tetap hidup. Tetapi berkas
+        // itu tidak seharusnya ada di sana, jadi dicatat supaya ketahuan.
+        error_log('PERINGATAN: .env.local ada di server produksi dan DIABAIKAN. '
+            . 'Berkas itu hanya untuk mesin pengembang; hapus dari server.');
+    }
+} else {
+    loadEnv(dirname(__DIR__) . '/.env.local');
+}
 
 /**
  * SATU zona waktu untuk PHP dan MySQL.

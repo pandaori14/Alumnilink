@@ -109,6 +109,62 @@ if ($r['code'] === 500) {
     exit(1);
 }
 
+// HTTP 200 TIDAK berarti situsnya hidup.
+//
+// config/db.php memakai die() polos saat koneksi gagal:
+//
+//     die("Koneksi database gagal. Silakan hubungi administrator sistem.");
+//
+// die() tanpa http_response_code() tetap mengembalikan 200. Situs yang
+// sepenuhnya mati karena itu lolos pemeriksaan status, dan 27 pemeriksaan
+// sesudahnya berjalan di atas premis yang salah. Ini sudah benar-benar
+// terjadi: satu upload menyertakan .env.local, seluruh situs mati, dan
+// berkas ini tetap melaporkan "halaman depan HTTP 200 - LULUS".
+//
+// Kesalahan yang sama sudah diperbaiki untuk pemeriksaan cron di bagian 6,
+// tetapi tidak untuk bagian ini.
+$mati = [
+    'Koneksi database gagal'  => 'Basis data tidak dapat dihubungi dari server.',
+    'Failed opening required' => 'Ada berkas yang di-require tetapi belum diunggah.',
+    'Fatal error'             => 'Galat fatal PHP di halaman depan.',
+];
+foreach ($mati as $tanda => $arti) {
+    if (stripos($r['body'], $tanda) === false) {
+        continue;
+    }
+    lapor(false, 'halaman depan benar-benar merender', $arti);
+    echo "\n  -- SITUS TIDAK BERFUNGSI --------------------------------\n";
+    echo "  " . $arti . "\n\n";
+
+    if (stripos($r['body'], 'Koneksi database gagal') !== false) {
+        // Sebab yang paling sering, dan paling mudah tidak disadari:
+        // .env.local ikut terunggah. Ia menyetel DB_HOST=localhost,
+        // sehingga server mencari MySQL di dirinya sendiri.
+        //
+        // api/bridge.php tidak menyentuh basis data, jadi ia tetap
+        // menjawab justru ketika yang lain mati - dan ia menyebutkan
+        // APP_ENV yang sedang berlaku.
+        $b = ambil("$base/api/bridge.php");
+        $j = json_decode($b['body'], true);
+        if (is_array($j) && ($j['environment'] ?? '') === 'local') {
+            echo "  SEBABNYA DITEMUKAN: api/bridge.php melaporkan\n";
+            echo "  environment = \"local\". Nilai itu hanya berasal dari\n";
+            echo "  .env.local, dan berkas itu TIDAK BOLEH ada di server.\n\n";
+            echo "  PERBAIKAN: hapus .env.local dari server.\n";
+            echo "  Di FileZilla, aktifkan Server -> Force showing hidden\n";
+            echo "  files bila berkasnya tidak terlihat.\n\n";
+        } else {
+            echo "  Periksa DB_HOST di .env pada server, dan pastikan basis\n";
+            echo "  datanya menerima koneksi dari peladen web.\n\n";
+        }
+    }
+
+    echo "  Pemeriksaan dihentikan: sisanya tidak akan berarti.\n\n";
+    exit(1);
+}
+lapor(true, 'halaman depan benar-benar merender',
+    number_format(strlen($r['body']) / 1024, 1) . ' KB');
+
 // ═══ 2. Kode baru benar-benar sampai ═════════════════════════════════
 echo "\n  2. Kode baru sampai\n";
 
