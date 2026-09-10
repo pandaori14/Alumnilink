@@ -99,6 +99,9 @@ echo "  Lint statis\n";
 langkah('sintaks seluruh berkas', $php . ' ' . escapeshellarg(__DIR__ . '/lint_syntax.php'), $rekap);
 langkah('kode bocor sebagai teks', $php . ' ' . escapeshellarg(__DIR__ . '/lint_leaked_php.php'), $rekap);
 langkah('keluaran tanpa escape',  $php . ' ' . escapeshellarg(__DIR__ . '/lint_unescaped.php'), $rekap);
+// Membutuhkan Node.js. Bila tidak ada, pemeriksanya keluar dengan kode 0
+// dan melapor bahwa ia dilewati, jadi rangkaian ini tidak ikut gagal.
+langkah('sintaks JavaScript inline', $php . ' ' . escapeshellarg(__DIR__ . '/lint_inline_js.php'), $rekap);
 langkah('versi dependensi',       $php . ' ' . escapeshellarg(__DIR__ . '/check_versions.php'), $rekap);
 
 // ── 2. Uji asap ──────────────────────────────────────────────────────
