@@ -68,7 +68,6 @@ $offset = ($p - 1) * $limit;;
 // Fetch all questions for detail mapping and dynamic options
 $all_questions_stmt = $pdo->query("SELECT id, question_text, question_type, options, is_active, mapping_key FROM tracer_questions ORDER BY order_no ASC");
 $all_questions_list = $all_questions_stmt->fetchAll(PDO::FETCH_ASSOC);
-$questions_map_json = json_encode($all_questions_list);
 
 // Build map of mapping_key => question_id
 $mappings = [];
@@ -705,7 +704,8 @@ $export_params = http_build_query([
 </div>
 
 <script>
-    const questionsMap = <?php echo e($questions_map_json); ?>;
+    // js_json(), bukan e(json): lihat includes/settings.php.
+    const questionsMap = <?php echo js_json($all_questions_list); ?>;
 
     function openDetailModal(submission) {
         document.getElementById('det_alumni_name').textContent = submission.user_name || '-';

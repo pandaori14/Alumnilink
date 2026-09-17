@@ -323,7 +323,6 @@ if (isset($_GET['error'])) {
     // Shipping Zones for JS
     $zones_raw = $sys_settings['shipping_zones'] ?? '[{"label":"Luar Kota","provinces":[],"cost":25000,"is_default":true}]';
     $zones_php = json_decode($zones_raw, true) ?: [];
-    $zones_js  = json_encode($zones_php, JSON_UNESCAPED_UNICODE);
     ?>
     <div id="newRequestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
         <div class="glass w-full max-w-xl p-6 md:p-8 rounded-[2.5rem] shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -545,7 +544,11 @@ if (isset($_GET['error'])) {
 
 <script>
     const pricePerDoc   = <?php echo e($price_per_doc); ?>;
-    const shippingZones = <?php echo e($zones_js); ?>;
+    // js_json(), bukan e(): e() mengubah " menjadi &quot; dan isi <script>
+    // tidak didekode sebagai HTML. Dulu baris ini SyntaxError, sehingga
+    // seluruh skrip halaman — pratinjau biaya, pilihan kurir, validasi
+    // berkas — tidak pernah berjalan.
+    const shippingZones = <?php echo js_json($zones_php); ?>;
     
     // Gross-up config values
     const mdrRateMax    = <?php echo e($mdr_rate_max); ?>;

@@ -48,6 +48,44 @@ function e($v)
 }
 
 /**
+ * Nilai PHP sebagai literal JavaScript, KHUSUS di dalam blok tag script.
+ *
+ *     const zona = <?= js_json($zona) ?>;
+ *
+ * (Contoh sengaja ditulis tanpa tag pembuka dan penutupnya: tag script di
+ * komentar ini pun ikut dibaca tests/lint_inline_js.php sebagai skrip.)
+ *
+ * ── Mengapa bukan e(json_encode(...)) ──────────────────────────────────
+ * Isi tag script tidak didekode sebagai HTML. e() mengubah " menjadi
+ * &quot;, dan peramban menerimanya apa adanya:
+ *
+ *     const zona = [{&quot;label&quot;: ...}];   -> SyntaxError
+ *
+ * Seluruh blok skrip itu lalu dibuang tanpa pesan di layar. Empat halaman
+ * sempat mati karena ini: Pengajuan Legalisir, Broadcast, Laporan Tracer,
+ * dan Konfigurasi Tracer. Di view_softcopy.php, & pada URL menjadi &amp;
+ * sehingga pratinjau PDF meminta parameter bernama "amp;req".
+ *
+ * ── Mengapa aman di dalam tag script ───────────────────────────────────
+ * Bendera JSON_HEX_* menulis kurung sudut, &, kutip tunggal, dan kutip
+ * ganda di dalam string sebagai escape Unicode (garis miring terbalik, u,
+ * lalu empat digit heksa). Isi data tidak dapat menutup blok skrip maupun
+ * memutus literal string.
+ *
+ * ── JANGAN dipakai di atribut HTML ─────────────────────────────────────
+ * Tanda kutip PEMBATAS string JSON tetap " dan akan menutup atribut
+ * onclick="...". Di atribut, bentuk yang benar tetap e(json_encode($x)),
+ * karena atribut memang didekode sebagai HTML. tests/lint_unescaped.php
+ * menolak js_json() di luar tag script.
+ */
+function js_json($v)
+{
+    $json = json_encode($v, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    return $json === false ? 'null' : $json;
+}
+
+/**
  * Seluruh pengaturan sebagai array asosiatif, dibaca sekali per permintaan.
  *
  * @param bool $segarkan Baca ulang dari basis data. Dibutuhkan setelah

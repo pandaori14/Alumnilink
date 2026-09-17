@@ -321,7 +321,10 @@ $titles = [
 $page_title = isset($titles[$page]) ? $titles[$page] : 'AlumniLink';
 
 // Load Page
-if (in_array($page, ['login', 'register', 'forgot_password', 'reset_password', 'landing', 'maintenance', 'news_detail', 'all_news', 'terms'])) {
+// Halaman di daftar ini adalah dokumen HTML utuh dengan <!DOCTYPE> sendiri.
+// email_unsubscribe dulu tertinggal di sini, sehingga penerima e-mail yang
+// belum masuk mendapat halaman bertumpuk di dalam kerangka admin.
+if (in_array($page, ['login', 'register', 'forgot_password', 'reset_password', 'landing', 'maintenance', 'news_detail', 'all_news', 'terms', 'email_unsubscribe'])) {
     include "pages/$page.php";
 } else {
     $file = "pages/$page.php";

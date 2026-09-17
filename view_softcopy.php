@@ -678,13 +678,16 @@ $qr_api = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=png&m
                             . '&token=' . urlencode($token)
                             . '&i='     . (int)$index;
             ?>
-                renderPDFToImage('<?php echo e($pdf_url); ?>', 'doc-wrapper-<?php echo e($index); ?>');
+                // js_json(), bukan '<?php /* e() */ ?>': di dalam <script> e() mengubah
+                // & menjadi &amp;, dan pdf.js lalu meminta ?ctx=softcopy&amp;req=...
+                // — server menerima parameter bernama "amp;req", bukan "req".
+                renderPDFToImage(<?php echo js_json($pdf_url); ?>, <?php echo js_json('doc-wrapper-' . (int)$index); ?>);
             <?php endif; endforeach; ?>
         });
 
         async function downloadPDF() {
             const element = document.getElementById('main-container');
-            const alumniName = <?php echo e(json_encode($request->alumni_name)); ?>;
+            const alumniName = <?php echo js_json((string)$request->alumni_name); ?>;
             const btn = document.getElementById('downloadBtn');
             const originalHTML = btn.innerHTML;
             

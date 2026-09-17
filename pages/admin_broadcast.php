@@ -103,9 +103,6 @@ $email_templates = [
     ],
 ];
 
-// Safe JSON for JS embedding
-$templates_json        = json_encode($email_templates, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
-$custom_layouts_json   = json_encode($custom_layouts_raw, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
 ?>
 
 <style>
@@ -1139,8 +1136,10 @@ $custom_layouts_json   = json_encode($custom_layouts_raw, JSON_HEX_TAG | JSON_HE
 ══════════════════════════════════════════════════ */
 
 // ── Templates from PHP ──────────────────────────
-const DEFAULT_TEMPLATES = <?= e($templates_json) ?>;
-const CUSTOM_LAYOUTS    = <?= e($custom_layouts_json) ?>;
+// js_json() sudah memakai bendera JSON_HEX_* yang dulu ditulis di sini.
+// Yang merusak adalah e() di sekelilingnya: &quot; di dalam <script>.
+const DEFAULT_TEMPLATES = <?= js_json($email_templates) ?>;
+const CUSTOM_LAYOUTS    = <?= js_json($custom_layouts_raw) ?>;
 
 // ── DOM refs ────────────────────────────────────
 const editor    = document.getElementById('compose-editor');

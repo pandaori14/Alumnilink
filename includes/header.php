@@ -93,6 +93,9 @@ function can_see_menu(string $menu_key, string $role, array $perms): bool {
 
 // ── Fetch User Data for Profile & Notifications ───────────────────────────
 $user_header = null;
+// Tamu juga dapat sampai ke kerangka ini (tautan berhenti berlangganan di
+// e-mail dibuka tanpa masuk), dan lencana notifikasi membaca nilai ini.
+$unread_count = 0;
 if (isset($_SESSION['user_id'])) {
     $stmt_user = $pdo->prepare("SELECT avatar, name FROM users WHERE id = ?");
     $stmt_user->execute([$_SESSION['user_id']]);

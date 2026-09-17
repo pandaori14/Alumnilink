@@ -157,9 +157,20 @@ foreach ($berkas as $p) {
     $diperiksa++;
 
     $n = count($token);
+    // Apakah posisi saat ini berada di dalam blok <script>? Diikuti dari
+    // potongan HTML di antara blok PHP. Konteks menentukan escape yang
+    // BENAR: e() untuk HTML dan atribut, js_json() untuk isi <script>.
+    $di_script = false;
     for ($i = 0; $i < $n; $i++) {
         $t = $token[$i];
         if (!is_array($t)) continue;
+
+        if ($t[0] === T_INLINE_HTML) {
+            if (preg_match_all('#<(/?)script\b[^>]*>#i', $t[1], $tag)) {
+                $di_script = end($tag[1]) === '';
+            }
+            continue;
+        }
 
         // Hanya blok yang MENCETAK yang menjadi keluaran HTML:
         //   <?= ...          (T_OPEN_TAG_WITH_ECHO)
@@ -195,6 +206,32 @@ foreach ($berkas as $p) {
             $ekspr .= $u[1];
         }
         $i = isset($j) ? $j : $i;
+
+        // ── Salah konteks: aman dari XSS, tetapi merusak halaman ──────────
+        //
+        // e(json_encode(...)) di dalam <script> tidak membuka celah, namun
+        // " menjadi &quot; dan isi <script> tidak didekode sebagai HTML:
+        //     const zona = [{&quot;label&quot;...}];  -> SyntaxError
+        // Seluruh blok dibuang peramban tanpa pesan. Empat halaman mati
+        // karena pola ini sementara linter ini melaporkan nol temuan, sebab
+        // e() memang ada di daftar aman.
+        $ekspr_bersih = ltrim($ekspr);
+        if ($di_script
+            && preg_match('/^(e|htmlspecialchars)\s*\(\s*(json_encode\s*\(|\$\w*json\w*\s*\))/i', $ekspr_bersih)) {
+            $masalah++;
+            printf("  *** %s baris %d  [e() pada JSON di dalam <script>: pakai js_json()]\n      %s\n", $rel, $baris,
+                trim(preg_replace('/\s+/', ' ', substr($ekspr, 0, 96))));
+            continue;
+        }
+        // Kebalikannya: js_json() di atribut HTML dapat dibobol, karena
+        // tanda kutip PEMBATAS string JSON menutup atribut onclick="...".
+        if ($fungsi_pertama === 'js_json' || preg_match('/^js_json\s*\(/i', $ekspr_bersih)) {
+            if ($di_script) continue;
+            $masalah++;
+            printf("  *** %s baris %d  [js_json() di luar <script>: di atribut pakai e(json_encode())]\n      %s\n", $rel, $baris,
+                trim(preg_replace('/\s+/', ' ', substr($ekspr, 0, 96))));
+            continue;
+        }
 
         // Tanpa variabel, tidak ada yang bisa disuntikkan.
         if (!$ada_variabel) continue;

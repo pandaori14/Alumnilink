@@ -5,7 +5,6 @@ $stmt->execute();
 $questions = $stmt->fetchAll();
 
 // Prepare data for Javascript
-$questions_json = json_encode($questions);
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -185,7 +184,8 @@ $questions_json = json_encode($questions);
     // karena permintaan ber-body JSON tidak pernah mengisi $_POST di sisi PHP.
     const CSRF_TOKEN = <?php echo json_encode(get_csrf_token()); ?>;
 
-    const allQuestions = <?php echo e($questions_json); ?>;
+    // js_json(), bukan e(json): lihat includes/settings.php.
+    const allQuestions = <?php echo js_json($questions); ?>;
 
     // Initialize Sortable
     const el = document.getElementById('questionsContainer');
