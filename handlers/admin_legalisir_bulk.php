@@ -51,6 +51,14 @@ if (!is_array($ids) || !$ids) {
 if (!in_array($status, legalisir_valid_statuses(), true)) {
     bulk_kembali(['error' => 'bulk_status']);
 }
+// Dijadikan unik SEBELUM dihitung. Tabel desktop dan kartu mobile sama-sama
+// punya kotak centang untuk tiap pengajuan, dan JavaScript menyamakan
+// keduanya — setiap baris terpilih terkirim dua kali. Tanpa ini, memilih
+// 51 pengajuan sudah ditolak sebagai "lebih dari 100".
+$ids = array_values(array_unique(array_map('strval', array_filter($ids, 'is_scalar'))));
+if (!$ids) {
+    bulk_kembali(['error' => 'bulk_kosong']);
+}
 if (count($ids) > LEGALISIR_BULK_MAX) {
     bulk_kembali(['error' => 'bulk_terlalu_banyak']);
 }
@@ -60,8 +68,6 @@ if ($status === 'rejected' && mb_strlen($alasan) < 10) {
     // apa sebabnya.
     bulk_kembali(['error' => 'bulk_alasan']);
 }
-
-$ids = array_values(array_unique(array_map('strval', $ids)));
 
 $berhasil = 0;
 $gagal    = [];

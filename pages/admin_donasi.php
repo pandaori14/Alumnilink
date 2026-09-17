@@ -23,6 +23,18 @@ $transactions = $pdo->query("
 ?>
 
 <div class="max-w-7xl mx-auto">
+    <?php
+    $pesan_donasi = [
+        'campaign_has_donations' => 'Program ini sudah menerima donasi, jadi tidak dapat dihapus — riwayat donasinya akan ikut terhapus. Nonaktifkan program sebagai gantinya.',
+        'invalid_file_type'      => 'Berkas gambar tidak didukung. Gunakan JPG, PNG, WEBP, atau GIF maksimal 5 MB.',
+    ];
+    ?>
+    <?php if (isset($_GET['error'], $pesan_donasi[$_GET['error']])): ?>
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3">
+            <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
+            <span class="font-medium"><?php echo e($pesan_donasi[$_GET['error']]); ?></span>
+        </div>
+    <?php endif; ?>
     <div class="mb-8 px-1">
         <h1 class="text-xl md:text-2xl font-bold outfit text-slate-800 tracking-tight">Manajemen Donasi</h1>
         <p class="text-slate-400 text-xs md:text-sm mt-1 font-medium">Kelola program donasi dan pantau kontribusi alumni.</p>
@@ -105,10 +117,10 @@ $transactions = $pdo->query("
                                 <button onclick="editCampaign(<?php echo htmlspecialchars(json_encode($camp)); ?>)" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all" title="Edit">
                                     <i data-lucide="edit-3" class="w-4 h-4"></i>
                                 </button>
-                                <a href="handlers/admin_campaign_handler.php?action=toggle&id=<?php echo e($camp->id); ?>" class="p-2 <?php echo e($camp->is_active ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'); ?> rounded-lg transition-all" title="<?php echo e($camp->is_active ? 'Nonaktifkan' : 'Aktifkan'); ?>">
+                                <a href="handlers/admin_campaign_handler.php?action=toggle&id=<?php echo e($camp->id); ?>&csrf_token=<?php echo e(get_csrf_token()); ?>" class="p-2 <?php echo e($camp->is_active ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'); ?> rounded-lg transition-all" title="<?php echo e($camp->is_active ? 'Nonaktifkan' : 'Aktifkan'); ?>">
                                     <i data-lucide="<?php echo e($camp->is_active ? 'pause' : 'play'); ?>" class="w-4 h-4"></i>
                                 </a>
-                                <a href="handlers/admin_campaign_handler.php?action=delete&id=<?php echo e($camp->id); ?>" onclick="confirmDelete(event, this.href, 'Hapus program donasi ini?')" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all" title="Hapus">
+                                <a href="handlers/admin_campaign_handler.php?action=delete&id=<?php echo e($camp->id); ?>&csrf_token=<?php echo e(get_csrf_token()); ?>" onclick="confirmDelete(event, this.href, 'Hapus program donasi ini?')" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all" title="Hapus">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </a>
                             </div>

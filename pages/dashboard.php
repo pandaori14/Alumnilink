@@ -42,9 +42,14 @@ if ($is_admin) {
     $stat3_icon = 'bar-chart-3'; $stat3_color = 'emerald';
 
     // 4. Pendapatan (Special Card)
-    $income_midtrans = $pdo->query("SELECT SUM(amount) FROM legalisir_requests WHERE payment_status = 'settlement' AND payment_method != 'cash'")->fetchColumn() ?? 0;
-    $income_cash = $pdo->query("SELECT SUM(amount) FROM legalisir_requests WHERE payment_status = 'settlement' AND payment_method = 'cash'")->fetchColumn() ?? 0;
-    $total_income = $income_midtrans + $income_cash;
+    // Satu agregat bersama. Dulu layar ini menghitung "Midtrans" sebagai
+    // payment_method != 'cash', sementara dasbor admin memakai = 'midtrans'.
+    require_once __DIR__ . '/../includes/payment/report.php';
+    $pendapatan = payment_revenue_by_method($pdo);
+    $income_midtrans = $pendapatan['midtrans'];
+    $income_flip = $pendapatan['flip'];
+    $income_cash = $pendapatan['cash'];
+    $total_income = $pendapatan['total'];
 
     // Recent Global Activity
     $recent_activities = $pdo->query("
@@ -231,6 +236,10 @@ function time_elapsed_string($datetime, $full = false) {
                 <div class="flex-1 md:flex-none px-6 py-4 bg-white/50 rounded-2xl border border-slate-100 text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Midtrans</p>
                     <p class="text-sm font-bold text-blue-600 outfit">Rp <?php echo number_format($income_midtrans, 0, ',', '.'); ?></p>
+                </div>
+                <div class="flex-1 md:flex-none px-6 py-4 bg-white/50 rounded-2xl border border-slate-100 text-center">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Flip</p>
+                    <p class="text-sm font-bold text-indigo-600 outfit">Rp <?php echo number_format($income_flip, 0, ',', '.'); ?></p>
                 </div>
                 <div class="flex-1 md:flex-none px-6 py-4 bg-white/50 rounded-2xl border border-slate-100 text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Tunai (Cash)</p>

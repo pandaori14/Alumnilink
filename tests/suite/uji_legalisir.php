@@ -32,6 +32,9 @@ $sid  = sesi_palsu($uid, 'super_admin', $csrf);
 $alum = $pdo->query("SELECT id, email FROM users WHERE role='alumni' LIMIT 1")->fetch();
 
 // ── Buat pengajuan uji dengan umur berbeda ──────────────────────────
+// Ledger pembayaran sengaja tanpa FK (jejak uang tidak ikut terhapus), jadi
+// transaksi yang dibuat backfill malas untuk pengajuan uji dihapus sendiri.
+$pdo->exec("DELETE FROM payment_transactions WHERE purpose = 'legalisir' AND subject_id LIKE 'UJI-LEG-%'");
 $pdo->exec("DELETE FROM legalisir_requests WHERE id LIKE 'UJI-LEG-%'");
 $buat = $pdo->prepare(
     "INSERT INTO legalisir_requests (id, user_id, documents, delivery_method, amount, payment_status, status, created_at)
@@ -190,7 +193,11 @@ cek($pdo->query("SELECT status FROM legalisir_requests WHERE id='UJI-LEG-LATE'")
 $log = $pdo->query("SELECT description FROM activity_logs WHERE action='BULK_UPDATE_LEGALISIR' ORDER BY id DESC LIMIT 1")->fetchColumn();
 cek(strpos((string)$log, '2 pengajuan') !== false, 'tercatat di Audit Trail', (string)$log);
 
-$banyak = array_fill(0, 101, 'UJI-LEG-BULK1');
+// 101 ID UNIK. Dulu array_fill(0, 101, 'UJI-LEG-BULK1'): satu pengajuan
+// yang sama 101 kali, dan batasnya lolos hanya karena handler menghitung
+// SEBELUM menjadikan unik — cacat yang sama yang membuat 51 pengajuan
+// (terkirim dua kali dari tabel desktop + kartu mobile) ikut ditolak.
+$banyak = array_map(function ($i) { return "UJI-LEG-TIDAKADA-$i"; }, range(1, 101));
 [$c, , $loc] = kirim($sid, "$BASE/handlers/admin_legalisir_bulk.php",
     ['csrf_token' => $csrf, 'ids' => $banyak, 'status' => 'processing']);
 cek(strpos($loc, 'error=bulk_terlalu_banyak') !== false, 'lebih dari 100 pilihan ditolak', substr($loc, -30));
@@ -211,6 +218,9 @@ cek($c === 401 || $c === 403, 'cetak label tanpa sesi ditolak', "HTTP $c");
 cek($c === 403, 'alumni tidak boleh mencetak label', "HTTP $c");
 
 // ── Bersihkan ───────────────────────────────────────────────────────
+// Ledger pembayaran sengaja tanpa FK (jejak uang tidak ikut terhapus), jadi
+// transaksi yang dibuat backfill malas untuk pengajuan uji dihapus sendiri.
+$pdo->exec("DELETE FROM payment_transactions WHERE purpose = 'legalisir' AND subject_id LIKE 'UJI-LEG-%'");
 $pdo->exec("DELETE FROM legalisir_requests WHERE id LIKE 'UJI-LEG-%'");
 $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND message LIKE '%UJI-LEG-%'")->execute([$alum->id]);
 $pdo->exec("DELETE FROM activity_logs WHERE description LIKE '%UJI-LEG-%'");

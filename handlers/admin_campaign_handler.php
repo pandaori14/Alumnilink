@@ -64,11 +64,27 @@ try {
             $stmt->execute([$title, $description, $target_amount, $end_date, $image_path]);
         }
     } elseif ($action === 'toggle' && $id) {
+        // validate_csrf() di atas hanya memeriksa POST, jadi tautan GET ini
+        // dulu dapat dipicu siapa pun yang memancing admin membuka URL-nya.
+        // Pola yang sama dengan handlers/admin_delete_legalisir.php: token
+        // dibawa di query string.
+        validate_csrf_request();
         $stmt = $pdo->prepare("UPDATE donation_campaigns SET is_active = NOT is_active WHERE id = ?");
         $stmt->execute([$id]);
     } elseif ($action === 'delete' && $id) {
+        validate_csrf_request();
+        // donations.campaign_id memakai ON DELETE CASCADE: menghapus kampanye
+        // ikut menghapus SELURUH riwayat donasinya, termasuk yang sudah
+        // dibayar. Kampanye yang sudah punya donasi hanya boleh dinonaktifkan.
+        $ada = $pdo->prepare("SELECT COUNT(*) FROM donations WHERE campaign_id = ?");
+        $ada->execute([$id]);
+        if ((int)$ada->fetchColumn() > 0) {
+            header("Location: ../index.php?page=admin_donasi&error=campaign_has_donations");
+            exit();
+        }
         $stmt = $pdo->prepare("DELETE FROM donation_campaigns WHERE id = ?");
         $stmt->execute([$id]);
+        log_activity('DELETE_CAMPAIGN', "Kampanye donasi #$id dihapus (tanpa donasi).");
     }
 
     header("Location: ../index.php?page=admin_donasi");

@@ -544,15 +544,22 @@ $color_map = [
                     </p>
                 </div>
 
-                <!-- Formulir terpisah: unduhan mengalirkan berkas, jadi tidak
-                     boleh menumpang formulir Simpan Pengaturan. -->
-                <form action="handlers/admin_backup.php" method="POST" class="mb-8">
-                    <?php echo csrf_field(); ?>
-                    <button type="submit" class="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95">
+                <!-- Unduhan mengalirkan berkas, jadi tidak boleh menumpang
+                     formulir Simpan Pengaturan. Formulirnya ada di LUAR
+                     settings-form (lihat akhir berkas), dan tombol ini menunjuk
+                     ke sana lewat atribut form=.
+
+                     Sebelumnya formulir cadangan ditulis DI DALAM settings-form.
+                     HTML tidak mengizinkan formulir bersarang: parser membuang
+                     tag pembukanya, sehingga tombol ini menjadi milik
+                     settings-form — mengkliknya menyimpan seluruh pengaturan,
+                     dan cadangan tidak pernah terunduh. -->
+                <div class="mb-8">
+                    <button type="submit" form="form-cadangan" class="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95">
                         <i data-lucide="download" class="w-4 h-4"></i> Unduh cadangan sekarang
                     </button>
                     <span class="text-xs text-slate-400 ml-3">Format .sql.gz &mdash; dapat diimpor lewat phpMyAdmin.</span>
-                </form>
+                </div>
 
                 <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-3">Cadangan otomatis tersimpan</h3>
                 <?php if (empty($daftar_cadangan)): ?>
@@ -1246,6 +1253,10 @@ $color_map = [
             Simpan Semua Perubahan
         </button>
     </div>
+</form>
+<!-- Formulir cadangan, sengaja di luar settings-form. -->
+<form action="handlers/admin_backup.php" method="POST" id="form-cadangan">
+    <?php csrf_field(); ?>
 </form>
 </div>
 

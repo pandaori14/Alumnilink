@@ -33,7 +33,7 @@ $params = [];
 if ($start_date)    { $where[] = "DATE(lr.created_at) >= ?"; $params[] = $start_date; }
 if ($end_date)      { $where[] = "DATE(lr.created_at) <= ?"; $params[] = $end_date; }
 if ($filter_status) { $where[] = "lr.payment_status = ?"; $params[] = $filter_status; }
-if ($filter_method) { $where[] = "lr.payment_method = ?"; $params[] = $filter_method; }
+if (in_array($filter_method, ['midtrans', 'flip', 'cash'], true)) { $where[] = "lr.payment_method = ?"; $params[] = $filter_method; } else { $filter_method = ''; }
 if ($filter_month)  { $where[] = "DATE_FORMAT(lr.created_at, '%Y-%m') = ?"; $params[] = $filter_month; }
 $where_sql = implode(' AND ', $where);
 
@@ -54,9 +54,13 @@ $records = $stmt->fetchAll();
 $admin_fee = (int)($pdo->query("SELECT setting_value FROM settings WHERE setting_key='admin_fee'")->fetchColumn() ?: 5000);
 
 // Summary stats (unfiltered for cards, excluding admin fee)
-$total_revenue   = $pdo->query("SELECT COALESCE(SUM(GREATEST(0, amount - {$admin_fee})),0) FROM legalisir_requests WHERE payment_status='settlement'")->fetchColumn();
-$midtrans_rev    = $pdo->query("SELECT COALESCE(SUM(GREATEST(0, amount - {$admin_fee})),0) FROM legalisir_requests WHERE payment_status='settlement' AND payment_method='midtrans'")->fetchColumn();
-$cash_rev        = $pdo->query("SELECT COALESCE(SUM(GREATEST(0, amount - {$admin_fee})),0) FROM legalisir_requests WHERE payment_status='settlement' AND payment_method='cash'")->fetchColumn();
+// Satu agregat bersama dengan kedua dasbor; jumlah kartu = total.
+require_once __DIR__ . '/../includes/payment/report.php';
+$pendapatan      = payment_revenue_by_method($pdo, $admin_fee);
+$total_revenue   = $pendapatan['total'];
+$midtrans_rev    = $pendapatan['midtrans'];
+$flip_rev        = $pendapatan['flip'];
+$cash_rev        = $pendapatan['cash'];
 $pending_rev     = $pdo->query("SELECT COALESCE(SUM(GREATEST(0, amount - {$admin_fee})),0) FROM legalisir_requests WHERE payment_status='pending'")->fetchColumn();
 
 // Months for filter
@@ -81,7 +85,7 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div class="glass p-5 rounded-2xl shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Pendapatan</p>
             <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($total_revenue, 0, ',', '.'); ?></h2>
@@ -96,6 +100,11 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Via Tunai</p>
             <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($cash_rev, 0, ',', '.'); ?></h2>
             <p class="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1"><i data-lucide="banknote" class="w-3 h-3"></i> Cash</p>
+        </div>
+        <div class="glass p-5 rounded-2xl shadow-sm">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Via Flip</p>
+            <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($flip_rev, 0, ',', '.'); ?></h2>
+            <p class="text-[10px] text-indigo-600 font-bold mt-1 flex items-center gap-1"><i data-lucide="wallet" class="w-3 h-3"></i> Digital</p>
         </div>
         <div class="glass p-5 rounded-2xl col-span-2 lg:col-span-1 shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Belum Lunas</p>
@@ -126,6 +135,7 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
         <select aria-label="Filter Metode" name="method" class="text-xs px-4 py-2 rounded-xl border border-slate-200 bg-white outline-none focus:border-blue-500">
             <option value="">Semua Metode</option>
             <option value="midtrans" <?php echo $filter_method=='midtrans'?'selected':''; ?>>Midtrans</option>
+            <option value="flip"     <?php echo $filter_method=='flip'?'selected':''; ?>>Flip</option>
             <option value="cash"     <?php echo $filter_method=='cash'?'selected':''; ?>>Tunai</option>
         </select>
         

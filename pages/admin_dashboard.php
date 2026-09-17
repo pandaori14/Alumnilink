@@ -12,9 +12,13 @@ $total_legalisir = $pdo->query("SELECT COUNT(*) FROM legalisir_requests")->fetch
 $pending_leg     = $pdo->query("SELECT COUNT(*) FROM legalisir_requests WHERE status = 'pending'")->fetchColumn();
 $processing_leg  = $pdo->query("SELECT COUNT(*) FROM legalisir_requests WHERE status = 'processing'")->fetchColumn();
 $total_tracer    = $pdo->query("SELECT COUNT(*) FROM tracer_submissions")->fetchColumn();
-$total_revenue   = $pdo->query("SELECT COALESCE(SUM(amount),0) FROM legalisir_requests WHERE payment_status = 'settlement'")->fetchColumn();
-$cash_revenue    = $pdo->query("SELECT COALESCE(SUM(amount),0) FROM legalisir_requests WHERE payment_status = 'settlement' AND payment_method = 'cash'")->fetchColumn();
-$midtrans_rev    = $pdo->query("SELECT COALESCE(SUM(amount),0) FROM legalisir_requests WHERE payment_status = 'settlement' AND payment_method = 'midtrans'")->fetchColumn();
+// Satu agregat bersama dengan Laporan Keuangan dan dasbor alumni.
+require_once __DIR__ . '/../includes/payment/report.php';
+$pendapatan      = payment_revenue_by_method($pdo);
+$total_revenue   = $pendapatan['total'];
+$cash_revenue    = $pendapatan['cash'];
+$midtrans_rev    = $pendapatan['midtrans'];
+$flip_rev        = $pendapatan['flip'];
 $total_repo      = $pdo->query("SELECT COUNT(*) FROM document_repository")->fetchColumn();
 $total_news      = $pdo->query("SELECT COUNT(*) FROM news_posts")->fetchColumn();
 
@@ -150,6 +154,9 @@ $is_maintenance = ($sys_settings['maintenance_mode'] ?? '0') == '1';
                     <div class="mt-2 space-y-1">
                         <p class="text-[10px] text-slate-500 flex items-center gap-1">
                             <i data-lucide="credit-card" class="w-3 h-3"></i> Midtrans: Rp <?php echo number_format($midtrans_rev,0,',','.'); ?>
+                        </p>
+                        <p class="text-[10px] text-slate-500 flex items-center gap-1">
+                            <i data-lucide="wallet" class="w-3 h-3"></i> Flip: Rp <?php echo number_format($flip_rev,0,',','.'); ?>
                         </p>
                         <p class="text-[10px] text-slate-500 flex items-center gap-1">
                             <i data-lucide="banknote" class="w-3 h-3"></i> Tunai: Rp <?php echo number_format($cash_revenue,0,',','.'); ?>

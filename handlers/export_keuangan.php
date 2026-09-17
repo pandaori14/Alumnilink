@@ -35,15 +35,17 @@ if ($status) {
     $where[] = "lr.payment_status = ?"; 
     $params[] = $status; 
 }
-if ($method) { 
-    $where[] = "lr.payment_method = ?"; 
-    $params[] = $method; 
+// Daftar tertutup, sama dengan pilihan di halaman Laporan Keuangan.
+if (in_array($method, ['midtrans', 'flip', 'cash'], true)) {
+    $where[] = "lr.payment_method = ?";
+    $params[] = $method;
 }
 
 $where_sql = implode(' AND ', $where);
 
 // Fetch admin fee from settings
 $admin_fee = (int)($pdo->query("SELECT setting_value FROM settings WHERE setting_key='admin_fee'")->fetchColumn() ?: 5000);
+require_once __DIR__ . '/../includes/payment/report.php';
 
 // Fetch Data
 $stmt = $pdo->prepare("
@@ -82,7 +84,7 @@ foreach ($records as $r) {
         $r->alumni_name,
         $r->alumni_nim ?? '-',
         $r->alumni_email,
-        strtoupper($r->payment_method),
+        payment_method_report_label($r->payment_method),
         strtoupper($r->payment_status),
         ucfirst($r->status),
         ucwords(str_replace('_', ' ', $r->delivery_method)),

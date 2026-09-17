@@ -24,7 +24,15 @@ $id = trim($_GET['id'] ?? '');
 
 if ($id) {
     try {
-        // Execute delete query
+        // Pengajuan yang SUDAH LUNAS tidak dihapus. Menghapusnya membuat uang
+        // yang sudah diterima hilang dari Laporan Keuangan dan ekspornya.
+        $cek = $pdo->prepare("SELECT payment_status FROM legalisir_requests WHERE id = ?");
+        $cek->execute([$id]);
+        if ($cek->fetchColumn() === 'settlement') {
+            header("Location: ../index.php?page=admin_legalisir&error=delete_paid&t=" . time());
+            exit();
+        }
+
         $stmt = $pdo->prepare("DELETE FROM legalisir_requests WHERE id = ?");
         $stmt->execute([$id]);
 

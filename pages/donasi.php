@@ -16,6 +16,25 @@ $total_collected = $pdo->query("SELECT SUM(amount) FROM donations WHERE status =
 ?>
 
 <div class="max-w-6xl mx-auto px-2 md:px-0">
+    <?php
+    // Diisi handlers/payment_return.php SETELAH status diambil ulang dari
+    // gateway. Dulu callback Snap mengarahkan ke sini dengan ?status=...,
+    // tetapi halaman ini tidak pernah membacanya.
+    $status_bayar = $_GET['status'] ?? '';
+    // Kelas ditulis UTUH, bukan dirakit dari nama warna: CSS dibangun lokal
+    // dan hanya menyertakan kelas yang tertulis lengkap di sumber.
+    $pesan_bayar = [
+        'success' => ['bg-emerald-50 border-emerald-200 text-emerald-800', 'check-circle', 'Terima kasih! Donasi Anda sudah kami terima.'],
+        'pending' => ['bg-blue-50 border-blue-200 text-blue-800', 'loader', 'Pembayaran donasi belum terkonfirmasi. Bila Anda sudah membayar, status diperbarui otomatis dalam beberapa menit.'],
+        'failed'  => ['bg-amber-50 border-amber-200 text-amber-800', 'alert-triangle', 'Pembayaran donasi tidak berhasil atau sudah kedaluwarsa. Silakan coba lagi.'],
+    ];
+    ?>
+    <?php if (isset($pesan_bayar[$status_bayar])): [$warna, $ikon, $teks] = $pesan_bayar[$status_bayar]; ?>
+        <div class="mb-6 p-4 border rounded-2xl flex items-center gap-3 <?php echo e($warna); ?>">
+            <i data-lucide="<?php echo e($ikon); ?>" class="w-5 h-5 shrink-0"></i>
+            <span class="font-medium"><?php echo e($teks); ?></span>
+        </div>
+    <?php endif; ?>
     <!-- Header Hero -->
     <div class="relative overflow-hidden rounded-[3rem] bg-slate-900 p-8 md:p-20 mb-12 shadow-2xl shadow-blue-900/10">
         <!-- Abstract BG Elements -->

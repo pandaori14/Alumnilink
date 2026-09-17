@@ -27,7 +27,11 @@ if (in_array($l_status, legalisir_valid_statuses(), true)) {
 } else {
     $l_status = '';
 }
-if (in_array($l_bayar, ['paid', 'unpaid', 'pending'], true)) {
+// Nilai lama 'paid'/'unpaid' tidak pernah ditulis sistem mana pun — yang
+// ditulis adalah settlement/pending/failed — sehingga saringan "Lunas" dan
+// "Belum bayar" selalu kosong. Tautan lama tetap dipetakan.
+$l_bayar = ['paid' => 'settlement', 'unpaid' => 'pending'][$l_bayar] ?? $l_bayar;
+if (in_array($l_bayar, ['settlement', 'pending', 'failed'], true)) {
     $where .= " AND lr.payment_status = ?";
     $params[] = $l_bayar;
 } else {
@@ -70,11 +74,36 @@ $l_query = array_filter([
 ], fn($v) => $v !== '' && $v !== null);
 $l_url = pager_url_builder($l_query);
 
-// Fetch Midtrans Settings for payment assist
-$settings = $pdo->query("SELECT setting_key, setting_value FROM settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$client_key = $settings['midtrans_client_key'] ?? '';
-$is_production = (bool)($settings['midtrans_is_production'] ?? false);
-$snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
+// ── Tagihan per baris ─────────────────────────────────────────────────
+// Diambil sekaligus untuk seluruh baris halaman ini (satu kueri, bukan satu
+// per baris). Tombol bayar dulu hanya mengenal snap token Midtrans; tagihan
+// Flip dibuka lewat tautan halaman bayarnya.
+require_once __DIR__ . '/../includes/payment/service.php';
+$txn_per_req = [];
+if ($requests) {
+    $ids_hal = array_map(fn($r) => (string)$r->id, $requests);
+    $q_txn = $pdo->prepare("SELECT * FROM payment_transactions WHERE purpose = 'legalisir' AND subject_id IN ("
+        . implode(',', array_fill(0, count($ids_hal), '?')) . ") ORDER BY id DESC");
+    $q_txn->execute($ids_hal);
+    foreach ($q_txn->fetchAll() as $t) {
+        $txn_per_req[$t->subject_id] = $txn_per_req[$t->subject_id] ?? $t;
+    }
+}
+$aksi_bayar_admin = function ($req) use ($txn_per_req) {
+    $t = $txn_per_req[(string)$req->id] ?? null;
+    if (!$t || $t->status !== 'pending' || $t->gateway === 'cash') {
+        return ['type' => 'none'];
+    }
+    return payment_gateway($t->gateway)->frontendAction($t) + ['gateway' => $t->gateway];
+};
+$aksi_snap_halaman = null;
+foreach ($requests as $r) {
+    $a = $aksi_bayar_admin($r);
+    if ($a['type'] === 'snap') {
+        $aksi_snap_halaman = $a;
+        break;
+    }
+}
 ?>
 
 <div class="max-w-6xl mx-auto">
@@ -94,7 +123,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
     <?php if (isset($_GET['success']) && $_GET['success'] == 'token_regenerated'): ?>
         <div class="mb-8 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-2xl flex items-center gap-3 animate-pulse">
             <i data-lucide="check-circle" class="w-5 h-5"></i>
-            <span class="font-medium">Token pembayaran online berhasil dibuat ulang!</span>
+            <span class="font-medium">Tagihan pembayaran online berhasil dibuat ulang!</span>
         </div>
     <?php endif; ?>
 
@@ -108,14 +137,21 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
     <?php if (isset($_GET['error']) && $_GET['error'] == 'verify_failed'): ?>
         <div class="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 animate-pulse">
             <i data-lucide="alert-circle" class="w-5 h-5"></i>
-            <span class="font-medium">Gagal memverifikasi. Data mungkin tidak ditemukan atau sudah diverifikasi sebelumnya.</span>
+            <span class="font-medium"><?php echo e($_GET['reason'] ?? 'Gagal memverifikasi. Data mungkin tidak ditemukan atau sudah diverifikasi sebelumnya.'); ?></span>
         </div>
     <?php endif; ?>
 
-    <?php if (isset($_GET['error']) && $_GET['error'] == 'midtrans_failed'): ?>
+    <?php if (isset($_GET['error']) && in_array($_GET['error'], ['midtrans_failed', 'payment_create_failed'], true)): ?>
         <div class="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 animate-pulse">
             <i data-lucide="alert-circle" class="w-5 h-5"></i>
-            <span class="font-medium">Gagal menghubungi Midtrans atau membuat token baru.</span>
+            <span class="font-medium">Gagal membuat tagihan baru: layanan pembayaran tidak merespons. Periksa Gateway Pembayaran di pengaturan.</span>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'already_paid'): ?>
+        <div class="mb-8 p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl flex items-center gap-3">
+            <i data-lucide="info" class="w-5 h-5"></i>
+            <span class="font-medium">Pengajuan ini sudah lunas, jadi tagihan baru tidak dibuat.</span>
         </div>
     <?php endif; ?>
 
@@ -142,6 +178,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
         'bulk_alasan'         => 'Penolakan massal wajib disertai alasan minimal 10 karakter.',
         'bulk_terlalu_banyak' => 'Terlalu banyak pengajuan dipilih sekaligus (maksimal 100).',
         'bulk_gagal'          => 'Perubahan dibatalkan seluruhnya; tidak ada yang tersimpan.',
+        'delete_paid'         => 'Pengajuan yang sudah lunas tidak dapat dihapus, supaya pembayarannya tetap tercatat di Laporan Keuangan. Tolak pengajuan bila memang dibatalkan.',
     ];
     ?>
     <?php if (isset($_GET['error']) && isset($l_pesan_galat[$_GET['error']])): ?>
@@ -196,9 +233,9 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
             </select>
             <select name="bayar" aria-label="Saring pembayaran" class="px-4 py-3 rounded-2xl bg-white/50 border border-slate-200 focus:border-blue-500 outline-none text-sm">
                 <option value="">Semua pembayaran</option>
-                <option value="paid"    <?php echo $l_bayar === 'paid' ? 'selected' : ''; ?>>Lunas</option>
-                <option value="pending" <?php echo $l_bayar === 'pending' ? 'selected' : ''; ?>>Menunggu</option>
-                <option value="unpaid"  <?php echo $l_bayar === 'unpaid' ? 'selected' : ''; ?>>Belum bayar</option>
+                <option value="settlement" <?php echo $l_bayar === 'settlement' ? 'selected' : ''; ?>>Lunas</option>
+                <option value="pending"    <?php echo $l_bayar === 'pending' ? 'selected' : ''; ?>>Menunggu pembayaran</option>
+                <option value="failed"     <?php echo $l_bayar === 'failed' ? 'selected' : ''; ?>>Gagal / kedaluwarsa</option>
             </select>
             <input type="date" name="dari" value="<?php echo htmlspecialchars($l_dari); ?>" aria-label="Tanggal mulai"
                    class="px-4 py-3 rounded-2xl bg-white/50 border border-slate-200 focus:border-blue-500 outline-none text-sm">
@@ -215,16 +252,31 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
         <?php endif; ?>
     </div>
 
-    <!-- Aksi massal. Formulir dibuka di sini dan ditutup setelah kedua
-         daftar (tabel desktop + kartu mobile), supaya kotak centang di
-         keduanya termasuk dalam satu pengiriman. -->
-    <form action="handlers/admin_legalisir_bulk.php" method="POST" id="form-bulk">
-        <?php csrf_field(); ?>
-        <input type="hidden" name="kembali" value="<?php echo htmlspecialchars(http_build_query($l_query)); ?>">
-        <input type="hidden" name="rejection_reason" id="bulk-alasan" value="">
+    <!-- Aksi massal.
+
+         Formulir ini sengaja KOSONG dan langsung ditutup. Setiap kontrolnya —
+         kotak centang di tabel desktop dan kartu mobile, pilihan status,
+         token CSRF — menunjuk ke sini lewat atribut form="form-bulk".
+
+         Sebelumnya formulir ini MEMBUNGKUS seluruh tabel, padahal setiap
+         baris punya formulirnya sendiri (buat ulang tagihan, ubah status).
+         HTML tidak mengizinkan formulir bersarang: parser membuang tag
+         pembuka formulir yang bersarang, sehingga kontrol di dalamnya
+         menjadi milik formulir aksi massal. Akibatnya, pada BARIS PERTAMA:
+           - tombol "Buat ulang tagihan" men-submit aksi massal, bukan
+             membuat tagihan baru;
+           - bila baris itu sudah lunas, select name="status" miliknya ikut
+             terkirim SESUDAH pilihan admin, dan PHP membaca nilai terakhir —
+             aksi massal menerapkan status yang salah;
+         dan di seluruh kartu mobile, tombol tanpa type (WhatsApp, pelacakan,
+         lihat berkas) men-submit aksi massal saat diklik. -->
+    <form action="handlers/admin_legalisir_bulk.php" method="POST" id="form-bulk"></form>
+        <input type="hidden" name="csrf_token" value="<?php echo e(get_csrf_token()); ?>" form="form-bulk">
+        <input type="hidden" name="kembali" value="<?php echo htmlspecialchars(http_build_query($l_query)); ?>" form="form-bulk">
+        <input type="hidden" name="rejection_reason" id="bulk-alasan" value="" form="form-bulk">
         <div id="bar-bulk" class="hidden sticky top-4 z-30 mb-6 glass p-4 rounded-2xl border border-blue-200 shadow-lg flex flex-wrap items-center gap-3">
             <span class="text-sm font-bold text-slate-700"><span id="bulk-jumlah">0</span> dipilih</span>
-            <select name="status" id="bulk-status" aria-label="Status tujuan" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold outline-none">
+            <select name="status" id="bulk-status" form="form-bulk" aria-label="Status tujuan" class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold outline-none">
                 <?php foreach (legalisir_valid_statuses() as $sv): ?>
                     <option value="<?php echo e($sv); ?>"><?php echo legalisir_status_label($sv); ?></option>
                 <?php endforeach; ?>
@@ -278,7 +330,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                     ?>
                     <tr class="hover:bg-white/50 transition-all group">
                         <td class="pl-6 pr-2 py-6">
-                            <input type="checkbox" name="ids[]" value="<?php echo htmlspecialchars($req->id); ?>"
+                            <input type="checkbox" name="ids[]" form="form-bulk" value="<?php echo htmlspecialchars($req->id); ?>"
                                    onchange="perbaruiBar()" aria-label="Pilih pengajuan <?php echo htmlspecialchars($req->id); ?>"
                                    class="pilih-baris w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
                         </td>
@@ -332,23 +384,28 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                                             Verifikasi Manual
                                         </button>
                                         
-                                        <?php if ($req->midtrans_snap_token): ?>
-                                            <button onclick="payAlumniBill('<?php echo e($req->midtrans_snap_token); ?>')" class="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center border border-orange-200 hover:bg-orange-600 hover:text-white transition-all" title="Cek Midtrans">
+                                        <?php $aksi = $aksi_bayar_admin($req); ?>
+                                        <?php if ($aksi['type'] === 'snap'): ?>
+                                            <button type="button" onclick="payAlumniBill(<?php echo e(json_encode($aksi['token'])); ?>)" class="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center border border-orange-200 hover:bg-orange-600 hover:text-white transition-all" title="Buka pembayaran Midtrans">
                                                 <i data-lucide="credit-card" class="w-4 h-4"></i>
                                             </button>
+                                        <?php elseif ($aksi['type'] === 'redirect'): ?>
+                                            <a href="<?php echo e($aksi['url']); ?>" target="_blank" rel="noopener" class="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center border border-orange-200 hover:bg-orange-600 hover:text-white transition-all" title="Buka tagihan <?php echo e(payment_gateway_label($aksi['gateway'])); ?>">
+                                                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                                            </a>
                                         <?php endif; ?>
                                         
                                         <form action="handlers/regenerate_payment.php" method="POST" class="inline">
                                             <?php csrf_field(); ?>
                                             <input type="hidden" name="request_id" value="<?php echo e($req->id); ?>">
-                                            <button type="submit" class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-200 hover:bg-blue-600 hover:text-white transition-all" title="Buat Ulang Token Pembayaran">
+                                            <button type="submit" class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-200 hover:bg-blue-600 hover:text-white transition-all" title="Buat Ulang Tagihan Pembayaran">
                                                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                                             </button>
                                         </form>
                                     </div>
                                 <?php else: ?>
                                     <span class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 opacity-50">
-                                        VIA <?php echo e(strtoupper($req->payment_method)); ?>
+                                        VIA <?php echo e(strtoupper(payment_gateway_label($req->payment_method))); ?>
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -427,7 +484,7 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                 ?>
                 <div class="flex justify-between items-start pl-1">
                     <div class="flex items-start gap-3">
-                        <input type="checkbox" name="ids[]" value="<?php echo htmlspecialchars($req->id); ?>"
+                        <input type="checkbox" name="ids[]" form="form-bulk" value="<?php echo htmlspecialchars($req->id); ?>"
                                onchange="perbaruiBar()" aria-label="Pilih pengajuan <?php echo htmlspecialchars($req->id); ?>"
                                class="pilih-baris mt-1.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0">
                     <div>
@@ -478,22 +535,27 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
                                     <span class="text-[10px] font-black uppercase tracking-widest">Verifikasi Manual</span>
                                 </button>
                                 
-                                <?php if ($req->midtrans_snap_token): ?>
-                                    <button onclick="payAlumniBill('<?php echo e($req->midtrans_snap_token); ?>')" class="w-11 h-11 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Cek Midtrans">
+                                <?php $aksi = $aksi_bayar_admin($req); ?>
+                                <?php if ($aksi['type'] === 'snap'): ?>
+                                    <button type="button" onclick="payAlumniBill(<?php echo e(json_encode($aksi['token'])); ?>)" class="w-11 h-11 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Buka pembayaran Midtrans">
                                         <i data-lucide="credit-card" class="w-5 h-5"></i>
                                     </button>
+                                <?php elseif ($aksi['type'] === 'redirect'): ?>
+                                    <a href="<?php echo e($aksi['url']); ?>" target="_blank" rel="noopener" class="w-11 h-11 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Buka tagihan <?php echo e(payment_gateway_label($aksi['gateway'])); ?>">
+                                        <i data-lucide="credit-card" class="w-5 h-5"></i>
+                                    </a>
                                 <?php endif; ?>
 
                                 <form action="handlers/regenerate_payment.php" method="POST" class="inline">
                                     <?php csrf_field(); ?>
                                     <input type="hidden" name="request_id" value="<?php echo e($req->id); ?>">
-                                    <button type="submit" class="w-11 h-11 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Buat Ulang Token Pembayaran">
+                                    <button type="submit" class="w-11 h-11 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl flex items-center justify-center shadow-sm active:scale-95 transition-all" title="Buat Ulang Tagihan Pembayaran">
                                         <i data-lucide="refresh-cw" class="w-5 h-5"></i>
                                     </button>
                                 </form>
                             <?php else: ?>
                                 <span class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
-                                    VIA <?php echo e(strtoupper($req->payment_method)); ?>
+                                    VIA <?php echo e(strtoupper(payment_gateway_label($req->payment_method))); ?>
                                 </span>
                             <?php endif; ?>
                         </div>
@@ -556,8 +618,6 @@ $snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://
             </div>
         <?php endforeach; ?>
     </div>
-    </form>
-    <!-- /form aksi massal -->
 
     <div class="mt-8"></div>
     <?php
@@ -1048,4 +1108,6 @@ function cetakLabelTerpilih() {
     }
 </script>
 
-<script src="<?php echo e($snap_url); ?>" data-client-key="<?php echo e($client_key); ?>"></script>
+<?php if ($aksi_snap_halaman): ?>
+<script src="<?php echo e($aksi_snap_halaman['script']); ?>" data-client-key="<?php echo e($aksi_snap_halaman['client_key']); ?>"></script>
+<?php endif; ?>

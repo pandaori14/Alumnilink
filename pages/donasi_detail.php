@@ -14,19 +14,8 @@ if (!$camp) {
     die("Program Donasi tidak ditemukan.");
 }
 
-// Fetch Midtrans Client Key from settings
-$stmt_settings = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'midtrans_client_key'");
-$stmt_settings->execute();
-$client_key = $stmt_settings->fetchColumn();
-
-// Fetch Midtrans Environment
-$stmt_env = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = 'midtrans_is_production'");
-$stmt_env->execute();
-$is_production = $stmt_env->fetchColumn() == '1';
-
-$snap_url = $is_production 
-    ? "https://app.midtrans.com/snap/snap.js" 
-    : "https://app.sandbox.midtrans.com/snap/snap.js";
+require_once __DIR__ . '/../includes/payment/service.php';
+$gateway_label = payment_gateway_label(payment_active_gateway_code());
 ?>
 
 <div class="max-w-4xl mx-auto px-4 md:px-0 pb-24">
@@ -89,7 +78,7 @@ $snap_url = $is_production
                 </div>
                 <div>
                     <h2 class="font-black text-slate-800 outfit text-sm uppercase tracking-wider mb-1">Pembayaran Aman</h2>
-                    <p class="text-xs text-slate-400 leading-tight">Terenskripsi End-to-End via Midtrans</p>
+                    <p class="text-xs text-slate-400 leading-tight">Diproses aman oleh <?php echo e($gateway_label); ?></p>
                 </div>
             </div>
             <div class="glass p-8 rounded-[2.5rem] border border-white shadow-sm flex items-center gap-6 group hover:bg-white transition-all">
@@ -157,6 +146,15 @@ $snap_url = $is_production
                         </div>
                     </div>
 
+                    <!-- Rincian dihitung server (api/payment_quote.php), sama persis
+                         dengan yang akan ditagih. Sebelumnya donatur tidak pernah
+                         melihat biaya layanan sebelum membayar. -->
+                    <div id="rincianDonasi" class="hidden p-6 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-sm">
+                        <div class="flex justify-between text-slate-500"><span>Donasi</span><span id="rdPokok">-</span></div>
+                        <div class="flex justify-between text-slate-500"><span>Biaya layanan pembayaran</span><span id="rdBiaya">-</span></div>
+                        <div class="flex justify-between font-black text-slate-800 pt-2 border-t border-slate-200"><span>Total dibayar</span><span id="rdTotal">-</span></div>
+                    </div>
+
                     <button type="submit" id="payButton" class="w-full py-8 bg-blue-600 text-white rounded-[2.5rem] font-black shadow-2xl shadow-blue-600/40 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 text-xl mt-6 group">
                         <i data-lucide="heart" class="w-8 h-8 fill-white group-hover:scale-125 transition-transform"></i>
                         Donasi Sekarang
@@ -167,8 +165,13 @@ $snap_url = $is_production
     </div>
 </div>
 
-<script src="<?php echo e($snap_url); ?>" data-client-key="<?php echo e($client_key); ?>"></script>
 <script>
+const CSRF_DONASI = <?php echo json_encode(get_csrf_token()); ?>;
+
+function formatRp(n) {
+    return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+}
+
 function setAmount(val, btn) {
     document.getElementById('amount').value = val;
     document.querySelectorAll('.preset-btn').forEach(b => {
@@ -177,6 +180,46 @@ function setAmount(val, btn) {
     });
     btn.classList.remove('border-slate-50', 'bg-slate-50/50', 'text-slate-600');
     btn.classList.add('border-blue-500', 'bg-blue-50', 'text-blue-600');
+    perbaruiRincian();
+}
+
+let rincianTimer = null;
+function perbaruiRincian() {
+    clearTimeout(rincianTimer);
+    rincianTimer = setTimeout(async function () {
+        const nominal = parseInt(document.getElementById('amount').value, 10) || 0;
+        const kotak = document.getElementById('rincianDonasi');
+        if (nominal < 10000) { kotak.classList.add('hidden'); return; }
+        try {
+            const r = await fetch('api/payment_quote.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': CSRF_DONASI, 'Accept': 'application/json' },
+                body: new URLSearchParams({ purpose: 'donasi', amount: String(nominal) })
+            });
+            const q = await r.json();
+            if (!q.ok) { kotak.classList.add('hidden'); return; }
+            document.getElementById('rdPokok').textContent = formatRp(nominal);
+            document.getElementById('rdBiaya').textContent = formatRp(q.admin_total);
+            document.getElementById('rdTotal').textContent = formatRp(q.total);
+            kotak.classList.remove('hidden');
+        } catch (e) {
+            kotak.classList.add('hidden');
+        }
+    }, 300);
+}
+document.getElementById('amount').addEventListener('input', perbaruiRincian);
+
+/** Muat snap.js hanya ketika tagihan memang milik Midtrans. */
+function muatSnap(src, clientKey) {
+    return new Promise(function (resolve, reject) {
+        if (window.snap) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.setAttribute('data-client-key', clientKey);
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
 }
 
 document.getElementById('donationForm').onsubmit = async function(e) {
@@ -186,6 +229,11 @@ document.getElementById('donationForm').onsubmit = async function(e) {
     const originalContent = btn.innerHTML;
     btn.innerHTML = '<i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i> Memproses...';
     lucide.createIcons();
+    const pulihkan = function () {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+        lucide.createIcons();
+    };
 
     const formData = new FormData(this);
     try {
@@ -194,29 +242,28 @@ document.getElementById('donationForm').onsubmit = async function(e) {
             body: formData
         });
         const result = await response.json();
+        const aksi = result.action || (result.snap_token ? { type: 'snap' } : { type: 'none' });
+        // Status tidak dipercaya dari browser: halaman kembali mengambil
+        // ulang status dari gateway sebelum menampilkannya.
+        const kembali = 'handlers/payment_return.php?ref=' + encodeURIComponent(result.ref || '');
 
-        if (result.snap_token) {
-            window.snap.pay(result.snap_token, {
-                onSuccess: function(result) { window.location.href = 'index.php?page=donasi&status=success'; },
-                onPending: function(result) { window.location.href = 'index.php?page=donasi&status=pending'; },
-                onError: function(result) { window.location.href = 'index.php?page=donasi&status=error'; },
-                onClose: function() { 
-                    btn.disabled = false; 
-                    btn.innerHTML = originalContent;
-                    lucide.createIcons();
-                }
+        if (aksi.type === 'redirect' && aksi.url) {
+            window.location.href = aksi.url;
+        } else if (aksi.type === 'snap') {
+            await muatSnap(aksi.script, aksi.client_key);
+            window.snap.pay(aksi.token || result.snap_token, {
+                onSuccess: function() { window.location.href = kembali; },
+                onPending: function() { window.location.href = kembali; },
+                onError: pulihkan,
+                onClose: pulihkan
             });
         } else {
             showSwalAlert('Donasi Gagal', result.error || 'Terjadi kesalahan sistem.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalContent;
-            lucide.createIcons();
+            pulihkan();
         }
     } catch (err) {
         showSwalAlert('Kesalahan Jaringan', 'Gagal menghubungi server saat memproses donasi.', 'error');
-        btn.disabled = false;
-        btn.innerHTML = originalContent;
-        lucide.createIcons();
+        pulihkan();
     }
 };
 </script>

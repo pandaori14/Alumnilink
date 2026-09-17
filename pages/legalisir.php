@@ -54,6 +54,12 @@ if (isset($_GET['error'])) {
         case 'needs_tracer':
             $msg = 'Silakan perbarui data Tracer Alumni terlebih dahulu.';
             break;
+        case 'invalid_delivery':
+            $msg = 'Metode pengiriman tidak dikenal. Pilih ambil sendiri atau kurir.';
+            break;
+        case 'fee_config':
+            $msg = 'Pengaturan biaya pembayaran sedang bermasalah. Silakan coba beberapa saat lagi atau hubungi admin.';
+            break;
         case 'upload_failed':
             $msg = 'Gagal menyimpan file ke server. Pastikan folder (uploads/) memiliki izin tulis/write permissions (CHMOD 775/777).';
             break;
@@ -301,12 +307,6 @@ if (isset($_GET['error'])) {
     $price_per_doc = (int)($sys_settings['price_per_doc'] ?? 10000);
     $shipping_fee = (int)($sys_settings['shipping_fee'] ?? 15000);
 
-    // Gross-up config variables
-    $mdr_rate_max    = (float)($sys_settings['midtrans_mdr_rate'] ?? 4.0);
-    $ppn_rate        = (float)($sys_settings['midtrans_ppn_rate'] ?? 11.0);
-    $biaya_payout    = (int)($sys_settings['midtrans_payout_fee'] ?? 2500);
-    $margin_admin    = (int)($sys_settings['midtrans_margin_admin'] ?? 2500);
-    $custom_tax_value= (int)($sys_settings['custom_tax_value'] ?? 0);
 
     $doc_types_json = $sys_settings['legalisir_document_types'] ?? '[{"id":"ijazah","name":"Ijazah Asli (Scan)"},{"id":"transkrip","name":"Transkrip Nilai (Scan)"}]';
     $doc_types = json_decode($doc_types_json);
@@ -532,7 +532,7 @@ if (isset($_GET['error'])) {
 
                 <button type="submit" id="submitBtn" disabled class="w-full py-4 bg-slate-200 text-slate-400 rounded-2xl font-black shadow-lg cursor-not-allowed transition-all flex items-center justify-center gap-2">
                     <i data-lucide="credit-card" class="w-5 h-5"></i>
-                    Bayar Sekarang (Midtrans)
+                    Ajukan &amp; Lanjut ke Pembayaran
                 </button>
 
                 <!-- Spacer for Mobile Nav -->
@@ -550,12 +550,11 @@ if (isset($_GET['error'])) {
     // berkas — tidak pernah berjalan.
     const shippingZones = <?php echo js_json($zones_php); ?>;
     
-    // Gross-up config values
-    const mdrRateMax    = <?php echo e($mdr_rate_max); ?>;
-    const ppnRate       = <?php echo e($ppn_rate); ?>;
-    const payoutFee     = <?php echo e($biaya_payout); ?>;
-    const marginAdmin   = <?php echo e($margin_admin); ?>;
-    const customTaxVal  = <?php echo e($custom_tax_value); ?>;
+    // Rincian biaya diambil dari server (api/payment_quote.php), bukan
+    // dihitung di sini. Salinan rumus JS yang dulu ada berbeda satuan dan
+    // nama kunci dengan handler, sehingga yang ditampilkan tidak sama
+    // dengan yang ditagih.
+    const CSRF_QUOTE = <?php echo json_encode(get_csrf_token()); ?>;
 
     // ── DOM refs ────────────────────────────────────────────────
     const checkboxes     = document.querySelectorAll('.doc-checkbox');
@@ -727,7 +726,7 @@ if (isset($_GET['error'])) {
             setSelectLoading(ddCity,     '-- Pilih Provinsi dulu --');
             setSelectLoading(ddDistrict, '-- Pilih Kab/Kota dulu --');
             currentShippingCost = 0;
-            zoneIndicator.classList.add('hidden');
+            zoneIndicator?.classList.add('hidden');
             calculate();
         }
     });
@@ -748,34 +747,48 @@ if (isset($_GET['error'])) {
     });
 
     // ── Calculate totals ─────────────────────────────────────────
+    let quoteTimer = null;
+    let quoteSeq = 0;
     function calculate() {
-        const count      = Array.from(checkboxes).filter(cb => cb.checked).length;
-        const isShipping = deliverySel.value === 'kurir';
-        const docTotal   = count * pricePerDoc;
-        
-        // Ongkir muncul jika mode kurir aktif & biaya sudah terdeteksi (meskipun docs belum dicentang)
-        const shipTotal  = isShipping ? currentShippingCost : 0;
-        
-        let adminTotal = 0;
-        if (count > 0) {
-            const tagihanPokok = docTotal + shipTotal;
-            const multiplierPajak = (ppnRate / 100.0) + 1; 
-            const totalMdrMultiplier = (mdrRateMax / 100.0) * multiplierPajak;
-            const grossUpDivider = 1 - totalMdrMultiplier;
-
-            let gwFee = ((tagihanPokok + customTaxVal) * totalMdrMultiplier + payoutFee + marginAdmin) / grossUpDivider;
-            gwFee = Math.ceil(gwFee);
-            adminTotal = gwFee + customTaxVal; 
-        }
-        
-        const total      = docTotal + adminTotal + shipTotal;
-
-        docDisplay.innerText   = formatRp(docTotal);
-        adminDisplay.innerText = formatRp(adminTotal);
-        shipDisplay.innerText  = formatRp(shipTotal);
-        display.innerText      = total.toLocaleString('id-ID');
-
         updateButtonState();
+        clearTimeout(quoteTimer);
+        quoteTimer = setTimeout(async () => {
+            const count = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const seq = ++quoteSeq;
+            if (count === 0) {
+                docDisplay.innerText   = formatRp(0);
+                adminDisplay.innerText = formatRp(0);
+                shipDisplay.innerText  = formatRp(0);
+                display.innerText      = '0';
+                return;
+            }
+            try {
+                const r = await fetch('api/payment_quote.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': CSRF_QUOTE, 'Accept': 'application/json' },
+                    body: new URLSearchParams({
+                        purpose: 'legalisir',
+                        doc_count: String(count),
+                        delivery_method: deliverySel.value,
+                        province: (deliverySel.value === 'kurir' && hidProvince.value) ? hidProvince.value : ''
+                    })
+                });
+                const q = await r.json();
+                // Balasan yang datang terlambat tidak boleh menimpa angka terbaru.
+                if (seq !== quoteSeq) return;
+                if (!q.ok) {
+                    adminDisplay.innerText = '—';
+                    display.innerText = '—';
+                    return;
+                }
+                docDisplay.innerText   = formatRp(q.documents);
+                adminDisplay.innerText = formatRp(q.admin_total);
+                shipDisplay.innerText  = formatRp(q.shipping);
+                display.innerText      = Number(q.total).toLocaleString('id-ID');
+            } catch (e) {
+                if (seq === quoteSeq) display.innerText = '—';
+            }
+        }, 250);
     }
 
     // ── Button state ─────────────────────────────────────────────
@@ -823,7 +836,7 @@ if (isset($_GET['error'])) {
         } else {
             addressForm.classList.add('hidden');
             currentShippingCost = 0;
-            zoneIndicator.classList.add('hidden');
+            zoneIndicator?.classList.add('hidden');
         }
         calculate();
     });

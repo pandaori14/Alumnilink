@@ -1,9 +1,5 @@
 <?php
-// Fetch Settings
-$settings = $pdo->query("SELECT setting_key, setting_value FROM settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$client_key = $settings['midtrans_client_key'] ?? '';
-$is_production = (bool)($settings['midtrans_is_production'] ?? false);
-$snap_url = $is_production ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
+require_once __DIR__ . '/../includes/payment/service.php';
 
 $id = $_GET['id'] ?? null;
 $user_id = $_SESSION['user_id'];
@@ -23,6 +19,27 @@ if (!$req) {
 }
 
 $docs = json_decode($req->documents);
+
+// ── Pembayaran ───────────────────────────────────────────────────────
+// Area bayar dibangun dari transaksi di ledger, bukan dari kolom
+// midtrans_snap_token. Gateway yang berbeda membuka pembayaran dengan cara
+// berbeda: Midtrans lewat popup Snap, Flip lewat halaman bayarnya sendiri.
+$transaksi   = payment_txns_for_subject('legalisir', $req->id);
+$txn_terbaru = $transaksi[0] ?? null;
+$txn_bayar   = payment_txn_payable('legalisir', $req->id);
+$aksi_bayar  = $txn_bayar ? payment_gateway($txn_bayar->gateway)->frontendAction($txn_bayar) : ['type' => 'none'];
+$label_bayar = payment_gateway_label($txn_bayar->gateway ?? payment_active_gateway_code());
+
+// Rincian biaya yang TERSIMPAN saat tagihan terbit. Halaman ini dulu
+// menghitung ulang dari setting SAAT INI, sehingga begitu tarif diubah,
+// rincian tagihan lama ikut berubah dan tidak lagi berjumlah sama.
+$rincian = null;
+foreach ($transaksi as $t) {
+    if ($t->fee_breakdown && ($r = json_decode($t->fee_breakdown, true)) && isset($r['documents'], $r['admin_total'])) {
+        $rincian = $r;
+        break;
+    }
+}
 ?>
 
 <div class="max-w-4xl mx-auto">
@@ -70,29 +87,21 @@ $docs = json_decode($req->documents);
                         <span class="font-medium"><?php echo e(ucwords(str_replace('_', ' ', $req->delivery_method))); ?></span>
                     </div>
                     <?php
-                        $doc_count = count($docs);
-                        $price_per_doc = (int)($settings['price_per_doc'] ?? 10000);
-                        $biaya_dokumen = $doc_count * $price_per_doc;
-                        
-                        $biaya_pengiriman = 0;
-                        if ($req->delivery_method === 'kurir' && $req->shipping_address) {
-                            $addr = json_decode($req->shipping_address, true);
-                            $prov = $addr['province'] ?? '';
-                            $zones_data = json_decode($settings['shipping_zones'] ?? '[]', true) ?: [];
-                            $matched_zone = null;
-                            foreach ($zones_data as $zone) {
-                                if (isset($zone['provinces']) && in_array($prov, $zone['provinces'])) { $matched_zone = $zone; break; }
+                        if ($rincian) {
+                            $biaya_dokumen = (int)$rincian['documents'];
+                            $biaya_pengiriman = (int)($rincian['shipping'] ?? 0);
+                            $biaya_admin_dan_layanan = (int)$rincian['admin_total'];
+                        } else {
+                            // Pengajuan lama tanpa rincian tersimpan: perkiraan dari
+                            // setting saat ini, sisa selisih menjadi biaya layanan.
+                            $biaya_dokumen = count($docs) * (int)setting('price_per_doc', '10000');
+                            $biaya_pengiriman = 0;
+                            if ($req->delivery_method === 'kurir' && $req->shipping_address) {
+                                $addr = json_decode($req->shipping_address, true) ?: [];
+                                $biaya_pengiriman = payment_shipping_cost($addr['province'] ?? '');
                             }
-                            if (!$matched_zone) {
-                                foreach ($zones_data as $zone) {
-                                    if (!empty($zone['is_default'])) { $matched_zone = $zone; break; }
-                                }
-                            }
-                            $biaya_pengiriman = (int)($matched_zone['cost'] ?? $settings['shipping_fee'] ?? 15000);
+                            $biaya_admin_dan_layanan = max(0, (int)$req->amount - $biaya_dokumen - $biaya_pengiriman);
                         }
-                        
-                        $biaya_admin_dan_layanan = $req->amount - $biaya_dokumen - $biaya_pengiriman;
-                        if ($biaya_admin_dan_layanan < 0) $biaya_admin_dan_layanan = 0;
                     ?>
                     <div class="flex justify-between py-2">
                         <span class="text-slate-500">Biaya Dokumen:</span>
@@ -168,13 +177,24 @@ $docs = json_decode($req->documents);
                     </div>
                     <?php endif; ?>
 
+                    <?php $url_payment = $_GET['payment'] ?? null; ?>
+                    <?php if ($url_payment === 'pending'): ?>
+                    <div class="mt-6 flex items-start gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-5 py-4 rounded-2xl">
+                        <i data-lucide="loader" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-bold">Pembayaran Belum Terkonfirmasi</p>
+                            <p class="text-xs font-medium opacity-80 mt-0.5">Bila Anda sudah membayar, status diperbarui otomatis dalam beberapa menit. Tidak perlu membayar lagi.</p>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- ❗ Alert Error Regenerate Token -->
-                    <?php if ($url_error === 'midtrans_failed'): ?>
+                    <?php if ($url_error === 'midtrans_failed' || $url_error === 'payment_create_failed'): ?>
                     <div id="alert-error" class="mt-6 flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 px-5 py-4 rounded-2xl">
                         <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 shrink-0 mt-0.5"></i>
                         <div>
-                            <p class="text-sm font-bold">Gagal Memperbarui Token</p>
-                            <p class="text-xs font-medium opacity-80 mt-0.5">Terjadi kesalahan saat menghubungi Midtrans. Periksa konfigurasi API Key di pengaturan atau coba beberapa saat lagi.</p>
+                            <p class="text-sm font-bold">Gagal Membuat Tagihan</p>
+                            <p class="text-xs font-medium opacity-80 mt-0.5">Tagihan belum dapat dibuat karena layanan pembayaran tidak merespons. Silakan coba lagi beberapa saat lagi.</p>
                         </div>
                         <button onclick="document.getElementById('alert-error').remove()" class="ml-auto text-red-400 hover:text-red-600 transition-colors shrink-0">
                             <i data-lucide="x" class="w-4 h-4"></i>
@@ -212,21 +232,38 @@ $docs = json_decode($req->documents);
 
                         <!-- Tombol Aksi Utama -->
                         <div class="bg-orange-50 px-6 py-6 space-y-3">
-                            <?php if ($req->midtrans_snap_token): ?>
-                                <button id="pay-button"
+                            <?php if ($aksi_bayar['type'] === 'snap'): ?>
+                                <button id="pay-button" type="button"
                                     class="w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-base shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all flex items-center justify-center gap-3 group">
                                     <i data-lucide="credit-card" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
                                     Bayar Sekarang
                                 </button>
-                                <p class="text-center text-[10px] text-orange-400 font-medium">
-                                    Aman dan terenkripsi via Midtrans · GoPay · QRIS · Transfer Bank
-                                </p>
+                            <?php elseif ($aksi_bayar['type'] === 'redirect'): ?>
+                                <!-- Flip: pembayaran dilanjutkan di halaman bayar Flip, lalu
+                                     kembali ke handlers/payment_return.php -->
+                                <a href="<?php echo e($aksi_bayar['url']); ?>" rel="noopener"
+                                    class="w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-base shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all flex items-center justify-center gap-3 group">
+                                    <i data-lucide="credit-card" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                                    Bayar Sekarang
+                                </a>
                             <?php else: ?>
-                                <!-- Token kosong — langsung tampil regenerate -->
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500 shrink-0"></i>
-                                    <p class="text-sm text-amber-700 font-medium">Token pembayaran tidak tersedia. Minta token baru di bawah.</p>
+                                    <p class="text-sm text-amber-700 font-medium">
+                                        <?php if ($txn_terbaru && in_array($txn_terbaru->status, ['expired', 'cancelled'], true)): ?>
+                                            Tagihan sebelumnya sudah kedaluwarsa. Buat tagihan baru di bawah.
+                                        <?php elseif ($txn_terbaru && $txn_terbaru->status === 'failed'): ?>
+                                            Pembayaran sebelumnya gagal. Buat tagihan baru di bawah.
+                                        <?php else: ?>
+                                            Tagihan pembayaran belum tersedia. Buat tagihan di bawah.
+                                        <?php endif; ?>
+                                    </p>
                                 </div>
+                            <?php endif; ?>
+                            <?php if ($aksi_bayar['type'] !== 'none'): ?>
+                                <p class="text-center text-[10px] text-orange-400 font-medium">
+                                    Diproses aman oleh <?php echo e($label_bayar); ?> · QRIS · Virtual Account · E-Wallet
+                                </p>
                             <?php endif; ?>
 
                             <!-- Divider -->
@@ -243,12 +280,12 @@ $docs = json_decode($req->documents);
                                 <button type="submit" id="regen-btn"
                                     class="w-full py-3.5 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2.5 group">
                                     <i data-lucide="refresh-cw" class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500"></i>
-                                    <?php echo e($req->midtrans_snap_token ? 'Token Kedaluwarsa? Perbarui Sesi Pembayaran' : 'Minta Token Pembayaran Baru'); ?>
+                                    <?php echo e($txn_bayar ? 'Tagihan Kedaluwarsa? Buat Tagihan Baru' : 'Buat Tagihan Pembayaran'); ?>
                                 </button>
                             </form>
 
                             <p class="text-center text-[10px] text-slate-400 font-medium leading-relaxed px-2">
-                                Token baru berlaku 24 jam sejak diperbarui. Data dokumen dan jumlah tagihan tidak berubah.
+                                Tagihan baru berlaku <?php echo e(round(setting_int('payment_expiry', 1440, 15) / 60)); ?> jam. Data dokumen dan jumlah tagihan tidak berubah.
                             </p>
                         </div>
                     </div>
@@ -377,36 +414,30 @@ $docs = json_decode($req->documents);
     </div>
 </div>
 
-<!-- Midtrans Snap Script -->
-<script src="<?php echo e($snap_url); ?>" data-client-key="<?php echo e($client_key); ?>"></script>
+<?php if ($aksi_bayar['type'] === 'snap'): ?>
+<!-- Midtrans Snap: hanya dimuat bila transaksi yang dibayar memang milik Midtrans -->
+<script src="<?php echo e($aksi_bayar['script']); ?>" data-client-key="<?php echo e($aksi_bayar['client_key']); ?>"></script>
+<?php endif; ?>
 <script type="text/javascript">
     const payButton = document.getElementById('pay-button');
-    if (payButton) {
+    if (payButton && window.snap) {
+        const kembali = 'handlers/payment_return.php?ref=<?php echo e(rawurlencode($txn_bayar->merchant_ref ?? '')); ?>';
+        const pulihkan = function () {
+            payButton.disabled = false;
+            payButton.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Bayar Sekarang';
+            lucide.createIcons();
+        };
         payButton.onclick = function() {
-            // Loading state
             payButton.disabled = true;
             payButton.innerHTML = '<svg class="animate-spin w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Membuka Pembayaran...';
 
-            window.snap.pay('<?php echo e($req->midtrans_snap_token); ?>', {
-                onSuccess: function(result) {
-                    window.location.href = 'handlers/payment_finish.php?id=<?php echo e($req->id); ?>&status=success';
-                },
-                onPending: function(result) {
-                    payButton.disabled = false;
-                    payButton.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Bayar Sekarang';
-                    lucide.createIcons();
-                },
-                onError: function(result) {
-                    payButton.disabled = false;
-                    payButton.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Bayar Sekarang';
-                    lucide.createIcons();
-                },
-                onClose: function() {
-                    // User tutup popup — reset tombol
-                    payButton.disabled = false;
-                    payButton.innerHTML = '<i data-lucide="credit-card" class="w-5 h-5"></i> Bayar Sekarang';
-                    lucide.createIcons();
-                }
+            window.snap.pay(<?php echo js_json($aksi_bayar['token'] ?? ''); ?>, {
+                // Status tidak dipercaya dari browser: halaman kembali
+                // mengambil ulang status dari gateway sebelum menampilkannya.
+                onSuccess: function() { window.location.href = kembali; },
+                onPending: function() { window.location.href = kembali; },
+                onError: pulihkan,
+                onClose: pulihkan
             });
         };
     }

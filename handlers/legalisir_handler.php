@@ -36,7 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $docs_type = $_POST['docs_type'] ?? [];
-    $delivery_method = $_POST['delivery_method'];
+    $delivery_method = (string)($_POST['delivery_method'] ?? '');
+    // Daftar tertutup. Nilai lain sebelumnya tersimpan apa adanya dan
+    // diperlakukan sebagai "bukan kurir" tanpa pemberitahuan.
+    if (!in_array($delivery_method, ['ambil_sendiri', 'kurir'], true)) {
+        header("Location: ../index.php?page=legalisir&error=invalid_delivery");
+        exit();
+    }
     
     // Fetch Settings for Validation & Calculation
     $stmt = $pdo->query("SELECT * FROM settings");
@@ -169,190 +175,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'postal'   => $addr_postal,
         ];
 
-        // Server-side zone lookup (do not trust client-side cost)
-        $zones_data = json_decode($settings['shipping_zones'] ?? '[]', true) ?: [];
-        $matched_zone = null;
-        foreach ($zones_data as $zone) {
-            if (in_array($addr_province, $zone['provinces'] ?? [])) {
-                $matched_zone = $zone;
-                break;
-            }
-        }
-        // Fallback to default zone
-        if (!$matched_zone) {
-            foreach ($zones_data as $zone) {
-                if (!empty($zone['is_default'])) { $matched_zone = $zone; break; }
-            }
-        }
-        $shipping_fee = (int)($matched_zone['cost'] ?? $settings['shipping_fee'] ?? 15000);
     }
 
-    $price_per_doc = (int)($settings['price_per_doc'] ?? 10000);
-    
+    // ── Tagihan ──────────────────────────────────────────────────────
+    //
+    // Dihitung oleh payment_quote(), fungsi yang SAMA dengan yang dipanggil
+    // pratinjau di halaman lewat api/payment_quote.php. Sebelumnya handler
+    // ini memakai salinan rumus sendiri yang tidak membagi persen dengan
+    // 100 dan membaca nama kunci berbeda: alumni melihat Rp 68.344 lalu
+    // ditagih Rp 60.000. Ongkir juga dicari ulang di sana, tanpa peka huruf.
+    require_once __DIR__ . '/../includes/payment/service.php';
+
     $doc_count = count($uploaded_files);
-    $docs_total = $doc_count * $price_per_doc;
-    $shipping_cost = ($delivery_method == 'kurir' ? $shipping_fee : 0);
-    
-    // --- MIDTRANS GROSS-UP & CUSTOM TAX CONFIGURATION ---
-    $mdr_rate_max       = (float)($settings['midtrans_mdr_rate'] ?? 0.04);
-    $ppn_midtrans_rate  = (float)($settings['midtrans_ppn_rate'] ?? 0.11);
-    $biaya_payout       = (int)($settings['midtrans_payout_fee'] ?? 5550);
-    $margin_admin       = (int)($settings['midtrans_admin_margin'] ?? 2000);
-    $batas_minimum_fee  = (int)($settings['midtrans_min_fee'] ?? 10000);
-    $custom_tax_type    = $settings['midtrans_custom_tax_type'] ?? 'flat';
-    $custom_tax_value   = (float)($settings['midtrans_custom_tax_value'] ?? 0);
-
-    // 1. Constant Derivation
-    $total_mdr_multiplier = $mdr_rate_max + ($mdr_rate_max * $ppn_midtrans_rate);
-    $gross_up_divider     = 1 - $total_mdr_multiplier;
-
-    // 2. Base Identifier
-    $biaya_dokumen    = $docs_total;
-    $biaya_pengiriman = $shipping_cost;
-    $tagihan_pokok    = $biaya_dokumen + $biaya_pengiriman;
-
-    // 3. Custom Tax
-    $nominal_custom_tax = 0;
-    if ($custom_tax_type === 'percentage') {
-        $nominal_custom_tax = $tagihan_pokok * $custom_tax_value;
-    } else {
-        $nominal_custom_tax = $custom_tax_value;
+    $quote = payment_quote('legalisir', [
+        'doc_count'       => $doc_count,
+        'delivery_method' => $delivery_method,
+        'province'        => $shipping_address['province'] ?? '',
+    ]);
+    if (!$quote['ok']) {
+        error_log('Legalisir: rincian biaya ditolak: ' . $quote['error']);
+        header("Location: ../index.php?page=legalisir&error=fee_config");
+        exit();
     }
 
-    // 4. Tagihan Internal
-    $tagihan_internal = $tagihan_pokok + $nominal_custom_tax;
-
-    // 5. Kalkulasi Gateway (Gross-Up)
-    $biaya_kotor_gateway = ($tagihan_internal * $total_mdr_multiplier) + $biaya_payout + $margin_admin;
-    $biaya_gateway_sementara = $biaya_kotor_gateway / $gross_up_divider;
-
-    // 6. Batas Minimum & Penggabungan UI
-    $biaya_gateway_final = $biaya_gateway_sementara < $batas_minimum_fee 
-        ? $batas_minimum_fee 
-        : (int)ceil($biaya_gateway_sementara);
-
-    $biaya_admin_dan_layanan = (int)ceil($biaya_gateway_final + $nominal_custom_tax);
-
-    // 7. Final Grand Total
-    $grand_total = $biaya_dokumen + $biaya_pengiriman + $biaya_admin_dan_layanan;
-
-    // Generate Order ID
     $order_id = 'LEG-' . strtoupper(uniqid());
     $documents_json = json_encode($uploaded_files);
+    $shipping_address_json = $shipping_address ? json_encode($shipping_address, JSON_UNESCAPED_UNICODE) : null;
 
     try {
-        // 1. Prepare Midtrans Request
-        $is_production = (bool)($settings['midtrans_is_production'] ?? false);
-        $expiry_minutes = (int)($settings['payment_expiry'] ?? 1440);
-
-        // Build dynamic base URL (works on localhost & production)
-        $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host     = $_SERVER['HTTP_HOST'];
-        $base_path = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'])), '/');
-        $base_url = $scheme . '://' . $host . $base_path;
-        $finish_url = $base_url . '/index.php?page=legalisir_detail&id=' . $order_id;
-        
-        $payload = [
-            'transaction_details' => [
-                'order_id' => $order_id,
-                'gross_amount' => $grand_total,
-            ],
-            'item_details' => [
-                [
-                    'id' => 'DOCS',
-                    'price' => $price_per_doc,
-                    'quantity' => $doc_count,
-                    'name' => 'Biaya Dokumen'
-                ],
-                [
-                    'id' => 'FEE',
-                    'price' => $biaya_admin_dan_layanan,
-                    'quantity' => 1,
-                    'name' => 'Biaya Admin & Layanan'
-                ],
-                [
-                    'id' => 'SHIPPING',
-                    'price' => $biaya_pengiriman,
-                    'quantity' => 1,
-                    'name' => 'Biaya Pengiriman'
-                ]
-            ],
-            'customer_details' => [
-                'first_name' => $_SESSION['user_name'],
-                'email' => $user_data->email ?? 'alumni@example.com',
-            ],
-            'expiry' => [
-                'start_time' => date("Y-m-d H:i:s O"),
-                'unit' => 'minute',
-                'duration' => $expiry_minutes
-            ],
-            'callbacks' => [
-                'finish' => $finish_url
-            ]
-        ];
-
-        $json_payload = json_encode($payload);
-        $server_key = $settings['midtrans_server_key'];
-        $api_url = $is_production 
-            ? "https://app.midtrans.com/snap/v1/transactions" 
-            : "https://app.sandbox.midtrans.com/snap/v1/transactions";
-
-        $auth_key = base64_encode($server_key . ':');
-        
-        // 2. Call Midtrans API via cURL
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Authorization: Basic ' . $auth_key
-        ));
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $snap_token = null;
-        if ($http_code == 201) {
-            $res_data = json_decode($response);
-            $snap_token = $res_data->token;
-        } else {
-            // Log error for debugging
-            $log_msg = "[" . date('Y-m-d H:i:s') . "] Midtrans Error ($http_code): " . $response . PHP_EOL;
-            file_put_contents('../midtrans_error.log', $log_msg, FILE_APPEND);
-        }
-
-        // 3. Save to Database
-        $shipping_address_json = $shipping_address ? json_encode($shipping_address, JSON_UNESCAPED_UNICODE) : null;
-        $insert = $pdo->prepare("INSERT INTO legalisir_requests 
-            (id, user_id, documents, delivery_method, shipping_address, amount, status, payment_method, midtrans_order_id, midtrans_snap_token)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)");
-        $insert->execute([$order_id, $user_id, $documents_json, $delivery_method, $shipping_address_json, $grand_total, 'midtrans', $order_id, $snap_token]);
-
-        log_activity('REQUEST_LEGALISIR', "User requested legalisir ($order_id) with total amount: Rp " . number_format($grand_total, 0, ',', '.'));
-        reset_rate_limit('REQUEST_LEGALISIR');
-
-        // Notify admins about the new legalisir request
-        $alumni_name = $_SESSION['user_name'] ?? 'Alumni';
-        notify_roles(['super_admin', 'admin_legalisir'], 'Pengajuan Legalisir Baru', 'Alumni ' . htmlspecialchars($alumni_name) . ' telah mengajukan legalisir baru (' . $order_id . ') senilai Rp ' . number_format($grand_total, 0, ',', '.') . '.', 'info', 'index.php?page=admin_legalisir');
-
-        // Send Email Invoice
-        if (!empty($user_data->email)) {
-            $docs_desc = $doc_count > 1 ? "$doc_count Berkas" : "1 Berkas";
-            send_invoice_email($user_data->email, $alumni_name, $order_id, $grand_total, $docs_desc, 'Midtrans / Online Payment');
-        }
-
-        // 4. Redirect to Detail Page
-        header("Location: ../index.php?page=legalisir_detail&id=" . $order_id);
-        exit();
-
-    } catch (Exception $e) {
+        // Permohonan disimpan LEBIH DULU, baru tagihan diminta ke gateway.
+        // Urutan lama kebalikannya: bila INSERT gagal, transaksi gateway
+        // sudah terbit tanpa catatan apa pun di sistem.
+        $pdo->prepare("INSERT INTO legalisir_requests
+                (id, user_id, documents, delivery_method, shipping_address, amount, status, payment_status, payment_method)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)")
+            ->execute([$order_id, $user_id, $documents_json, $delivery_method,
+                       $shipping_address_json, $quote['total'], $quote['gateway']]);
+    } catch (PDOException $e) {
         error_log("Legalisir Request Error: " . $e->getMessage());
         error_system('Terjadi kesalahan sistem saat memproses pengajuan legalisir. Silakan hubungi administrator.');
     }
+
+    $pengguna = $pdo->prepare("SELECT name, email, phone, address FROM users WHERE id = ?");
+    $pengguna->execute([$user_id]);
+    $u = $pengguna->fetch();
+    $alumni_name = $_SESSION['user_name'] ?? ($u->name ?? 'Alumni');
+
+    // Kegagalan gateway tidak membatalkan permohonan: berkasnya sudah
+    // tersimpan, dan alumni dapat meminta tagihan ulang dari halaman detail.
+    $tagihan = payment_create('legalisir', $order_id, $order_id, $quote, [
+        'name'    => $alumni_name,
+        'email'   => $u->email ?? '',
+        'phone'   => $shipping_address['phone'] ?? ($u->phone ?? ''),
+        'address' => $u->address ?? '',
+    ], $user_id);
+
+    log_activity('REQUEST_LEGALISIR', "User requested legalisir ($order_id) with total amount: Rp " . number_format($quote['total'], 0, ',', '.'));
+    reset_rate_limit('REQUEST_LEGALISIR');
+
+    notify_roles(['super_admin', 'admin_legalisir'], 'Pengajuan Legalisir Baru',
+        'Alumni ' . htmlspecialchars($alumni_name) . ' telah mengajukan legalisir baru (' . $order_id . ') senilai Rp '
+        . number_format($quote['total'], 0, ',', '.') . '.', 'info', 'index.php?page=admin_legalisir');
+
+    if (!empty($u->email)) {
+        $docs_desc = $doc_count > 1 ? "$doc_count Berkas" : "1 Berkas";
+        send_invoice_email($u->email, $alumni_name, $order_id, $quote['total'], $docs_desc,
+            payment_gateway_label($quote['gateway']) . ' / Pembayaran Online');
+    }
+
+    header("Location: ../index.php?page=legalisir_detail&id=" . rawurlencode($order_id)
+        . ($tagihan['ok'] ? '' : '&error=payment_create_failed'));
+    exit();
 } else {
     header("Location: ../index.php?page=legalisir");
     exit();
