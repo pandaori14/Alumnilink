@@ -49,11 +49,16 @@ function e($v)
 
 /**
  * Seluruh pengaturan sebagai array asosiatif, dibaca sekali per permintaan.
+ *
+ * @param bool $segarkan Baca ulang dari basis data. Dibutuhkan setelah
+ *                       setting_save() di permintaan yang sama — misalnya
+ *                       sesudah super admin memindahkan gateway pembayaran,
+ *                       nilai lama tidak boleh terus terbaca dari cache.
  */
-function all_settings()
+function all_settings($segarkan = false)
 {
     static $cache = null;
-    if ($cache !== null) {
+    if ($cache !== null && !$segarkan) {
         return $cache;
     }
 
@@ -103,6 +108,23 @@ function setting_int($key, $default = 0, $min = null)
 function setting_bool($key, $default = false)
 {
     return setting($key, $default ? '1' : '0') === '1';
+}
+
+/**
+ * Simpan satu pengaturan, lalu segarkan cache all_settings().
+ *
+ * Pola INSERT ... ON DUPLICATE KEY UPDATE yang sama sudah dipakai di banyak
+ * handler; fungsi ini ada supaya kode baru tidak menambah salinannya lagi,
+ * dan supaya pembacaan sesudahnya di permintaan yang sama tidak basi.
+ */
+function setting_save($key, $value)
+{
+    global $pdo;
+    $value = (string)$value;
+    $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)
+                   ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)")
+        ->execute([$key, $value]);
+    all_settings(true);
 }
 
 // ─────────────────────────────────────────────────────────

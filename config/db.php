@@ -32,7 +32,7 @@ define('BASE_URL', getenv('APP_URL') ?: $default_url);
  * Naikkan nomor versi di bawah setiap kali menambahkan migrasi baru, agar
  * migrasi tersebut ikut berjalan sekali di server setelah di-upload.
  */
-define('ALUMNILINK_SCHEMA_VERSION', '2026.09.10.5');
+define('ALUMNILINK_SCHEMA_VERSION', '2026.09.17.1');
 
 /**
  * Benar bila skema database sudah sesuai versi yang diharapkan kode ini.
@@ -661,9 +661,132 @@ try {
         }
     }
 
+    // ── Ledger pembayaran + gateway kedua (Flip) ────────────────────
+    //
+    // payment_transactions adalah LEDGER: satu baris per tagihan yang pernah
+    // diterbitkan, termasuk tunai. Sengaja TANPA foreign key. FK CASCADE
+    // yang ada (legalisir_requests -> users, donations -> kampanye) membuat
+    // menghapus satu user atau kampanye ikut menghapus jejak uangnya.
+    //
+    // COLLATE ditulis EKSPLISIT. Collation bawaan basis data produksi adalah
+    // utf8mb4_unicode_ci, sedangkan seluruh tabel lama utf8mb4_general_ci.
+    // Tanpa ini, tabel baru di produksi mengikuti bawaan basis data dan
+    // join ke legalisir_requests.id gagal "Illegal mix of collations" —
+    // galat yang tidak pernah muncul di lokal.
+    //
+    // CREATE TABLE sengaja TIDAK dibungkus try/catch sendiri: bila gagal,
+    // migrasi harus diulang pada permintaan berikutnya, bukan ditandai
+    // selesai lalu kode baru fatal karena tabelnya tidak ada.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `payment_transactions` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `gateway` VARCHAR(20) NOT NULL,
+        `purpose` VARCHAR(20) NOT NULL,
+        `subject_id` VARCHAR(64) NOT NULL,
+        `merchant_ref` VARCHAR(64) NOT NULL,
+        `provider_ref` VARCHAR(120) DEFAULT NULL,
+        `amount_expected` DECIMAL(15,2) DEFAULT NULL,
+        `fee_breakdown` LONGTEXT DEFAULT NULL,
+        `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+        `snap_token` VARCHAR(255) DEFAULT NULL,
+        `pay_url` VARCHAR(500) DEFAULT NULL,
+        `channel` VARCHAR(50) DEFAULT NULL,
+        `flag` VARCHAR(40) DEFAULT NULL,
+        `last_error` VARCHAR(255) DEFAULT NULL,
+        `created_by` VARCHAR(128) DEFAULT NULL,
+        `expires_at` DATETIME DEFAULT NULL,
+        `paid_at` DATETIME DEFAULT NULL,
+        `last_checked_at` DATETIME DEFAULT NULL,
+        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_merchant_ref` (`merchant_ref`),
+        KEY `idx_provider` (`gateway`, `provider_ref`),
+        KEY `idx_subject` (`purpose`, `subject_id`),
+        KEY `idx_status_expiry` (`status`, `expires_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+    // Jurnal callback: append-only, TANPA kunci unik. Idempotensi dijamin
+    // oleh kunci baris + transisi maju di includes/payment/service.php,
+    // bukan oleh penanda. Penanda unik adalah pola webhook lama yang
+    // membuat retry setelah galat dibalas "sudah diproses".
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `payment_callbacks` (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `gateway` VARCHAR(20) NOT NULL,
+        `transaction_id` BIGINT UNSIGNED DEFAULT NULL,
+        `merchant_ref` VARCHAR(64) DEFAULT NULL,
+        `provider_ref` VARCHAR(120) DEFAULT NULL,
+        `provider_event` VARCHAR(120) DEFAULT NULL,
+        `provider_status` VARCHAR(40) DEFAULT NULL,
+        `outcome` VARCHAR(30) NOT NULL,
+        `detail` VARCHAR(255) DEFAULT NULL,
+        `payload_sha256` CHAR(64) DEFAULT NULL,
+        `remote_ip` VARCHAR(45) DEFAULT NULL,
+        `received_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_gw_ref` (`gateway`, `merchant_ref`),
+        KEY `idx_received` (`received_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+    // Setting baru disemai dari nilai lama, supaya tagihan sesudah upgrade
+    // sama dengan angka yang SELAMA INI ditampilkan pratinjau ke alumni.
+    // INSERT IGNORE: nilai yang sudah diubah super admin tidak ditimpa.
+    $lama_bayar = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN
+        ('midtrans_mdr_rate','midtrans_ppn_rate','midtrans_payout_fee','midtrans_margin_admin','custom_tax_value')")
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
+    $nilai_lama = function ($k, $bawaan) use ($lama_bayar) {
+        $v = trim((string)($lama_bayar[$k] ?? ''));
+        return ($v !== '' && is_numeric($v)) ? $v : $bawaan;
+    };
+    $semai_bayar = $pdo->prepare("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)");
+    foreach ([
+        'payment_gateway_active'          => 'midtrans',
+        'flip_secret_key'                 => '',
+        'flip_validation_token'           => '',
+        'flip_is_production'              => '0',
+        'flip_api_version'                => 'v2',
+        'fee_midtrans_percent'            => $nilai_lama('midtrans_mdr_rate', '4.00'),
+        'fee_midtrans_vat_percent'        => $nilai_lama('midtrans_ppn_rate', '11.00'),
+        'fee_midtrans_flat'               => $nilai_lama('midtrans_payout_fee', '2500'),
+        'fee_midtrans_app'                => $nilai_lama('midtrans_margin_admin', '2500'),
+        'fee_midtrans_min'                => '0',
+        'fee_midtrans_reviewed'           => '1',
+        'fee_flip_percent'                => '0',
+        'fee_flip_vat_percent'            => '0',
+        'fee_flip_flat'                   => '0',
+        'fee_flip_app'                    => '0',
+        'fee_flip_min'                    => '0',
+        'fee_flip_reviewed'               => '0',
+        'payment_custom_charge_legalisir' => $nilai_lama('custom_tax_value', '0'),
+        'payment_custom_charge_donasi'    => '0',
+        'legalisir_require_paid'          => '0',
+    ] as $k => $v) {
+        $semai_bayar->execute([$k, $v]);
+    }
+
+    // Data lama ke ledger. Kegagalan di sini tidak menghentikan situs:
+    // transaksi yang terlewat dibuat secara malas saat pertama kali dicari.
+    try {
+        // Webhook lama menulis enum kanal Midtrans ('bank_transfer', 'qris')
+        // ke payment_method, padahal laporan menjumlah = 'midtrans'.
+        $pdo->exec("UPDATE legalisir_requests SET payment_method = 'midtrans'
+                     WHERE payment_method IS NOT NULL AND payment_method <> ''
+                       AND payment_method NOT IN ('cash', 'midtrans', 'flip')");
+        require_once dirname(__DIR__) . '/includes/payment/backfill.php';
+        payment_backfill_all($pdo);
+    } catch (PDOException $e) {
+        error_log('Backfill ledger pembayaran gagal: ' . $e->getMessage());
+    }
+
     } // selesai: if (!alumnilink_schema_is_current($pdo))
 } catch (PDOException $e) {
     error_log("Database Connection Error: " . $e->getMessage());
+    // 503, bukan 200 bawaan die(). Gateway pembayaran menganggap balasan
+    // 200 sebagai "sudah diterima" dan berhenti mengulang callback, sehingga
+    // pembayaran yang tiba saat basis data bermasalah hilang selamanya.
+    if (!headers_sent()) {
+        http_response_code(503);
+        header('Retry-After: 60');
+    }
     die("Koneksi database gagal. Silakan hubungi administrator sistem.");
 }
 
