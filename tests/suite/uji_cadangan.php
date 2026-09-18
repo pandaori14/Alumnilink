@@ -57,14 +57,81 @@ $root->exec("CREATE DATABASE `$DB_UJI` CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
 $uji = new PDO("mysql:host=" . DB_HOST . ";dbname=$DB_UJI;charset=utf8mb4", DB_USER, DB_PASS,
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]);
 
-// Jalankan dump apa adanya, persis seperti phpMyAdmin -> Import.
-$galat = '';
-try {
-    $uji->exec($sql);
-} catch (PDOException $e) {
-    $galat = $e->getMessage();
+/**
+ * Pecah dump menjadi pernyataan terpisah, seperti yang dilakukan
+ * phpMyAdmin dan klien mysql saat mengimpor.
+ *
+ * Mengirim seluruh berkas sebagai SATU pernyataan bukan tiruan yang jujur:
+ * begitu dump melewati max_allowed_packet (bawaan 1 MB), server menolak
+ * paketnya dan memutus koneksi — padahal pemulihan sungguhan, yang
+ * mengirim per pernyataan, berjalan mulus.
+ *
+ * Tanda titik koma di dalam string data tidak ikut memecah: keadaan kutip
+ * dan escape backslash diikuti selama pemindaian.
+ */
+function pecah_sql($sql)
+{
+    $pernyataan = [];
+    $kini = '';
+    $dalam_kutip = false;
+    $escape = false;
+    $n = strlen($sql);
+    for ($i = 0; $i < $n; $i++) {
+        $c = $sql[$i];
+        $kini .= $c;
+        if ($escape) {
+            $escape = false;
+            continue;
+        }
+        if ($c === chr(92)) {   // garis miring terbalik: escape di dalam string SQL
+            $escape = true;
+            continue;
+        }
+        if ($c === "'") {
+            $dalam_kutip = !$dalam_kutip;
+            continue;
+        }
+        if ($c === ';' && !$dalam_kutip) {
+            $pernyataan[] = trim($kini);
+            $kini = '';
+        }
+    }
+    if (trim($kini) !== '') {
+        $pernyataan[] = trim($kini);
+    }
+    // Buang potongan yang isinya hanya baris komentar.
+    return array_values(array_filter($pernyataan, function ($s) {
+        $baris_isi = array_filter(array_map('trim', explode("\n", $s)), function ($b) {
+            return $b !== '' && $b !== ';' && substr($b, 0, 2) !== '--';
+        });
+        return $baris_isi !== [];
+    }));
 }
-cek($galat === '', 'seluruh SQL dijalankan tanpa galat', substr($galat, 0, 90));
+
+$pernyataan = pecah_sql($sql);
+cek(count($pernyataan) > 10, 'dump terpecah menjadi pernyataan', count($pernyataan) . ' pernyataan');
+
+// Satu pernyataan yang lebih besar dari max_allowed_packet TIDAK akan dapat
+// dipulihkan lewat phpMyAdmin mana pun. Diperiksa terhadap batas server ini.
+$batas = (int)$pdo->query("SELECT @@max_allowed_packet")->fetchColumn();
+$terbesar = 0;
+foreach ($pernyataan as $s1) {
+    $terbesar = max($terbesar, strlen($s1));
+}
+cek($terbesar < $batas, 'tidak ada pernyataan yang melebihi max_allowed_packet server',
+    number_format($terbesar / 1024, 1) . ' KB dari batas ' . number_format($batas / 1024, 1) . ' KB');
+
+// Jalankan satu per satu, persis seperti phpMyAdmin -> Import.
+$galat = '';
+foreach ($pernyataan as $i => $s1) {
+    try {
+        $uji->exec($s1);
+    } catch (PDOException $e) {
+        $galat = 'pernyataan #' . ($i + 1) . ': ' . $e->getMessage() . ' | ' . substr($s1, 0, 60);
+        break;
+    }
+}
+cek($galat === '', 'seluruh SQL dijalankan tanpa galat', substr($galat, 0, 120));
 
 echo "\n=== D. Bandingkan hasil pulihan dengan aslinya ===\n";
 $tabel_asli = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
@@ -148,11 +215,20 @@ cek(strpos((string)$log, 'alumnilink_') !== false, 'unduhan tercatat di Audit Tr
 
 echo "\n=== F. Rotasi ===\n";
 for ($i = 0; $i < 3; $i++) { exec(escapeshellarg(PHP_BINARY) . ' ' . AKAR . '/cron/backup.php 2>&1'); sleep(1); }
+// Nilai semula dicatat lalu dikembalikan. Dulu kunci ini dihapus setelah
+// uji, karena memang belum pernah ada; sejak ia disemai migrasi dan dapat
+// diatur dari Konfigurasi Sistem, menghapusnya berarti membuang pilihan
+// super admin.
+$keep_semula = $pdo->query("SELECT setting_value FROM settings WHERE setting_key='backup_keep'")->fetchColumn();
 $pdo->exec("INSERT INTO settings (setting_key,setting_value) VALUES ('backup_keep','2')
             ON DUPLICATE KEY UPDATE setting_value='2'");
 exec(escapeshellarg(PHP_BINARY) . ' ' . AKAR . '/cron/backup.php 2>&1');
 cek(count(backup_daftar()) === 2, 'rotasi menyisakan tepat 2 berkas', count(backup_daftar()) . ' berkas');
-$pdo->exec("DELETE FROM settings WHERE setting_key='backup_keep'");
+if ($keep_semula === false) {
+    $pdo->exec("DELETE FROM settings WHERE setting_key='backup_keep'");
+} else {
+    $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'backup_keep'")->execute([$keep_semula]);
+}
 
 // ── Bersihkan ───────────────────────────────────────────────────────
 $root->exec("DROP DATABASE IF EXISTS `$DB_UJI`");

@@ -682,7 +682,7 @@ function send_html_email(string $to_email, string $to_name, string $subject, str
  */
 function send_employer_survey_invitation($to_email, $to_name, $alumni_name, $link, $berlaku_hari)
 {
-    $institusi = function_exists('setting') ? setting('system_name', 'AlumniLink') : 'AlumniLink';
+    $institusi = function_exists('nama_institusi') ? nama_institusi() : 'AlumniLink';
 
     $subject = 'Permohonan Penilaian Lulusan - ' . $institusi;
 

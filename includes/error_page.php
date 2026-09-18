@@ -72,7 +72,7 @@ function render_error_page($title, $message, $code = 403, $icon = 'shield-alert'
     $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
 
     $accent  = function_exists('brand_primary_color') ? brand_primary_color() : '#2563eb';
-    $sysName = function_exists('setting') ? setting('system_name', 'AlumniLink') : 'AlumniLink';
+    $sysName = function_exists('nama_institusi') ? nama_institusi() : 'AlumniLink';
 
     $isDenied = in_array($code, [401, 403], true);
     $tone     = $isDenied ? '#dc2626' : '#d97706';

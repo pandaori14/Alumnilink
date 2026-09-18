@@ -190,7 +190,20 @@ try {
         ('pagination_size',             '20'),
         -- Identitas visual
         ('brand_primary_color',         '#2563eb'),
-        ('system_favicon',              '')
+        ('system_favicon',              ''),
+        -- Kunci yang dulu hanya hidup di kode sebagai nilai bawaan, tanpa
+        -- kolom di mana pun. Disemai dengan nilai yang SAMA persis, jadi
+        -- perilakunya tidak berubah, tetapi sekarang terlihat dan dapat
+        -- diubah dari Konfigurasi Sistem.
+        ('email_throttle_ms',           '1500'),
+        ('email_daily_limit',           '2000'),
+        ('email_stuck_minutes',         '15'),
+        ('email_bounce_threshold',      '3'),
+        ('import_max_rows',             '2000'),
+        ('import_max_bytes',            '2097152'),
+        ('backup_keep',                 '7'),
+        ('legalisir_sla_warn_days',     '3'),
+        ('legalisir_sla_breach_days',   '7')
     ");
 
     // ── Pelaporan tracer: buka batas 5 pertanyaan ─────────────────────

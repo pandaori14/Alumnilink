@@ -69,40 +69,101 @@ $color_map = [
 ];
 ?>
 
-<div class="max-w-4xl mx-auto pb-20">
-    <div class="mb-10 px-1">
-        <h1 class="text-2xl md:text-3xl font-black outfit text-slate-800 tracking-tight">Pengaturan Sistem</h1>
-        <p class="text-slate-400 text-sm mt-1 font-medium">Kelola seluruh konfigurasi platform AlumniLink dari satu tempat.</p>
+<div class="max-w-6xl mx-auto pb-24">
+
+    <div class="mb-8 px-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-black outfit text-slate-800 tracking-tight">Konfigurasi Sistem</h1>
+            <p class="text-slate-400 text-sm mt-1 font-medium">Seluruh pengaturan platform dalam satu tempat. Perubahan berlaku setelah ditekan Simpan.</p>
+        </div>
+        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 text-white text-xs font-bold shrink-0">
+            <i data-lucide="shield-check" class="w-4 h-4"></i> Khusus Super Admin
+        </span>
     </div>
 
-    <!-- Tab Navigation (Premium Responsive Slider) -->
-    <div class="mb-8 border-b border-slate-200 flex flex-wrap gap-2 pb-2">
-        <button type="button" onclick="switchSettingsTab('tab-identity')" id="btn-tab-identity" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all bg-slate-900 text-white shadow-lg flex-1 min-w-[160px]">
-            <i data-lucide="building-2" class="w-4 h-4"></i> Identitas & Konten
-        </button>
-        <button type="button" onclick="switchSettingsTab('tab-system')" id="btn-tab-system" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex-1 min-w-[160px]">
-            <i data-lucide="settings-2" class="w-4 h-4"></i> Sistem & Keamanan
-        </button>
-        <button type="button" onclick="switchSettingsTab('tab-payment')" id="btn-tab-payment" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex-1 min-w-[160px]">
-            <i data-lucide="credit-card" class="w-4 h-4"></i> Pembayaran & Kurir
-        </button>
-        <button type="button" onclick="switchSettingsTab('tab-integration')" id="btn-tab-integration" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex-1 min-w-[160px]">
-            <i data-lucide="key" class="w-4 h-4"></i> Integrasi API
-        </button>
-        <button type="button" onclick="switchSettingsTab('tab-documents')" id="btn-tab-documents" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex-1 min-w-[160px]">
-            <i data-lucide="files" class="w-4 h-4"></i> Dokumen & Akses
-        </button>
-        <button type="button" onclick="switchSettingsTab('tab-rules')" id="btn-tab-rules" class="settings-tab-btn flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-slate-500 hover:text-slate-800 hover:bg-slate-50 flex-1 min-w-[160px]">
-            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Aturan & Keamanan
-        </button>
-    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
 
-    <form action="handlers/admin_settings_handler.php" method="POST" enctype="multipart/form-data" class="space-y-8" id="settings-form">
-        <?php csrf_field(); ?>
+        <aside id="settings-nav" class="lg:col-span-1 lg:sticky lg:top-6 space-y-4 min-w-0">
+            <nav aria-label="Bagian pengaturan" class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+                <button type="button" onclick="switchSettingsTab('tab-identitas')" id="btn-tab-identitas"
+                        aria-current="true"
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap bg-blue-600 text-white shadow-lg shadow-blue-200">
+                    <i data-lucide="building-2" class="w-4 h-4 shrink-0"></i> Identitas & Tampilan
+                </button>
+                <button type="button" onclick="switchSettingsTab('tab-layanan')" id="btn-tab-layanan"
+                        aria-current="false"
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="award" class="w-4 h-4 shrink-0"></i> Layanan & Biaya
+                </button>
+                <button type="button" onclick="switchSettingsTab('tab-integrasi')" id="btn-tab-integrasi"
+                        aria-current="false"
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="plug" class="w-4 h-4 shrink-0"></i> Integrasi & E-mail
+                </button>
+                <button type="button" onclick="switchSettingsTab('tab-keamanan')" id="btn-tab-keamanan"
+                        aria-current="false"
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i> Keamanan & Akses
+                </button>
+                <button type="button" onclick="switchSettingsTab('tab-operasional')" id="btn-tab-operasional"
+                        aria-current="false"
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="server-cog" class="w-4 h-4 shrink-0"></i> Operasional
+                </button>
+            </nav>
+                <div class="glass rounded-[2rem] p-4 border border-white shadow-sm">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Menu terkait</p>
+                    <div class="grid grid-cols-2 lg:grid-cols-1 gap-1">
+                    <a href="index.php?page=admin_payment_gateway" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+                        <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all shrink-0">
+                            <i data-lucide="credit-card" class="w-4 h-4"></i>
+                        </div>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-700 leading-snug">Gateway Pembayaran</span>
+                            <span class="block text-[10px] text-slate-400 leading-snug">Kredensial, tarif, monitor</span>
+                        </span>
+                    </a>
+                    <a href="index.php?page=admin_users" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+                        <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all shrink-0">
+                            <i data-lucide="user-cog" class="w-4 h-4"></i>
+                        </div>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-700 leading-snug">Kelola User</span>
+                            <span class="block text-[10px] text-slate-400 leading-snug">Akun staf dan perannya</span>
+                        </span>
+                    </a>
+                    <a href="index.php?page=admin_majors" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+                        <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all shrink-0">
+                            <i data-lucide="book-copy" class="w-4 h-4"></i>
+                        </div>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-700 leading-snug">Kelola Prodi</span>
+                            <span class="block text-[10px] text-slate-400 leading-snug">Daftar program studi</span>
+                        </span>
+                    </a>
+                    <a href="index.php?page=admin_logs" class="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+                        <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all shrink-0">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        </div>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-bold text-slate-700 leading-snug">Audit Trail</span>
+                            <span class="block text-[10px] text-slate-400 leading-snug">Riwayat aktivitas admin</span>
+                        </span>
+                    </a>
+                    </div>
+                </div>
+        </aside>
 
+        <div class="lg:col-span-3 min-w-0">
+            <form action="handlers/admin_settings_handler.php" method="POST" enctype="multipart/form-data" class="space-y-8" id="settings-form">
+                <?php csrf_field(); ?>
 
-        <div class="settings-tab-content tab-identity space-y-8">
-            <!-- 1. Identitas Institusi -->
+        <div class="settings-tab-content tab-identitas space-y-8">
+            <header class="px-1">
+                <h2 class="text-base font-black outfit text-slate-800">Identitas &amp; Tampilan</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Logo, warna, kontak bantuan, dan isi halaman depan yang dilihat publik.</p>
+            </header>
+
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
@@ -130,6 +191,101 @@ $color_map = [
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
+                        <i data-lucide="palette" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Identitas Visual</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Favicon dan warna utama yang dipakai di seluruh antarmuka.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="set_favicon" class="block text-sm font-bold text-slate-700 mb-2">Favicon (path berkas)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Ikon pada tab peramban. Kosongkan untuk memakai logo sistem.</p>
+                        <input id="set_favicon" type="text" name="system_favicon" value="<?php echo htmlspecialchars($settings['system_favicon'] ?? ''); ?>" placeholder="uploads/system/favicon.png" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="set_brand_color" class="block text-sm font-bold text-slate-700 mb-2">Warna Utama Institusi</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Dipakai untuk indikator fokus keyboard, tombol utama pada halaman galat, dan dialog konfirmasi.</p>
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <input id="set_brand_color" type="color" name="brand_primary_color" value="<?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?>" class="w-20 h-14 rounded-2xl border border-slate-200 cursor-pointer bg-white p-1" oninput="updateContrast(this.value)">
+                            <code id="brandHex" class="text-sm font-mono text-slate-500"><?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?></code>
+
+                            <?php
+                            // Peringatan kontras: mencegah pemilihan warna yang membuat
+                            // teks putih di atasnya tidak terbaca (WCAG 1.4.3).
+                            $contrast = brand_contrast_report($settings['brand_primary_color'] ?? null);
+                            ?>
+                            <div id="contrastBadge" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border"
+                                 role="status" aria-live="polite">
+                                <span id="contrastText"></span>
+                            </div>
+                        </div>
+
+                        <!-- Pratinjau keterbacaan -->
+                        <div class="mt-4 flex items-center gap-3 flex-wrap">
+                            <span id="contrastPreview" class="px-5 py-3 rounded-xl text-white text-sm font-bold"
+                                  style="background: <?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?>">
+                                Contoh tombol utama
+                            </span>
+                            <p id="contrastNote" class="text-xs text-slate-400 leading-relaxed flex-1 min-w-[240px]"></p>
+                        </div>
+
+                        <script>
+                            /**
+                             * Hitung rasio kontras terhadap latar putih memakai rumus WCAG,
+                             * lalu perbarui lencana dan pratinjau secara langsung.
+                             * Perhitungan yang sama juga dilakukan di sisi PHP.
+                             */
+                            function luminance(hex) {
+                                const c = hex.replace('#', '');
+                                const ch = [0, 2, 4].map(i => {
+                                    const v = parseInt(c.substr(i, 2), 16) / 255;
+                                    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+                                });
+                                return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+                            }
+
+                            function updateContrast(hex) {
+                                const ratio = (1.05) / (luminance(hex) + 0.05);
+                                const r = Math.round(ratio * 100) / 100;
+
+                                let level, note, cls;
+                                if (r >= 4.5) {
+                                    level = 'WCAG AA ✓';
+                                    note  = 'Teks putih di atas warna ini memenuhi standar WCAG AA.';
+                                    cls   = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                } else if (r >= 3.0) {
+                                    level = 'AA teks besar';
+                                    note  = 'Hanya memenuhi standar untuk teks besar dan indikator fokus. Teks kecil berwarna putih akan sulit dibaca.';
+                                    cls   = 'bg-amber-50 text-amber-700 border-amber-200';
+                                } else {
+                                    level = 'Kontras gagal';
+                                    note  = 'Kontras terlalu rendah. Teks putih di atas warna ini sulit dibaca; pilih warna yang lebih gelap.';
+                                    cls   = 'bg-red-50 text-red-700 border-red-200';
+                                }
+
+                                document.getElementById('contrastBadge').className =
+                                    'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ' + cls;
+                                document.getElementById('contrastText').textContent = level + ' — rasio ' + r.toFixed(2) + ':1';
+                                document.getElementById('contrastNote').textContent = note;
+                                document.getElementById('contrastPreview').style.background = hex;
+                                document.getElementById('brandHex').textContent = hex;
+                            }
+
+                            document.addEventListener('DOMContentLoaded', function () {
+                                const el = document.getElementById('set_brand_color');
+                                if (el) updateContrast(el.value);
+                            });
+                        </script>
+                    </div>
+                </div>
             </div>
 
             <!-- 3. KONTAK BANTUAN WHATSAPP (CARD TERPISAH) -->
@@ -206,7 +362,7 @@ $color_map = [
                 </div>
 
             <!-- 9. Konfigurasi Landing Page (Super Admin Only) -->
-            <?php if ($_SESSION['user_role'] === 'super_admin'): ?>
+
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
             <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
@@ -273,21 +429,26 @@ $color_map = [
                 </div>
             </div>
             </div>
-            <?php endif; ?>
-
         </div>
 
-        <div class="settings-tab-content tab-system space-y-8 hidden">
-            <!-- 2. Biaya & Sistem Dasar -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center">
-                    <i data-lucide="settings-2" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-xl font-bold outfit text-slate-800">Biaya & Sistem Dasar</h2>
-            </div>
+        <div class="settings-tab-content tab-layanan space-y-8 hidden">
+            <header class="px-1">
+                <h2 class="text-base font-black outfit text-slate-800">Layanan &amp; Biaya</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Harga legalisir, ongkir, jenis dokumen, dan syarat layanan alumni. Kredensial gateway pembayaran ada di menunya sendiri.</p>
+            </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
+                        <i data-lucide="receipt" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Biaya Layanan</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Harga dasar legalisir. Biaya gateway dan ongkir dihitung terpisah.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
                     <label class="block text-sm font-bold text-slate-700 mb-3 ml-1" for="f_price_per_doc">Biaya Per Lembar (IDR)</label>
                     <div class="relative">
@@ -295,117 +456,14 @@ $color_map = [
                         <input id="f_price_per_doc" type="number" name="price_per_doc" value="<?php echo e($settings['price_per_doc'] ?? 0); ?>" class="w-full pl-14 pr-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-bold text-slate-800" required>
                     </div>
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_system_email">Email Notifikasi Sistem</label>
-                    <input id="f_system_email" type="email" name="system_email" value="<?php echo e($settings['system_email'] ?? 'admin@alumnilink.com'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium" required>
-                </div>
-            </div>
-            </div>
-
-            <!-- 7. Unggah Berkas -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-xl font-bold outfit text-slate-800">Batas Unggah Berkas</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_allowed_file_types">Format (Pisah Koma)</label>
-                    <input id="f_allowed_file_types" type="text" name="allowed_file_types" value="<?php echo e($settings['allowed_file_types'] ?? 'pdf,jpg,png'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_max_file_size">Maks Size (KB)</label>
-                    <input id="f_max_file_size" type="number" name="max_file_size" value="<?php echo e($settings['max_file_size'] ?? 2048); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm">
-                </div>
-            </div>
-            </div>
-
-            <!-- 9. Utilitas & Sinkronisasi Peta -->
-        <div class="glass p-10 rounded-[3rem] shadow-sm border border-white mt-8 animate-in fade-in duration-500">
-            <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-                    <i data-lucide="map-pin" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-xl font-bold outfit text-slate-800">Utilitas & Sinkronisasi Peta</h2>
-            </div>
-            
-            <div class="p-6 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div class="space-y-1">
-                        <h4 class="text-sm font-bold text-slate-800">Sinkronisasi Koordinat Alumni (Geocoding)</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed max-w-xl">
-                            Jika Anda tidak mengatur <b>Cron Job otomatis</b> di server SSH/Hosting, gunakan tombol ini untuk menerjemahkan data alamat baru alumni menjadi titik koordinat peta secara manual. Proses ini membutuhkan koneksi internet server ke OpenStreetMap.
-                        </p>
-                    </div>
-                    <button type="button" id="btn-sync-geocoding" class="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-2 shrink-0">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                        Sinkronkan Lokasi Peta
-                    </button>
-            </div>
-        </div>
-        </div>
-
-            <!-- 10. Manajemen Audit Trail & Log Aktivitas -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white mt-8 animate-in fade-in duration-500">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
-                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold outfit text-slate-800">Manajemen Audit Trail (Log Aktivitas)</h2>
-                        <p class="text-xs text-slate-400 mt-1">Atur durasi penyimpanan log aktivitas admin untuk menjaga ukuran database dan performa sistem.</p>
-                    </div>
-                </div>
-                
-                <div class="space-y-6">
-                    <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                        <div class="flex flex-col pr-4">
-                            <span class="text-sm font-bold text-slate-800">Tegakkan Pemisahan Izin Peran (RBAC)</span>
-                            <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                                <strong>Nonaktif (mode audit):</strong> peran <em>admin_tracer</em>, <em>admin_legalisir</em>, dan <em>keuangan</em> tetap dapat mengakses seluruh fungsi admin, namun setiap akses lintas peran dicatat di Audit Trail sebagai <code class="font-mono text-[10px] bg-slate-200 px-1 rounded">RBAC_AUDIT</code>.<br>
-                                <strong>Aktif:</strong> setiap peran hanya dapat mengakses fungsi miliknya sendiri.<br>
-                                Biarkan nonaktif beberapa hari lebih dulu, tinjau Audit Trail, baru aktifkan — agar tidak ada staf yang terkunci mendadak.
-                            </span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input type="checkbox" name="rbac_enforce" value="1" <?php echo e(($settings['rbac_enforce'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
-                            <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
-                    </div>
-
-                    <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                        <div class="flex flex-col pr-4">
-                            <span class="text-sm font-bold text-slate-800">Aktifkan Auto-Erase Log Lama</span>
-                            <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">Jika aktif, sistem secara otomatis akan menghapus riwayat log aktivitas yang usianya melebihi batas retensi yang ditentukan di bawah ini secara teratur di latar belakang.</span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input type="checkbox" name="audit_log_auto_erase" value="1" <?php echo e(($settings['audit_log_auto_erase'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
-                            <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500"></div>
-                        </label>
-                    </div>
-
-                    <div class="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                        <label class="block text-sm font-bold text-slate-800 mb-2">Durasi Penyimpanan Log (Hari)</label>
-                        <p class="text-xs text-slate-400 mb-4 leading-relaxed">Data log yang usianya lebih tua dari angka ini (dalam hari) akan dihapus secara permanen. Saran: 30 atau 90 hari.</p>
-                        <div class="relative max-w-xs">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <i data-lucide="calendar-clock" class="w-4 h-4 text-slate-400"></i>
-                            </div>
-                            <input aria-label="Contoh: 30" type="number" min="1" max="365" name="audit_log_retention_days" value="<?php echo htmlspecialchars($settings['audit_log_retention_days'] ?? '30'); ?>" 
-                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-red-500 outline-none font-bold text-slate-700 transition-all shadow-sm" placeholder="Contoh: 30">
-                        </div>
-                    </div>
                 </div>
             </div>
 
-
-        </div>
-
-        <div class="settings-tab-content tab-payment space-y-8 hidden">
-            <!-- 5. Gateway pembayaran: dipindah ke halaman sendiri -->
             <?php
+                // Kartu tautan ke menu Gateway Pembayaran. Kredensial dan
+                // tarifnya sengaja TIDAK ada di halaman ini — lihat
+                // handlers/admin_settings_handler.php, yang menolak kunci
+                // pembayaran walau di-POST langsung.
                 require_once __DIR__ . '/../includes/payment/gateway.php';
                 $gw_aktif = payment_active_gateway_code();
             ?>
@@ -429,7 +487,7 @@ $color_map = [
                     </a>
                 </div>
             </div>
-            <!-- 7. Zona Pengiriman -->
+
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-4">
@@ -488,240 +546,103 @@ $color_map = [
             </div>
         </div>
 
+            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="files" class="w-6 h-6"></i>
+                    </div>
+                    <h2 class="text-xl font-bold outfit text-slate-800">Jenis Dokumen</h2>
+                </div>
+                <button type="button" onclick="addDocType()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah Dokumen
+                </button>
+            </div>
+            <div id="docTypesContainer" class="space-y-4"></div>
+            <?php
+                // Nilainya diisi APA ADANYA sejak awal, bukan hanya oleh
+                // prepareDocTypes() saat tombol simpan diklik. Tanpa ini,
+                // setiap pengiriman formulir yang tidak melewati tombol itu
+                // — JavaScript gagal dimuat, pemblokir skrip, pengiriman
+                // otomatis — menyimpan kolom ini KOSONG dan menghapus
+                // seluruh daftar jenis dokumen legalisir.
+                $dt_tersimpan = $settings['legalisir_document_types'] ?? '';
+            ?>
+            <input type="hidden" name="legalisir_document_types" id="legalisir_document_types_input"
+                   value="<?php echo e($dt_tersimpan); ?>">
+            </div>
+
+            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+                <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <h2 class="text-xl font-bold outfit text-slate-800">Legalisir Digital</h2>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_digital_stamp_watermark">Teks Watermark</label>
+                    <input id="f_digital_stamp_watermark" type="text" name="digital_stamp_watermark" value="<?php echo e($settings['digital_stamp_watermark'] ?? 'ALUMNILINK VERIFIED'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_digital_stamp_text">Teks Stempel</label>
+                    <textarea id="f_digital_stamp_text" name="digital_stamp_text" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm h-24 font-medium"><?php echo e($settings['digital_stamp_text'] ?? ''); ?></textarea>
+                </div>
+            </div>
+            </div>
+
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
+                        <i data-lucide="scroll-text" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Aturan Layanan</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Kebijakan institusi yang mengatur syarat akses layanan alumni.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="set_tracer_validity" class="block text-sm font-bold text-slate-700 mb-2">Masa Berlaku Tracer (bulan)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Alumni wajib memperbarui tracer bila pengisian terakhirnya lebih lama dari ini, sebelum dapat mengajukan legalisir atau mendaftar event.</p>
+                        <input id="set_tracer_validity" type="number" min="1" name="tracer_validity_months" value="<?php echo htmlspecialchars($settings['tracer_validity_months'] ?? '6'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_tracer_reminder" class="block text-sm font-bold text-slate-700 mb-2">Ambang Pengingat Tracer (tahun)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Alumni yang belum mengisi tracer melebihi durasi ini akan menerima e-mail pengingat otomatis dari penjadwal.</p>
+                        <input id="set_tracer_reminder" type="number" min="1" name="tracer_reminder_years" value="<?php echo htmlspecialchars($settings['tracer_reminder_years'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_default_major" class="block text-sm font-bold text-slate-700 mb-2">Kode Prodi Cadangan</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Dipakai bila program studi seorang alumni tidak dapat dikenali sistem, misalnya pada data lama.</p>
+                        <input id="set_default_major" type="text" name="default_major_code" value="<?php echo htmlspecialchars($settings['default_major_code'] ?? 'J500'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
+                    </div>
+                    <div>
+                        <label for="set_legalisir_sla_warn_days" class="block text-sm font-bold text-slate-700 mb-2">Peringatan SLA Legalisir (hari)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Pengajuan yang menunggu lebih lama dari ini ditandai kuning di Kelola Legalisir.</p>
+                        <input id="set_legalisir_sla_warn_days" type="number" min="1" name="legalisir_sla_warn_days" value="<?php echo htmlspecialchars($settings['legalisir_sla_warn_days'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_legalisir_sla_breach_days" class="block text-sm font-bold text-slate-700 mb-2">Pelanggaran SLA Legalisir (hari)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Lebih lama dari ini ditandai merah, dan ikut terhitung sebagai "lewat batas".</p>
+                        <input id="set_legalisir_sla_breach_days" type="number" min="1" name="legalisir_sla_breach_days" value="<?php echo htmlspecialchars($settings['legalisir_sla_breach_days'] ?? '7'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_employer_survey_expiry_days" class="block text-sm font-bold text-slate-700 mb-2">Masa Berlaku Undangan Survei (hari)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Tautan survei pengguna lulusan kedaluwarsa setelah durasi ini.</p>
+                        <input id="set_employer_survey_expiry_days" type="number" min="1" name="employer_survey_expiry_days" value="<?php echo htmlspecialchars($settings['employer_survey_expiry_days'] ?? '30'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="settings-tab-content tab-integration space-y-8 hidden">
-            <!-- Cadangan Basis Data -->
-            <?php require_once __DIR__ . '/../includes/backup_lib.php'; $daftar_cadangan = backup_daftar(); ?>
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                        <i data-lucide="database-backup" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold outfit text-slate-800">Cadangan Basis Data</h2>
-                        <p class="text-xs text-slate-400 mt-1">Unduh salinan seluruh basis data, atau jadwalkan agar tersimpan otomatis di server.</p>
-                    </div>
-                </div>
+        <div class="settings-tab-content tab-integrasi space-y-8 hidden">
+            <header class="px-1">
+                <h2 class="text-base font-black outfit text-slate-800">Integrasi &amp; E-mail</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Sambungan ke layanan luar: pengiriman e-mail dan masuk lewat Google.</p>
+            </header>
 
-                <div class="flex items-start gap-3 p-5 rounded-2xl bg-amber-50 border border-amber-200 mb-8">
-                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
-                    <p class="text-xs text-amber-800 leading-relaxed">
-                        <span class="font-bold block mb-1">Berkas cadangan setara kunci induk.</span>
-                        Di dalamnya ada hash kata sandi, e-mail, nomor telepon, dan alamat rumah setiap alumni.
-                        Simpan seperti Anda menyimpan kata sandi, dan jangan pernah menaruhnya di folder yang bisa dibuka publik.
-                        Setiap pengunduhan tercatat di Audit Trail.
-                    </p>
-                </div>
-
-                <!-- Unduhan mengalirkan berkas, jadi tidak boleh menumpang
-                     formulir Simpan Pengaturan. Formulirnya ada di LUAR
-                     settings-form (lihat akhir berkas), dan tombol ini menunjuk
-                     ke sana lewat atribut form=.
-
-                     Sebelumnya formulir cadangan ditulis DI DALAM settings-form.
-                     HTML tidak mengizinkan formulir bersarang: parser membuang
-                     tag pembukanya, sehingga tombol ini menjadi milik
-                     settings-form — mengkliknya menyimpan seluruh pengaturan,
-                     dan cadangan tidak pernah terunduh. -->
-                <div class="mb-8">
-                    <button type="submit" form="form-cadangan" class="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95">
-                        <i data-lucide="download" class="w-4 h-4"></i> Unduh cadangan sekarang
-                    </button>
-                    <span class="text-xs text-slate-400 ml-3">Format .sql.gz &mdash; dapat diimpor lewat phpMyAdmin.</span>
-                </div>
-
-                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-3">Cadangan otomatis tersimpan</h3>
-                <?php if (empty($daftar_cadangan)): ?>
-                    <div class="flex items-start gap-3 p-5 rounded-2xl bg-slate-50 border border-slate-200">
-                        <i data-lucide="info" class="w-5 h-5 text-slate-400 shrink-0 mt-0.5"></i>
-                        <p class="text-xs text-slate-500 leading-relaxed">
-                            Belum ada cadangan otomatis. Jadwalkan pekerjaan
-                            <span class="font-bold">Cadangan Basis Data</span> di bagian Tugas Terjadwal di bawah,
-                            atau unduh manual dengan tombol di atas.
-                        </p>
-                    </div>
-                <?php else: ?>
-                    <div class="overflow-x-auto rounded-2xl border border-slate-100">
-                        <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-4 py-3 text-left font-bold">Berkas</th>
-                                    <th class="px-4 py-3 text-left font-bold">Ukuran</th>
-                                    <th class="px-4 py-3 text-left font-bold">Dibuat</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <?php foreach ($daftar_cadangan as $bk): ?>
-                                <tr>
-                                    <td class="px-4 py-3 font-mono text-xs text-slate-600"><?php echo htmlspecialchars($bk['nama']); ?></td>
-                                    <td class="px-4 py-3 text-slate-500"><?php echo number_format($bk['byte'] / 1024, 1); ?> KB</td>
-                                    <td class="px-4 py-3 text-slate-500"><?php echo date('d M Y, H:i', $bk['waktu']); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
-                        Disimpan di <span class="font-mono">backups/</span> pada server ini dan tidak dapat diunduh lewat peramban.
-                        Ambil berkasnya lewat FTP. Menyimpan <?php echo setting_int('backup_keep', 7, 1); ?> berkas terbaru;
-                        yang lebih lama dibuang otomatis.
-                    </p>
-                <?php endif; ?>
-
-                <div class="flex items-start gap-3 p-5 rounded-2xl bg-blue-50 border border-blue-100 mt-6">
-                    <i data-lucide="info" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"></i>
-                    <p class="text-xs text-blue-700 leading-relaxed">
-                        <span class="font-bold block mb-1">Cadangan di server hanya separuh perlindungan.</span>
-                        Ia menyelamatkan Anda dari kesalahan manusia &mdash; impor yang keliru, penghapusan tak sengaja &mdash;
-                        dan itulah yang paling sering terjadi. Tetapi ia tersimpan di server yang sama dengan basis datanya,
-                        jadi tidak menolong bila servernya sendiri hilang. Unduh berkasnya secara berkala ke komputer Anda.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Tugas Terjadwal (Cron) -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                        <i data-lucide="clock" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold outfit text-slate-800">Tugas Terjadwal (Cron)</h2>
-                        <p class="text-xs text-slate-400 mt-1">Tiga pekerjaan latar yang perlu dijalankan berkala. Salin URL di bawah ke menu Cron Job di cPanel.</p>
-                    </div>
-                </div>
-
-                <?php
-                    // Antrean e-mail yang tidak pernah diproses tidak memberi
-                    // tanda apa pun di layar sebelumnya: broadcast sekadar
-                    // tidak sampai, tanpa ada yang tahu.
-                    $q_antrean = [];
-                    try {
-                        foreach ($pdo->query("SELECT status, COUNT(*) n FROM email_queue GROUP BY status") as $qr) {
-                            $q_antrean[$qr->status] = (int)$qr->n;
-                        }
-                        $tertua = $pdo->query("SELECT MIN(created_at) FROM email_queue WHERE status IN ('pending','processing')")->fetchColumn();
-                    } catch (PDOException $e) { $tertua = null; }
-                    $menunggu = ($q_antrean['pending'] ?? 0) + ($q_antrean['processing'] ?? 0);
-                    $umur_antrean = $tertua ? (int)floor((time() - strtotime($tertua)) / 86400) : 0;
-                ?>
-
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div class="p-5 rounded-2xl <?php echo $umur_antrean > 1 ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'; ?>">
-                        <div class="text-2xl font-black outfit <?php echo $umur_antrean > 1 ? 'text-red-600' : 'text-slate-700'; ?>"><?php echo e($menunggu); ?></div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">E-mail menunggu</div>
-                    </div>
-                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div class="text-2xl font-black outfit text-slate-700"><?php echo e($q_antrean['sent'] ?? 0); ?></div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Terkirim</div>
-                    </div>
-                    <div class="p-5 rounded-2xl <?php echo e(($q_antrean['failed'] ?? 0) > 0 ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50 border border-slate-100'); ?>">
-                        <div class="text-2xl font-black outfit <?php echo e(($q_antrean['failed'] ?? 0) > 0 ? 'text-amber-600' : 'text-slate-700'); ?>"><?php echo e($q_antrean['failed'] ?? 0); ?></div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Gagal</div>
-                    </div>
-                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div class="text-2xl font-black outfit text-slate-700"><?php echo $tertua ? $umur_antrean . ' hr' : '&mdash;'; ?></div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Antrean tertua</div>
-                    </div>
-                </div>
-
-                <?php if ($umur_antrean > 1): ?>
-                <div class="flex items-start gap-3 p-5 rounded-2xl bg-red-50 border border-red-200 mb-8">
-                    <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5"></i>
-                    <p class="text-sm text-red-700 leading-relaxed">
-                        Ada e-mail yang sudah menunggu <?php echo e($umur_antrean); ?> hari. Itu berarti pekerjaan
-                        <span class="font-bold">Antrean E-mail</span> di bawah belum dijadwalkan di server, sehingga
-                        broadcast tidak pernah sampai ke penerimanya.
-                    </p>
-                </div>
-                <?php endif; ?>
-
-                <?php
-                    require_once __DIR__ . '/../includes/cron_auth.php';
-                    $daftar_cron = [
-                        ['process_email_queue.php', 'Antrean E-mail',    'Mengirim e-mail broadcast yang mengantre.',                'Setiap 5 menit'],
-                        ['geocoder.php',            'Peta Persebaran',   'Menerjemahkan alamat alumni menjadi titik koordinat.',      'Setiap 30 menit'],
-                        ['tracer_reminder.php',     'Pengingat Tracer',  'Mengingatkan alumni memperbarui data tracer study.',        'Sebulan sekali'],
-                        ['backup.php',              'Cadangan Basis Data', 'Menyimpan dump ke folder backups/ dan membuang yang lama.', 'Sehari sekali'],
-                        ['payment_reconcile.php',   'Rekonsiliasi Pembayaran', 'Mengambil ulang status tagihan yang callback-nya terlambat atau hilang.', 'Setiap 30 menit'],
-                    ];
-                ?>
-                <div class="space-y-4">
-                    <?php foreach ($daftar_cron as [$berkas, $judul, $ket, $jadwal]): ?>
-                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-                            <div>
-                                <h3 class="text-sm font-black text-slate-700"><?php echo e($judul); ?></h3>
-                                <p class="text-xs text-slate-400 mt-0.5"><?php echo e($ket); ?></p>
-                            </div>
-                            <span class="px-3 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0"><?php echo e($jadwal); ?></span>
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="text" readonly value="<?php echo htmlspecialchars(cron_url($berkas, $pdo)); ?>"
-                                   aria-label="URL cron <?php echo e($judul); ?>"
-                                   class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-600 outline-none">
-                            <button type="button" onclick="salinCron(this)" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all shrink-0">
-                                Salin
-                            </button>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <div class="flex items-start gap-3 p-5 rounded-2xl bg-amber-50 border border-amber-200 mt-6">
-                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
-                    <p class="text-xs text-amber-800 leading-relaxed">
-                        <span class="font-bold block mb-1">Perlakukan URL ini seperti kata sandi.</span>
-                        Siapa pun yang memilikinya dapat memicu pengiriman e-mail ke seluruh alumni.
-                        Token dibuat acak oleh sistem dan tersimpan di basis data &mdash; sebelumnya
-                        <span class="font-semibold">Pengingat Tracer</span> memakai token yang tertulis di dalam kode
-                        dan <span class="font-semibold">Peta Persebaran</span> sama sekali tidak berkunci.
-                    </p>
-                </div>
-            </div>
-
-            <!-- 6. Integrasi Google OAuth 2.0 (SSO) -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
-                    <i data-lucide="key" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <h2 class="text-xl font-bold outfit text-slate-800">Otentikasi Google (SSO)</h2>
-                    <p class="text-xs text-slate-400 mt-1">Konfigurasi untuk fitur "Masuk dengan Google". Dapatkan kredensial di Google Cloud Console.</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 gap-6">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_google_client_id">Client ID</label>
-                    <input id="f_google_client_id" type="text" name="google_client_id" value="<?php echo e($settings['google_client_id'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-mono text-xs" placeholder="xxx.apps.googleusercontent.com">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_google_client_secret">Client Secret</label>
-                    <input id="f_google_client_secret" type="password" name="google_client_secret" value="<?php echo e($settings['google_client_secret'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-mono text-xs" placeholder="GOCSPX-xxx">
-                </div>
-                <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl mt-2">
-                    <div class="flex flex-col pr-4">
-                        <span class="text-sm font-bold text-slate-800">Otomatis Verifikasi Alumni Baru (Google OAuth)</span>
-                        <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">Jika aktif, pendaftar baru yang masuk pertama kali menggunakan Google SSO akan langsung berstatus Terverifikasi secara otomatis. Akun lama yang masih tertunda tidak akan terpengaruh.</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                        <input type="checkbox" name="google_oauth_auto_verify" value="1" <?php echo e(($settings['google_oauth_auto_verify'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
-                        <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-rose-500"></div>
-                    </label>
-                </div>
-            </div>
-            <div class="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
-                <i data-lucide="info" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"></i>
-                <div class="text-xs text-blue-700">
-                    <span class="font-bold block mb-1">Pengaturan URI Pengalihan (Redirect URI):</span>
-                    Pastikan Anda mendaftarkan URL berikut ini pada setelan Google Cloud Console:<br>
-                    <code class="bg-white px-3 py-2 rounded-lg font-mono text-[10px] mt-2 block w-full break-all border border-blue-100 shadow-sm text-blue-800"><?php echo rtrim(BASE_URL, '/') . '/handlers/google_oauth.php'; ?></code>
-                </div>
-            </div>
-            </div>
-            <!-- 6b. Server SMTP (Pengiriman Email) -->
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
@@ -747,7 +668,19 @@ $color_map = [
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_smtp_pass">Password SMTP</label>
-                    <input id="f_smtp_pass" type="password" name="smtp_pass" value="<?php echo htmlspecialchars($settings['smtp_pass'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium" placeholder="••••••••••••">
+                    <?php
+                        // Rahasia TIDAK pernah dirender kembali ke halaman.
+                        // type="password" hanya menyembunyikannya di layar; sumber
+                        // halaman — dan setiap tangkapan layarnya — tetap memuat
+                        // nilai aslinya apa adanya. Kosong berarti "tidak diubah".
+                    ?>
+                    <?php $terisi_smtp_pass = trim((string)($settings['smtp_pass'] ?? '')) !== ''; ?>
+                    <input id="f_smtp_pass" type="password" name="smtp_pass" value="" autocomplete="new-password"
+                           placeholder="<?php echo e($terisi_smtp_pass ? 'Tersimpan — kosongkan bila tidak diubah' : 'Belum diisi'); ?>"
+                           class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
+                    <label class="flex items-center gap-2 text-[11px] text-slate-500 mt-2">
+                        <input type="checkbox" name="hapus_smtp_pass" value="1" class="accent-blue-600"> Kosongkan kata sandi SMTP
+                    </label>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_smtp_secure">Protokol Keamanan</label>
@@ -792,47 +725,163 @@ $color_map = [
             </div>
             </div>
 
-        </div>
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center border border-violet-100">
+                        <i data-lucide="mail-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Antrean E-mail</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Seberapa banyak e-mail dikirim tiap kali penjadwal berjalan.</p>
+                    </div>
+                </div>
 
-        <div class="settings-tab-content tab-documents space-y-8 hidden">
-            <!-- 4. Konfigurasi Legalisir Digital -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="set_email_batch" class="block text-sm font-bold text-slate-700 mb-2">Batch Antrean E-mail</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah e-mail yang dikirim setiap kali penjadwal berjalan. Turunkan bila penyedia SMTP membatasi.</p>
+                        <input id="set_email_batch" type="number" min="1" name="email_batch_size" value="<?php echo htmlspecialchars($settings['email_batch_size'] ?? '20'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_email_retry" class="block text-sm font-bold text-slate-700 mb-2">Maksimal Percobaan Kirim</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Setelah gagal sebanyak ini, e-mail ditandai gagal permanen.</p>
+                        <input id="set_email_retry" type="number" min="1" name="email_max_attempts" value="<?php echo htmlspecialchars($settings['email_max_attempts'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_system_email">Email Notifikasi Sistem</label>
+                    <input id="f_system_email" type="email" name="system_email" value="<?php echo e($settings['system_email'] ?? 'admin@alumnilink.com'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium" required>
+                </div>
+                    <div>
+                        <label for="set_email_throttle_ms" class="block text-sm font-bold text-slate-700 mb-2">Jeda Antar E-mail (milidetik)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jeda sebelum e-mail berikutnya dikirim. Menaikkannya menurunkan risiko ditandai spam.</p>
+                        <input id="set_email_throttle_ms" type="number" min="0" step="100" name="email_throttle_ms" value="<?php echo htmlspecialchars($settings['email_throttle_ms'] ?? '1500'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_email_daily_limit" class="block text-sm font-bold text-slate-700 mb-2">Batas Kirim Harian</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Batas penyedia SMTP Anda. Google Workspace umumnya 2.000 e-mail per hari.</p>
+                        <input id="set_email_daily_limit" type="number" min="1" name="email_daily_limit" value="<?php echo htmlspecialchars($settings['email_daily_limit'] ?? '2000'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_email_stuck_minutes" class="block text-sm font-bold text-slate-700 mb-2">Ambang E-mail Macet (menit)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">E-mail yang berstatus "sedang dikirim" lebih lama dari ini dianggap macet dan dicoba lagi.</p>
+                        <input id="set_email_stuck_minutes" type="number" min="1" name="email_stuck_minutes" value="<?php echo htmlspecialchars($settings['email_stuck_minutes'] ?? '15'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_email_bounce_threshold" class="block text-sm font-bold text-slate-700 mb-2">Ambang Pantulan (bounce)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Setelah sekian kali e-mail ke alamat yang sama gagal, alamat itu ditandai bermasalah.</p>
+                        <input id="set_email_bounce_threshold" type="number" min="1" name="email_bounce_threshold" value="<?php echo htmlspecialchars($settings['email_bounce_threshold'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                </div>
+            </div>
+
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                    <i data-lucide="shield-check" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-xl font-bold outfit text-slate-800">Legalisir Digital</h2>
-            </div>
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_digital_stamp_watermark">Teks Watermark</label>
-                    <input id="f_digital_stamp_watermark" type="text" name="digital_stamp_watermark" value="<?php echo e($settings['digital_stamp_watermark'] ?? 'ALUMNILINK VERIFIED'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
+                    <i data-lucide="key" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_digital_stamp_text">Teks Stempel</label>
-                    <textarea id="f_digital_stamp_text" name="digital_stamp_text" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm h-24 font-medium"><?php echo e($settings['digital_stamp_text'] ?? ''); ?></textarea>
+                    <h2 class="text-xl font-bold outfit text-slate-800">Otentikasi Google (SSO)</h2>
+                    <p class="text-xs text-slate-400 mt-1">Konfigurasi untuk fitur "Masuk dengan Google". Dapatkan kredensial di Google Cloud Console.</p>
                 </div>
             </div>
-            </div>
-
-            <!-- 8. Jenis Dokumen -->
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center">
-                        <i data-lucide="files" class="w-6 h-6"></i>
+            <div class="grid grid-cols-1 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_google_client_id">Client ID</label>
+                    <input id="f_google_client_id" type="text" name="google_client_id" value="<?php echo e($settings['google_client_id'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-mono text-xs" placeholder="xxx.apps.googleusercontent.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_google_client_secret">Client Secret</label>
+                    <?php $terisi_google_client_secret = trim((string)($settings['google_client_secret'] ?? '')) !== ''; ?>
+                    <input id="f_google_client_secret" type="password" name="google_client_secret" value="" autocomplete="new-password"
+                           placeholder="<?php echo e($terisi_google_client_secret ? 'Tersimpan — kosongkan bila tidak diubah' : 'Belum diisi'); ?>"
+                           class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
+                    <label class="flex items-center gap-2 text-[11px] text-slate-500 mt-2">
+                        <input type="checkbox" name="hapus_google_client_secret" value="1" class="accent-blue-600"> Kosongkan secret Google
+                    </label>
+                </div>
+                <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl mt-2">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-sm font-bold text-slate-800">Otomatis Verifikasi Alumni Baru (Google OAuth)</span>
+                        <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">Jika aktif, pendaftar baru yang masuk pertama kali menggunakan Google SSO akan langsung berstatus Terverifikasi secara otomatis. Akun lama yang masih tertunda tidak akan terpengaruh.</span>
                     </div>
-                    <h2 class="text-xl font-bold outfit text-slate-800">Jenis Dokumen</h2>
+                    <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input type="checkbox" name="google_oauth_auto_verify" value="1" <?php echo e(($settings['google_oauth_auto_verify'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
+                        <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-rose-500"></div>
+                    </label>
                 </div>
-                <button type="button" onclick="addDocType()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all flex items-center gap-2">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah Dokumen
-                </button>
             </div>
-            <div id="docTypesContainer" class="space-y-4"></div>
-            <input type="hidden" name="legalisir_document_types" id="legalisir_document_types_input">
+            <div class="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"></i>
+                <div class="text-xs text-blue-700">
+                    <span class="font-bold block mb-1">Pengaturan URI Pengalihan (Redirect URI):</span>
+                    Pastikan Anda mendaftarkan URL berikut ini pada setelan Google Cloud Console:<br>
+                    <code class="bg-white px-3 py-2 rounded-lg font-mono text-[10px] mt-2 block w-full break-all border border-blue-100 shadow-sm text-blue-800"><?php echo rtrim(BASE_URL, '/') . '/handlers/google_oauth.php'; ?></code>
+                </div>
+            </div>
+            </div>
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center border border-violet-100">
+                        <i data-lucide="sparkles" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Analitik AI (Google Gemini)</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Menyalakan menu Analitik AI. Tanpa kunci ini, menunya hanya menampilkan petunjuk pengisian.</p>
+                    </div>
+                </div>
+
+                <?php $gemini_terisi = trim((string)($settings['gemini_api_key'] ?? '')) !== ''; ?>
+                <div>
+                    <label for="set_gemini" class="block text-sm font-bold text-slate-700 mb-2">API Key</label>
+                    <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+                        Diambil dari Google AI Studio. Kunci yang sudah tersimpan tidak pernah ditampilkan lagi;
+                        biarkan kosong bila tidak ingin mengubahnya.
+                    </p>
+                    <input id="set_gemini" type="password" name="gemini_api_key" value="" autocomplete="new-password"
+                           placeholder="<?php echo e($gemini_terisi ? 'Terisi — kosongkan bila tidak diubah' : 'Belum diisi'); ?>"
+                           class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-xs font-mono">
+                    <p class="text-[11px] mt-2 font-bold <?php echo e($gemini_terisi ? 'text-emerald-600' : 'text-slate-400'); ?>">
+                        <?php echo e($gemini_terisi ? 'Terisi — menu Analitik AI aktif.' : 'Belum diisi — menu Analitik AI belum dapat dipakai.'); ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-tab-content tab-keamanan space-y-8 hidden">
+            <header class="px-1">
+                <h2 class="text-base font-black outfit text-slate-800">Keamanan &amp; Akses</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Siapa boleh membuka apa, kebijakan kata sandi, pembatasan laju, dan jejak audit.</p>
+            </header>
+
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
+                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Pemisahan Izin Peran (RBAC)</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Menentukan apakah peran staf benar-benar dibatasi, atau hanya dicatat.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+                    <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                        <div class="flex flex-col pr-4">
+                            <span class="text-sm font-bold text-slate-800">Tegakkan Pemisahan Izin Peran (RBAC)</span>
+                            <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                                <strong>Nonaktif (mode audit):</strong> peran <em>admin_tracer</em>, <em>admin_legalisir</em>, dan <em>keuangan</em> tetap dapat mengakses seluruh fungsi admin, namun setiap akses lintas peran dicatat di Audit Trail sebagai <code class="font-mono text-[10px] bg-slate-200 px-1 rounded">RBAC_AUDIT</code>.<br>
+                                <strong>Aktif:</strong> setiap peran hanya dapat mengakses fungsi miliknya sendiri.<br>
+                                Biarkan nonaktif beberapa hari lebih dulu, tinjau Audit Trail, baru aktifkan — agar tidak ada staf yang terkunci mendadak.
+                            </span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                            <input type="checkbox" name="rbac_enforce" value="1" <?php echo e(($settings['rbac_enforce'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
+                            <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
             </div>
 
-            <!-- 10. MANAJEMEN SIDEBAR PER ROLE (Form Terpisah)                     -->
             <div class="mt-8">
                 <div class="overflow-hidden rounded-[3rem] border-2 border-slate-900 shadow-2xl shadow-slate-900/10">
             <!-- Header Section -->
@@ -966,52 +1015,6 @@ $color_map = [
         </div>
         </div>
 
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════════════
-             TAB: ATURAN & KEAMANAN
-             Berisi nilai-nilai yang sebelumnya ter-hardcode di dalam kode.
-             Seluruh nilai bawaan sama persis dengan perilaku sebelumnya.
-             ══════════════════════════════════════════════════════════════ -->
-        <div class="settings-tab-content tab-rules space-y-8 hidden">
-
-            <!-- ── Aturan Layanan ───────────────────────────────────── -->
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
-                        <i data-lucide="scroll-text" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-black outfit text-slate-800">Aturan Layanan</h3>
-                        <p class="text-xs text-slate-400 font-medium mt-0.5">Kebijakan institusi yang mengatur syarat akses layanan alumni.</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="set_tracer_validity" class="block text-sm font-bold text-slate-700 mb-2">Masa Berlaku Tracer (bulan)</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Alumni wajib memperbarui tracer bila pengisian terakhirnya lebih lama dari ini, sebelum dapat mengajukan legalisir atau mendaftar event.</p>
-                        <input id="set_tracer_validity" type="number" min="1" name="tracer_validity_months" value="<?php echo htmlspecialchars($settings['tracer_validity_months'] ?? '6'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label for="set_tracer_reminder" class="block text-sm font-bold text-slate-700 mb-2">Ambang Pengingat Tracer (tahun)</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Alumni yang belum mengisi tracer melebihi durasi ini akan menerima e-mail pengingat otomatis dari penjadwal.</p>
-                        <input id="set_tracer_reminder" type="number" min="1" name="tracer_reminder_years" value="<?php echo htmlspecialchars($settings['tracer_reminder_years'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label for="set_default_major" class="block text-sm font-bold text-slate-700 mb-2">Kode Prodi Cadangan</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Dipakai bila program studi seorang alumni tidak dapat dikenali sistem, misalnya pada data lama.</p>
-                        <input id="set_default_major" type="text" name="default_major_code" value="<?php echo htmlspecialchars($settings['default_major_code'] ?? 'J500'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
-                    </div>
-                    <div>
-                        <label for="set_pagination" class="block text-sm font-bold text-slate-700 mb-2">Baris per Halaman</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah baris yang ditampilkan pada tabel-tabel admin seperti Audit Trail.</p>
-                        <input id="set_pagination" type="number" min="5" name="pagination_size" value="<?php echo htmlspecialchars($settings['pagination_size'] ?? '20'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── Keamanan Akun ────────────────────────────────────── -->
             <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
@@ -1042,7 +1045,6 @@ $color_map = [
                 </div>
             </div>
 
-            <!-- ── Pembatasan Laju (anti brute force) ───────────────── -->
             <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
@@ -1104,131 +1106,353 @@ $color_map = [
                 </div>
             </div>
 
-            <!-- ── Operasional & Identitas Visual ───────────────────── -->
             <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
-                        <i data-lucide="palette" class="w-6 h-6"></i>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
+                        <i data-lucide="history" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-black outfit text-slate-800">Operasional &amp; Identitas Visual</h3>
-                        <p class="text-xs text-slate-400 font-medium mt-0.5">Penjadwal latar belakang dan penyesuaian warna institusi.</p>
+                        <h2 class="text-lg font-black outfit text-slate-800">Retensi Audit Trail</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Durasi penyimpanan log aktivitas admin. Isinya dibaca di menu Audit Trail.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+                    <div class="flex items-center justify-between p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                        <div class="flex flex-col pr-4">
+                            <span class="text-sm font-bold text-slate-800">Aktifkan Auto-Erase Log Lama</span>
+                            <span class="text-[11px] text-slate-400 mt-1 leading-relaxed">Jika aktif, sistem secara otomatis akan menghapus riwayat log aktivitas yang usianya melebihi batas retensi yang ditentukan di bawah ini secara teratur di latar belakang.</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                            <input type="checkbox" name="audit_log_auto_erase" value="1" <?php echo e(($settings['audit_log_auto_erase'] ?? '0') == '1' ? 'checked' : ''); ?> class="sr-only peer">
+                            <div class="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500"></div>
+                        </label>
+                    </div>
+                    <div class="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                        <label class="block text-sm font-bold text-slate-800 mb-2">Durasi Penyimpanan Log (Hari)</label>
+                        <p class="text-xs text-slate-400 mb-4 leading-relaxed">Data log yang usianya lebih tua dari angka ini (dalam hari) akan dihapus secara permanen. Saran: 30 atau 90 hari.</p>
+                        <div class="relative max-w-xs">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i data-lucide="calendar-clock" class="w-4 h-4 text-slate-400"></i>
+                            </div>
+                            <input aria-label="Contoh: 30" type="number" min="1" max="365" name="audit_log_retention_days" value="<?php echo htmlspecialchars($settings['audit_log_retention_days'] ?? '30'); ?>" 
+                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-red-500 outline-none font-bold text-slate-700 transition-all shadow-sm" placeholder="Contoh: 30">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-tab-content tab-operasional space-y-8 hidden">
+            <header class="px-1">
+                <h2 class="text-base font-black outfit text-slate-800">Operasional</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Pemeliharaan rutin: cadangan, penjadwal, batas unggah, dan tampilan data.</p>
+            </header>
+
+            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="database-backup" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold outfit text-slate-800">Cadangan Basis Data</h2>
+                        <p class="text-xs text-slate-400 mt-1">Unduh salinan seluruh basis data, atau jadwalkan agar tersimpan otomatis di server.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 p-5 rounded-2xl bg-amber-50 border border-amber-200 mb-8">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                    <p class="text-xs text-amber-800 leading-relaxed">
+                        <span class="font-bold block mb-1">Berkas cadangan setara kunci induk.</span>
+                        Di dalamnya ada hash kata sandi, e-mail, nomor telepon, dan alamat rumah setiap alumni.
+                        Simpan seperti Anda menyimpan kata sandi, dan jangan pernah menaruhnya di folder yang bisa dibuka publik.
+                        Setiap pengunduhan tercatat di Audit Trail.
+                    </p>
+                </div>
+
+                <!-- Unduhan mengalirkan berkas, jadi tidak boleh menumpang
+                     formulir Simpan Pengaturan. Formulirnya ada di LUAR
+                     settings-form (lihat akhir berkas), dan tombol ini menunjuk
+                     ke sana lewat atribut form=.
+
+                     Sebelumnya formulir cadangan ditulis DI DALAM settings-form.
+                     HTML tidak mengizinkan formulir bersarang: parser membuang
+                     tag pembukanya, sehingga tombol ini menjadi milik
+                     settings-form — mengkliknya menyimpan seluruh pengaturan,
+                     dan cadangan tidak pernah terunduh. -->
+                <div class="mb-8">
+                    <button type="submit" form="form-cadangan" class="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-black transition-all active:scale-95">
+                        <i data-lucide="download" class="w-4 h-4"></i> Unduh cadangan sekarang
+                    </button>
+                    <span class="text-xs text-slate-400 ml-3">Format .sql.gz &mdash; dapat diimpor lewat phpMyAdmin.</span>
+                </div>
+
+                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-3">Cadangan otomatis tersimpan</h3>
+                <?php if (empty($daftar_cadangan)): ?>
+                    <div class="flex items-start gap-3 p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <i data-lucide="info" class="w-5 h-5 text-slate-400 shrink-0 mt-0.5"></i>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Belum ada cadangan otomatis. Jadwalkan pekerjaan
+                            <span class="font-bold">Cadangan Basis Data</span> di bagian Tugas Terjadwal di bawah,
+                            atau unduh manual dengan tombol di atas.
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <div class="overflow-x-auto rounded-2xl border border-slate-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-bold">Berkas</th>
+                                    <th class="px-4 py-3 text-left font-bold">Ukuran</th>
+                                    <th class="px-4 py-3 text-left font-bold">Dibuat</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <?php foreach ($daftar_cadangan as $bk): ?>
+                                <tr>
+                                    <td class="px-4 py-3 font-mono text-xs text-slate-600"><?php echo htmlspecialchars($bk['nama']); ?></td>
+                                    <td class="px-4 py-3 text-slate-500"><?php echo number_format($bk['byte'] / 1024, 1); ?> KB</td>
+                                    <td class="px-4 py-3 text-slate-500"><?php echo date('d M Y, H:i', $bk['waktu']); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        Disimpan di <span class="font-mono">backups/</span> pada server ini dan tidak dapat diunduh lewat peramban.
+                        Ambil berkasnya lewat FTP. Menyimpan <?php echo setting_int('backup_keep', 7, 1); ?> berkas terbaru;
+                        yang lebih lama dibuang otomatis.
+                    </p>
+                <?php endif; ?>
+
+                <div class="flex items-start gap-3 p-5 rounded-2xl bg-blue-50 border border-blue-100 mt-6">
+                    <i data-lucide="info" class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"></i>
+                    <p class="text-xs text-blue-700 leading-relaxed">
+                        <span class="font-bold block mb-1">Cadangan di server hanya separuh perlindungan.</span>
+                        Ia menyelamatkan Anda dari kesalahan manusia &mdash; impor yang keliru, penghapusan tak sengaja &mdash;
+                        dan itulah yang paling sering terjadi. Tetapi ia tersimpan di server yang sama dengan basis datanya,
+                        jadi tidak menolong bila servernya sendiri hilang. Unduh berkasnya secara berkala ke komputer Anda.
+                    </p>
+                </div>
+            </div>
+
+            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold outfit text-slate-800">Tugas Terjadwal (Cron)</h2>
+                        <p class="text-xs text-slate-400 mt-1">Tiga pekerjaan latar yang perlu dijalankan berkala. Salin URL di bawah ke menu Cron Job di cPanel.</p>
+                    </div>
+                </div>
+
+                <?php
+                    // Antrean e-mail yang tidak pernah diproses tidak memberi
+                    // tanda apa pun di layar sebelumnya: broadcast sekadar
+                    // tidak sampai, tanpa ada yang tahu.
+                    $q_antrean = [];
+                    try {
+                        foreach ($pdo->query("SELECT status, COUNT(*) n FROM email_queue GROUP BY status") as $qr) {
+                            $q_antrean[$qr->status] = (int)$qr->n;
+                        }
+                        $tertua = $pdo->query("SELECT MIN(created_at) FROM email_queue WHERE status IN ('pending','processing')")->fetchColumn();
+                    } catch (PDOException $e) { $tertua = null; }
+                    $menunggu = ($q_antrean['pending'] ?? 0) + ($q_antrean['processing'] ?? 0);
+                    $umur_antrean = $tertua ? (int)floor((time() - strtotime($tertua)) / 86400) : 0;
+                ?>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="p-5 rounded-2xl <?php echo $umur_antrean > 1 ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'; ?>">
+                        <div class="text-2xl font-black outfit <?php echo $umur_antrean > 1 ? 'text-red-600' : 'text-slate-700'; ?>"><?php echo e($menunggu); ?></div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">E-mail menunggu</div>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div class="text-2xl font-black outfit text-slate-700"><?php echo e($q_antrean['sent'] ?? 0); ?></div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Terkirim</div>
+                    </div>
+                    <div class="p-5 rounded-2xl <?php echo e(($q_antrean['failed'] ?? 0) > 0 ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50 border border-slate-100'); ?>">
+                        <div class="text-2xl font-black outfit <?php echo e(($q_antrean['failed'] ?? 0) > 0 ? 'text-amber-600' : 'text-slate-700'); ?>"><?php echo e($q_antrean['failed'] ?? 0); ?></div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Gagal</div>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div class="text-2xl font-black outfit text-slate-700"><?php echo $tertua ? $umur_antrean . ' hr' : '&mdash;'; ?></div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Antrean tertua</div>
+                    </div>
+                </div>
+
+                <?php if ($umur_antrean > 1): ?>
+                <div class="flex items-start gap-3 p-5 rounded-2xl bg-red-50 border border-red-200 mb-8">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5"></i>
+                    <p class="text-sm text-red-700 leading-relaxed">
+                        Ada e-mail yang sudah menunggu <?php echo e($umur_antrean); ?> hari. Itu berarti pekerjaan
+                        <span class="font-bold">Antrean E-mail</span> di bawah belum dijadwalkan di server, sehingga
+                        broadcast tidak pernah sampai ke penerimanya.
+                    </p>
+                </div>
+                <?php endif; ?>
+
+                <?php
+                    require_once __DIR__ . '/../includes/cron_auth.php';
+                    $daftar_cron = [
+                        ['process_email_queue.php', 'Antrean E-mail',    'Mengirim e-mail broadcast yang mengantre.',                'Setiap 5 menit'],
+                        ['geocoder.php',            'Peta Persebaran',   'Menerjemahkan alamat alumni menjadi titik koordinat.',      'Setiap 30 menit'],
+                        ['tracer_reminder.php',     'Pengingat Tracer',  'Mengingatkan alumni memperbarui data tracer study.',        'Sebulan sekali'],
+                        ['backup.php',              'Cadangan Basis Data', 'Menyimpan dump ke folder backups/ dan membuang yang lama.', 'Sehari sekali'],
+                        ['payment_reconcile.php',   'Rekonsiliasi Pembayaran', 'Mengambil ulang status tagihan yang callback-nya terlambat atau hilang.', 'Setiap 30 menit'],
+                    ];
+                ?>
+                <div class="space-y-4">
+                    <?php foreach ($daftar_cron as [$berkas, $judul, $ket, $jadwal]): ?>
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-700"><?php echo e($judul); ?></h3>
+                                <p class="text-xs text-slate-400 mt-0.5"><?php echo e($ket); ?></p>
+                            </div>
+                            <span class="px-3 py-1 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0"><?php echo e($jadwal); ?></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" readonly value="<?php echo htmlspecialchars(cron_url($berkas, $pdo)); ?>"
+                                   aria-label="URL cron <?php echo e($judul); ?>"
+                                   class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-600 outline-none">
+                            <button type="button" onclick="salinCron(this)" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all shrink-0">
+                                Salin
+                            </button>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="flex items-start gap-3 p-5 rounded-2xl bg-amber-50 border border-amber-200 mt-6">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                    <p class="text-xs text-amber-800 leading-relaxed">
+                        <span class="font-bold block mb-1">Perlakukan URL ini seperti kata sandi.</span>
+                        Siapa pun yang memilikinya dapat memicu pengiriman e-mail ke seluruh alumni.
+                        Token dibuat acak oleh sistem dan tersimpan di basis data &mdash; sebelumnya
+                        <span class="font-semibold">Pengingat Tracer</span> memakai token yang tertulis di dalam kode
+                        dan <span class="font-semibold">Peta Persebaran</span> sama sekali tidak berkunci.
+                    </p>
+                </div>
+            </div>
+
+        <div class="glass p-10 rounded-[3rem] shadow-sm border border-white mt-8 animate-in fade-in duration-500">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                    <i data-lucide="map-pin" class="w-6 h-6"></i>
+                </div>
+                <h2 class="text-xl font-bold outfit text-slate-800">Utilitas & Sinkronisasi Peta</h2>
+            </div>
+            
+            <div class="p-6 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-bold text-slate-800">Sinkronisasi Koordinat Alumni (Geocoding)</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed max-w-xl">
+                            Jika Anda tidak mengatur <b>Cron Job otomatis</b> di server SSH/Hosting, gunakan tombol ini untuk menerjemahkan data alamat baru alumni menjadi titik koordinat peta secara manual. Proses ini membutuhkan koneksi internet server ke OpenStreetMap.
+                        </p>
+                    </div>
+                    <button type="button" id="btn-sync-geocoding" class="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-2 shrink-0">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Sinkronkan Lokasi Peta
+                    </button>
+            </div>
+        </div>
+        </div>
+
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
+                        <i data-lucide="map-pin" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Peta Persebaran Alumni</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Penerjemahan alamat alumni menjadi titik koordinat.</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="set_email_batch" class="block text-sm font-bold text-slate-700 mb-2">Batch Antrean E-mail</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah e-mail yang dikirim setiap kali penjadwal berjalan. Turunkan bila penyedia SMTP membatasi.</p>
-                        <input id="set_email_batch" type="number" min="1" name="email_batch_size" value="<?php echo htmlspecialchars($settings['email_batch_size'] ?? '20'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label for="set_email_retry" class="block text-sm font-bold text-slate-700 mb-2">Maksimal Percobaan Kirim</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Setelah gagal sebanyak ini, e-mail ditandai gagal permanen.</p>
-                        <input id="set_email_retry" type="number" min="1" name="email_max_attempts" value="<?php echo htmlspecialchars($settings['email_max_attempts'] ?? '3'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
                         <label for="set_geocoder_batch" class="block text-sm font-bold text-slate-700 mb-2">Batch Geocoding</label>
                         <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah alamat alumni yang dipetakan tiap kali penjadwal berjalan.</p>
                         <input id="set_geocoder_batch" type="number" min="1" name="geocoder_batch_size" value="<?php echo htmlspecialchars($settings['geocoder_batch_size'] ?? '10'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
                     </div>
-                    <div>
-                        <label for="set_favicon" class="block text-sm font-bold text-slate-700 mb-2">Favicon (path berkas)</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Ikon pada tab peramban. Kosongkan untuk memakai logo sistem.</p>
-                        <input id="set_favicon" type="text" name="system_favicon" value="<?php echo htmlspecialchars($settings['system_favicon'] ?? ''); ?>" placeholder="uploads/system/favicon.png" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-mono">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label for="set_brand_color" class="block text-sm font-bold text-slate-700 mb-2">Warna Utama Institusi</label>
-                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Dipakai untuk indikator fokus keyboard, tombol utama pada halaman galat, dan dialog konfirmasi.</p>
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <input id="set_brand_color" type="color" name="brand_primary_color" value="<?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?>" class="w-20 h-14 rounded-2xl border border-slate-200 cursor-pointer bg-white p-1" oninput="updateContrast(this.value)">
-                            <code id="brandHex" class="text-sm font-mono text-slate-500"><?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?></code>
-
-                            <?php
-                            // Peringatan kontras: mencegah pemilihan warna yang membuat
-                            // teks putih di atasnya tidak terbaca (WCAG 1.4.3).
-                            $contrast = brand_contrast_report($settings['brand_primary_color'] ?? null);
-                            ?>
-                            <div id="contrastBadge" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border"
-                                 role="status" aria-live="polite">
-                                <span id="contrastText"></span>
-                            </div>
-                        </div>
-
-                        <!-- Pratinjau keterbacaan -->
-                        <div class="mt-4 flex items-center gap-3 flex-wrap">
-                            <span id="contrastPreview" class="px-5 py-3 rounded-xl text-white text-sm font-bold"
-                                  style="background: <?php echo htmlspecialchars($settings['brand_primary_color'] ?? '#2563eb'); ?>">
-                                Contoh tombol utama
-                            </span>
-                            <p id="contrastNote" class="text-xs text-slate-400 leading-relaxed flex-1 min-w-[240px]"></p>
-                        </div>
-
-                        <script>
-                            /**
-                             * Hitung rasio kontras terhadap latar putih memakai rumus WCAG,
-                             * lalu perbarui lencana dan pratinjau secara langsung.
-                             * Perhitungan yang sama juga dilakukan di sisi PHP.
-                             */
-                            function luminance(hex) {
-                                const c = hex.replace('#', '');
-                                const ch = [0, 2, 4].map(i => {
-                                    const v = parseInt(c.substr(i, 2), 16) / 255;
-                                    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-                                });
-                                return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-                            }
-
-                            function updateContrast(hex) {
-                                const ratio = (1.05) / (luminance(hex) + 0.05);
-                                const r = Math.round(ratio * 100) / 100;
-
-                                let level, note, cls;
-                                if (r >= 4.5) {
-                                    level = 'WCAG AA ✓';
-                                    note  = 'Teks putih di atas warna ini memenuhi standar WCAG AA.';
-                                    cls   = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                                } else if (r >= 3.0) {
-                                    level = 'AA teks besar';
-                                    note  = 'Hanya memenuhi standar untuk teks besar dan indikator fokus. Teks kecil berwarna putih akan sulit dibaca.';
-                                    cls   = 'bg-amber-50 text-amber-700 border-amber-200';
-                                } else {
-                                    level = 'Kontras gagal';
-                                    note  = 'Kontras terlalu rendah. Teks putih di atas warna ini sulit dibaca; pilih warna yang lebih gelap.';
-                                    cls   = 'bg-red-50 text-red-700 border-red-200';
-                                }
-
-                                document.getElementById('contrastBadge').className =
-                                    'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ' + cls;
-                                document.getElementById('contrastText').textContent = level + ' — rasio ' + r.toFixed(2) + ':1';
-                                document.getElementById('contrastNote').textContent = note;
-                                document.getElementById('contrastPreview').style.background = hex;
-                                document.getElementById('brandHex').textContent = hex;
-                            }
-
-                            document.addEventListener('DOMContentLoaded', function () {
-                                const el = document.getElementById('set_brand_color');
-                                if (el) updateContrast(el.value);
-                            });
-                        </script>
-                    </div>
                 </div>
             </div>
 
+            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+                <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                </div>
+                <h2 class="text-xl font-bold outfit text-slate-800">Batas Unggah Berkas</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_allowed_file_types">Format (Pisah Koma)</label>
+                    <input id="f_allowed_file_types" type="text" name="allowed_file_types" value="<?php echo e($settings['allowed_file_types'] ?? 'pdf,jpg,png'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_max_file_size">Maks Size (KB)</label>
+                    <input id="f_max_file_size" type="number" name="max_file_size" value="<?php echo e($settings['max_file_size'] ?? 2048); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm">
+                </div>
+                    <div>
+                        <label for="set_import_max_rows" class="block text-sm font-bold text-slate-700 mb-2">Maks Baris per Impor</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Batas jumlah baris CSV yang diproses dalam satu unggahan impor alumni.</p>
+                        <input id="set_import_max_rows" type="number" min="1" name="import_max_rows" value="<?php echo htmlspecialchars($settings['import_max_rows'] ?? '2000'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_import_max_bytes" class="block text-sm font-bold text-slate-700 mb-2">Maks Ukuran Berkas Impor (byte)</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Batas ukuran berkas CSV impor. 2097152 byte = 2 MB.</p>
+                        <input id="set_import_max_bytes" type="number" min="1024" name="import_max_bytes" value="<?php echo htmlspecialchars($settings['import_max_bytes'] ?? '2097152'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label for="set_backup_keep" class="block text-sm font-bold text-slate-700 mb-2">Cadangan yang Disimpan</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah berkas cadangan terbaru yang dipertahankan; selebihnya dihapus otomatis.</p>
+                        <input id="set_backup_keep" type="number" min="1" name="backup_keep" value="<?php echo htmlspecialchars($settings['backup_keep'] ?? '7'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+            </div>
+            </div>
+
+            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center border border-slate-100">
+                        <i data-lucide="table-2" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-black outfit text-slate-800">Tampilan Data</h2>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Berlaku untuk tabel-tabel admin seperti Audit Trail dan Kelola Legalisir.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="set_pagination" class="block text-sm font-bold text-slate-700 mb-2">Baris per Halaman</label>
+                        <p class="text-xs text-slate-400 mb-3 leading-relaxed">Jumlah baris yang ditampilkan pada tabel-tabel admin seperti Audit Trail.</p>
+                        <input id="set_pagination" type="number" min="5" name="pagination_size" value="<?php echo htmlspecialchars($settings['pagination_size'] ?? '20'); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm font-medium">
+                    </div>
+                </div>
+            </div>
         </div>
 
-    <!-- Single Save Button -->
-    <div class="flex justify-end pt-10 pb-4">
-        <button type="submit" onclick="prepareDocTypes()" class="bg-blue-600 text-white px-12 py-6 rounded-[2.5rem] font-black outfit text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] transition-all active:scale-95 flex items-center gap-4">
-            <i data-lucide="save" class="w-6 h-6"></i>
-            Simpan Semua Perubahan
-        </button>
+                <div class="lg:sticky lg:bottom-0 z-20 bg-white border border-slate-100 shadow-lg shadow-slate-200/50 rounded-[2rem] px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Satu tombol menyimpan <b>seluruh bagian</b>, bukan hanya yang sedang terbuka.
+                    </p>
+                    <button type="submit" onclick="prepareDocTypes()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black outfit text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3 shrink-0">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        Simpan Semua Perubahan
+                    </button>
+                </div>
+            </form>
+
+            <!-- Formulir cadangan, sengaja di luar settings-form: tombolnya
+                 menunjuk ke sini lewat atribut form="form-cadangan". -->
+            <form action="handlers/admin_backup.php" method="POST" id="form-cadangan">
+                <?php csrf_field(); ?>
+            </form>
+        </div>
     </div>
-</form>
-<!-- Formulir cadangan, sengaja di luar settings-form. -->
-<form action="handlers/admin_backup.php" method="POST" id="form-cadangan">
-    <?php csrf_field(); ?>
-</form>
 </div>
 
 <script>
@@ -1490,24 +1714,42 @@ $color_map = [
         }
     }
 
-    function switchSettingsTab(tabClass) {
-        // Hide all setting tab contents
+    /**
+     * Pindah bagian pengaturan.
+     *
+     * Alamat halaman ikut diperbarui (#keamanan), sehingga sebuah bagian
+     * dapat ditautkan langsung dari halaman lain atau dari catatan — dan
+     * memuat ulang halaman tidak melemparkan pengguna kembali ke bagian
+     * pertama.
+     */
+    function switchSettingsTab(tabClass, perbaruiAlamat = true) {
         document.querySelectorAll('.settings-tab-content').forEach(el => el.classList.add('hidden'));
-        
-        // Show selected tab elements
         document.querySelectorAll('.' + tabClass).forEach(el => el.classList.remove('hidden'));
-        
-        // Reset all tab button styles
+
         document.querySelectorAll('.settings-tab-btn').forEach(btn => {
-            btn.classList.remove('bg-slate-900', 'text-white', 'shadow-lg');
-            btn.classList.add('text-slate-500', 'hover:text-slate-800', 'hover:bg-slate-50');
+            const aktif = btn.id === 'btn-' + tabClass;
+            btn.classList.toggle('bg-blue-600', aktif);
+            btn.classList.toggle('shadow-blue-200', aktif);
+            btn.classList.toggle('text-white', aktif);
+            btn.classList.toggle('shadow-lg', aktif);
+            btn.classList.toggle('text-slate-500', !aktif);
+            btn.classList.toggle('hover:text-slate-800', !aktif);
+            btn.classList.toggle('hover:bg-slate-50', !aktif);
+            btn.setAttribute('aria-current', aktif ? 'true' : 'false');
         });
-        
-        // Set active style for selected tab button
-        const activeBtn = document.getElementById('btn-' + tabClass);
-        if (activeBtn) {
-            activeBtn.classList.remove('text-slate-500', 'hover:text-slate-800', 'hover:bg-slate-50');
-            activeBtn.classList.add('bg-slate-900', 'text-white', 'shadow-lg');
+
+        if (perbaruiAlamat && history.replaceState) {
+            history.replaceState(null, '', '#' + tabClass.replace('tab-', ''));
         }
+        // Isi bagian yang baru muncul berada di atas layar, bukan di posisi
+        // gulir bagian sebelumnya.
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const bagian = (location.hash || '').replace('#', '');
+        if (bagian && document.getElementById('btn-tab-' + bagian)) {
+            switchSettingsTab('tab-' + bagian, false);
+        }
+    });
 </script>

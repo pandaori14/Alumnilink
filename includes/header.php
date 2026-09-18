@@ -397,10 +397,38 @@ $dashboard_bg_animation = ($sys_settings['dashboard_bg_animation'] ?? '1') == '1
     </script>
     <link rel="stylesheet" href="assets/fonts/fonts.css">
     <script>
-        // Premium URL Masking: Fallback cleanup for address bar
+        /**
+         * Alamat dirapikan: index.php?page=admin_settings -> /admin_settings
+         *
+         * Versi sebelumnya membuang SELURUH query string dan tanda pagar,
+         * menyisakan "/alumnilink/" saja. Akibatnya dua hal yang wajar justru
+         * rusak: menyegarkan halaman melemparkan pengguna ke dasbor, dan
+         * tautan ber-anchor (#monitor di panel gateway, #keamanan di
+         * Pengaturan) kehilangan tujuannya.
+         *
+         * Sekarang nama halaman menjadi jalur, parameter yang dibutuhkan
+         * halaman tetap dibawa, dan tanda pagar dipertahankan. Aturan
+         * RewriteRule di .htaccess mengubahnya kembali menjadi index.php,
+         * jadi alamat rapi ini tetap dapat dibuka langsung.
+         */
         if (window.history && window.history.replaceState) {
-            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname.replace(/\/index\.php$/, '/');
-            window.history.replaceState({}, document.title, cleanUrl);
+            try {
+                const u = new URL(window.location.href);
+                if (/\/index\.php$/.test(u.pathname)) {
+                    const halaman = u.searchParams.get('page') || '';
+                    u.searchParams.delete('page');
+                    // Parameter sesaat: hanya berarti untuk satu tampilan.
+                    // Dibuang agar tidak muncul lagi saat halaman disegarkan.
+                    ['success', 'error', 'reason', 't', 'peringatan', 'belum_lunas', 'uji', 'payment', 'status']
+                        .forEach(function (k) { u.searchParams.delete(k); });
+                    const sisa = u.searchParams.toString();
+                    const rapi = u.pathname.replace(/\/index\.php$/, '/') + halaman
+                               + (sisa ? '?' + sisa : '') + u.hash;
+                    window.history.replaceState({}, document.title, rapi);
+                }
+            } catch (e) {
+                // URL tidak dapat diurai: biarkan alamat apa adanya.
+            }
         }
     </script>
     <style>

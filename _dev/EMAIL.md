@@ -35,7 +35,7 @@ e-mail transaksional: verifikasi akun, reset kata sandi, notifikasi legalisir.
 **Tidak ada perubahan kode yang diperlukan.** `smtp_host`, `smtp_port`,
 `smtp_user`, `smtp_pass`, dan `smtp_secure` semuanya dibaca dari tabel
 `settings` (lihat `includes/mailer.php`), jadi berpindah penyedia adalah
-mengisi formulir di **Pengaturan Sistem → Sistem & Keamanan**.
+mengisi formulir di **Konfigurasi Sistem → Integrasi & E-mail**.
 
 ### Perbandingan
 
@@ -55,7 +55,7 @@ dalam hitungan **jam**, bukan hari.
 
 1. Daftar, verifikasi domain `<domain-institusi>` (butuh akses DNS).
 2. Ambil kredensial **SMTP relay** — bukan kunci API; sistem ini memakai SMTP.
-3. Pengaturan Sistem → isi `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`.
+3. Konfigurasi Sistem → Integrasi & E-mail → isi `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`.
 4. Naikkan kecepatan — **hanya setelah** langkah 1–3 selesai:
 
    | Pengaturan | Sekarang | Setelah pindah |

@@ -72,7 +72,7 @@ foreach ($tahun_opsi as $t) {
     ];
 }
 
-$nama_institusi = setting('system_name', 'AlumniLink');
+$nama_institusi = nama_institusi();
 $logo           = setting('system_logo', '');
 ?>
 

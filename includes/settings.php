@@ -132,6 +132,27 @@ function setting($key, $default = '')
     return $all[$key];
 }
 
+/**
+ * Nama institusi untuk ditampilkan.
+ *
+ * Dulu ada DUA kunci untuk satu hal: 'institution_name' yang disunting di
+ * Konfigurasi Sistem, dan 'system_name' yang dibaca surat, halaman galat,
+ * survei pengguna lulusan, serta laporan akreditasi. Mengganti nama
+ * institusi lewat antarmuka karena itu tidak pernah mengubah keempatnya.
+ *
+ * Sekarang semuanya lewat sini: yang disunting super admin menang, nilai
+ * lama dipakai sebagai cadangan supaya pemasangan yang sudah berjalan
+ * tidak berubah tampilannya begitu berkas ini naik.
+ */
+function nama_institusi()
+{
+    $nama = trim((string)setting('institution_name', ''));
+    if ($nama !== '') {
+        return $nama;
+    }
+    return trim((string)setting('system_name', '')) ?: 'AlumniLink';
+}
+
 /** Ambil pengaturan sebagai bilangan bulat, dengan batas minimum opsional. */
 function setting_int($key, $default = 0, $min = null)
 {

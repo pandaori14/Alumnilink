@@ -125,6 +125,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('rbac_enforce', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
         $stmt->execute([$rbac_enforce, $rbac_enforce]);
 
+        // Rahasia hanya-tulis dikosongkan hanya bila DIMINTA secara tegas.
+        // Kolomnya sendiri selalu dirender kosong, jadi tanpa kotak centang
+        // ini tidak ada cara membedakan "tidak diubah" dari "hapus".
+        foreach (['smtp_pass', 'google_client_secret', 'gemini_api_key'] as $rahasia) {
+            if (!empty($_POST['hapus_' . $rahasia])) {
+                $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, '')
+                               ON DUPLICATE KEY UPDATE setting_value = ''")->execute([$rahasia]);
+                log_activity('UPDATE_SETTINGS', "Rahasia '$rahasia' dikosongkan.");
+            }
+        }
+
         // Handle Other Settings
         foreach ($_POST as $key => $value) {
             // Skip file input placeholders, CSRF, zones, menus, and our custom settings (already handled)
@@ -144,6 +155,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
             
+            // Daftar yang sudah berisi tidak boleh ditimpa nilai KOSONG.
+            // Kolom-kolom ini diisi JavaScript; bila skripnya gagal berjalan,
+            // kiriman kosong akan menghapus seluruh isinya tanpa peringatan.
+            // gemini_api_key dirender KOSONG (rahasia hanya-tulis), jadi tanpa
+            // penjagaan ini setiap penyimpanan akan menghapusnya.
+            if (in_array($key, ['legalisir_document_types', 'sidebar_permissions', 'gemini_api_key',
+                                'smtp_pass', 'google_client_secret'], true)
+                && trim((string)$value) === '') {
+                error_log("Pengaturan: '$key' dikirim kosong; nilai lama dipertahankan.");
+                continue;
+            }
+
             $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
             $stmt->execute([$key, $value, $value]);
         }

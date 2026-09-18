@@ -269,13 +269,15 @@ $is_super = ($current_role === 'super_admin');
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Konfigurasi Sistem Utama</h3>
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Masuk ke menu <b>Konfigurasi Sistem</b> untuk mengontrol aspek fundamental web:</p>
+                            <p>Isinya dibagi lima bagian; satu tombol Simpan menyimpan semuanya, bukan hanya bagian yang sedang terbuka.</p>
                             <ul class="list-disc pl-5 space-y-1">
-                                <li><b>Konfigurasi Identitas:</b> Ubah Logo, Nama Institusi, dan Kontak.</li>
-                                <li><b>Pembayaran:</b> kredensial, tarif, dan sakelar penyedia pembayaran ada di menu tersendiri, <b>Gateway Pembayaran</b> (lihat di bawah).</li>
-                                <li><b>Email SMTP:</b> Wajib diisi agar fitur Lupa Sandi dan Email Broadcast bekerja.</li>
-                                <li><b>Google SSO:</b> Masukkan *Google Client ID*. Anda bisa menentukan apakah *user* yang mendaftar via Google otomatis *Verified* atau harus disetujui manual.</li>
-                                <li><b>Maintenance Mode:</b> Matikan akses *user* awam ketika Anda perlu melakukan perbaikan web.</li>
+                                <li><b>Identitas &amp; Tampilan:</b> logo, favicon, warna institusi, kontak bantuan WhatsApp, isi halaman depan, dan mode perawatan.</li>
+                                <li><b>Layanan &amp; Biaya:</b> harga per lembar, zona ongkir, jenis dokumen legalisir, stempel digital, ambang SLA, dan masa berlaku tracer.</li>
+                                <li><b>Integrasi &amp; E-mail:</b> SMTP, antrean dan batas kirim harian, Google SSO, serta kunci Analitik AI.</li>
+                                <li><b>Keamanan &amp; Akses:</b> penegakan izin peran (RBAC), menu yang terlihat tiap peran, kebijakan kata sandi dan sesi, pembatasan laju, dan retensi Audit Trail.</li>
+                                <li><b>Operasional:</b> cadangan basis data, tugas terjadwal (cron), sinkronisasi peta, batas unggah dan impor, serta jumlah baris tabel.</li>
                             </ul>
+                            <p class="text-xs text-slate-400">Kredensial dan tarif penyedia pembayaran TIDAK ada di sini — semuanya di menu <b>Gateway Pembayaran</b>. Halaman ini bahkan menolak menyimpannya, supaya tarif tidak pernah berubah tanpa sengaja.</p>
                         </div>
                     </div>
 

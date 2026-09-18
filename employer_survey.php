@@ -69,7 +69,7 @@ if ($survey->expires_at !== null && strtotime($survey->expires_at) < time()) {
 }
 
 $aspek     = tracer_competency_questions($pdo);
-$institusi = setting('system_name', 'AlumniLink');
+$institusi = nama_institusi();
 $logo      = setting('system_logo', '');
 $warna     = brand_primary_color();
 
