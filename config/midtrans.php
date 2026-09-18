@@ -14,7 +14,12 @@
  *   - settings.midtrans_client_key
  *   - settings.midtrans_is_production
  * Diatur lewat menu Pengaturan Sistem (Superadmin) dan dibaca antara lain
- * oleh handlers/midtrans_webhook.php serta handlers/donation_handler.php.
+ * oleh includes/payment/midtrans.php (adaptor gateway).
+ *
+ * CATATAN (upgrade gateway kedua): seluruh pembayaran kini melewati
+ * includes/payment/ dan diatur dari halaman Gateway Pembayaran. Berkas ini
+ * tinggal sebagai penanda sejarah agar tidak ada yang menambahkan kembali
+ * kunci hardcoded di sini. Lihat _dev/PEMBAYARAN.md.
  *
  * Isi berkas dikosongkan (bukan dihapus) agar proses upload FTP menimpa
  * versi lama di server yang masih memuat nilai placeholder. Setelah upload

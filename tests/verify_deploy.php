@@ -275,6 +275,7 @@ $tanda_jalan = [
     'cron/process_email_queue.php' => ['Email queue worker started', 'No pending emails'],
     'cron/tracer_reminder.php'     => ['[START]', 'Reminder Cron Job'],
     'cron/backup.php'              => ['Selesai:', 'Menghapus', 'GAGAL: folder'],
+    'cron/payment_reconcile.php'   => ['Tagihan pending untuk diperiksa', 'Selesai dalam'],
 ];
 
 echo "\n  6. Pemicu cron berkunci\n";
@@ -283,6 +284,7 @@ foreach ([
     'cron/process_email_queue.php' => 'antrean e-mail',
     'cron/tracer_reminder.php'     => 'pengingat tracer',
     'cron/backup.php'              => 'cadangan',
+    'cron/payment_reconcile.php'   => 'rekonsiliasi pembayaran',
 ] as $path => $label) {
     $r = ambil("$base/$path?token=" . urlencode($token_palsu));
 
@@ -421,6 +423,79 @@ if (!is_array($j)) {
             . 'sistem server, bukan kodenya.');
     }
 }
+
+// ═══ 10. Pembayaran ══════════════════════════════════════════════════
+//
+// Kedua callback WAJIB publik — gateway memanggilnya tanpa sesi. Yang
+// diperiksa di sini adalah bahwa "publik" tidak berarti "terbuka":
+// permintaan tanpa autentikasi harus ditolak, dan penolakannya tidak boleh
+// membocorkan galat basis data. Panel gateway, sebaliknya, tidak boleh
+// dapat dibuka tanpa masuk.
+//
+// CATATAN: kedua POST di bawah TERCATAT di jurnal callback (outcome
+// auth_failed / invalid) dan akan terlihat di monitor panel. Itu memang
+// perilaku yang benar — setiap callback dicatat — bukan tanda masalah.
+
+/** POST sederhana; ambil() hanya melakukan GET. */
+function kirim($url, $body, array $header = [])
+{
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30, CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HEADER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+        CURLOPT_HTTPHEADER => $header, CURLOPT_USERAGENT => 'AlumniLink-verify-deploy',
+    ]);
+    $raw = (string)curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $pisah = strpos($raw, "
+
+");
+    return ['code' => $code, 'body' => $pisah !== false ? substr($raw, $pisah + 4) : $raw];
+}
+
+echo "
+  10. Pembayaran
+";
+
+foreach ([
+    'handlers/midtrans_webhook.php' => 'callback Midtrans',
+    'handlers/flip_callback.php'    => 'callback Flip',
+] as $path => $label) {
+    $r = ambil("$base/$path");
+    if ($r['code'] === 404) {
+        lapor(false, "$label ada di server", 'HTTP 404',
+            "Unggah $path beserta folder includes/payment/.");
+        continue;
+    }
+    lapor($r['code'] === 405, "$label menolak GET", 'HTTP ' . $r['code'],
+        'Callback hanya boleh menerima POST.');
+}
+
+$r = kirim("$base/handlers/midtrans_webhook.php", '{"order_id":"VERIFIKASI","status_code":"200","gross_amount":"1.00","signature_key":"salah"}',
+    ['Content-Type: application/json']);
+$aman = in_array($r['code'], [400, 403, 503], true);
+lapor($aman, 'callback Midtrans menolak tanda tangan palsu', 'HTTP ' . $r['code'],
+    $r['code'] === 200 ? 'Balasan 200 untuk tanda tangan palsu berarti notifikasi apa pun diterima.' : '');
+$bocor_callback = false;
+foreach (['SQLSTATE', 'Fatal error', 'Warning:', 'on line', '/var/www', '/home/', 'C:' . DIRECTORY_SEPARATOR] as $tanda) {
+    if (stripos($r['body'], $tanda) !== false) { $bocor_callback = true; break; }
+}
+lapor(!$bocor_callback, 'penolakan callback tidak membocorkan galat', substr(strip_tags($r['body']), 0, 60));
+
+$r = kirim("$base/handlers/flip_callback.php", http_build_query(['data' => '{}', 'token' => 'verifikasi-salah']));
+lapor(in_array($r['code'], [400, 403, 503], true), 'callback Flip menolak token palsu', 'HTTP ' . $r['code'],
+    $r['code'] === 200 ? 'Balasan 200 untuk token palsu berarti siapa pun dapat memicu perubahan status.' : '');
+
+$r = ambil("$base/index.php?page=admin_payment_gateway");
+$terbuka = $r['code'] === 200 && (stripos($r['body'], 'Server Key') !== false || stripos($r['body'], 'URL callback') !== false);
+lapor(!$terbuka, 'panel gateway tertutup bagi anonim', 'HTTP ' . $r['code'],
+    $terbuka ? 'Panel gateway terbuka tanpa masuk. Periksa penjagaan di index.php dan halamannya.' : '');
+
+$r = kirim("$base/handlers/admin_payment_gateway_handler.php", http_build_query(['aksi' => 'tes', 'gateway' => 'flip']));
+lapor(in_array($r['code'], [401, 403], true) || $r['code'] === 404,
+    'handler gateway menolak anonim', 'HTTP ' . $r['code'],
+    in_array($r['code'], [200, 302], true) ? 'Handler gateway menjawab tanpa sesi — periksa require_role.' : '');
 
 // ═══ Ringkasan ═══════════════════════════════════════════════════════
 echo "\n  " . str_repeat('─', 62) . "\n";

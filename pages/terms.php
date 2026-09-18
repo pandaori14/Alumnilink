@@ -206,6 +206,8 @@ $shipping_zones = json_decode($sys['shipping_zones'] ?? '[]', true) ?: [];
                             <li>Dokumen yang diunggah harus merupakan dokumen asli milik pengguna yang mendaftar</li>
                             <li>Biaya legalisir yang telah dibayarkan bersifat <strong>non-refundable</strong> setelah proses verifikasi dimulai</li>
                             <li>Waktu pemrosesan bergantung pada antrean dan ketersediaan administrator</li>
+                            <li>Pembayaran diproses oleh penyedia pembayaran pihak ketiga yang ditunjuk fakultas (saat ini Midtrans atau Flip). Data kartu maupun kredensial pembayaran Anda tidak pernah disimpan oleh AlumniLink</li>
+                            <li>Tagihan berlaku selama masa yang tertera pada halaman pembayaran. Tagihan yang kedaluwarsa dapat diterbitkan ulang tanpa mengajukan dokumen kembali</li>
                             <li>Hasil legalisir digital bersifat sah dan dapat diverifikasi melalui kode QR yang tersemat</li>
                             <li>Penggunaan dokumen yang dilegalisir untuk keperluan penipuan adalah tindakan ilegal dan dapat dipidana</li>
                         </ul>

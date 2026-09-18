@@ -458,9 +458,10 @@ if (is_file($lint2)) {
 }
 
 // ── 7. Alias webhook Midtrans tersedia ───────────────────
-heading('7. Webhook Midtrans — kedua nama berkas harus ADA (bukan 404)');
+heading('7. Endpoint pembayaran harus ADA (bukan 404)');
 
-foreach (['handlers/midtrans_webhook.php', 'handlers/midtrans_notification.php'] as $p) {
+foreach (['handlers/midtrans_webhook.php', 'handlers/midtrans_notification.php',
+          'handlers/flip_callback.php', 'handlers/payment_return.php'] as $p) {
     $r = req($BASE . '/' . $p, 'POST', '{}', ['Content-Type: application/json']);
     // Payload kosong wajar ditolak 400/403/500 — yang penting BUKAN 404.
     report($r['code'] !== 404, $p, sprintf('HTTP %d (yang penting bukan 404)', $r['code']));

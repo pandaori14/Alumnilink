@@ -111,8 +111,11 @@ $is_super = ($current_role === 'super_admin');
                                 <li>Pilih menu <b>Layanan Legalisir</b>.</li>
                                 <li>Pilih jumlah dokumen yang ingin dilegalisir (Ijazah/Transkrip).</li>
                                 <li>Pilih metode pengiriman: <b>Ambil di Kampus</b> atau <b>Kirim ke Alamat</b>. Jika dikirim, masukkan alamat lengkap dan provinsi. Sistem otomatis menghitung estimasi biaya ongkir.</li>
-                                <li>Klik <b>Ajukan Legalisir</b>. Lakukan pembayaran melalui Payment Gateway Midtrans (QRIS, VA, E-Wallet, dll).</li>
-                                <li>Status pesanan (<i>Pending, Processing, Completed</i>) dan nomor resi pengiriman dapat dipantau di halaman yang sama.</li>
+                                <li>Rincian biaya (dokumen, ongkir, biaya layanan) tampil sebelum Anda menekan tombol. Angka itulah yang akan ditagih.</li>
+                                <li>Klik <b>Ajukan &amp; Lanjut ke Pembayaran</b>, lalu bayar lewat QRIS, Virtual Account, atau e-wallet. Tergantung pengaturan fakultas, halaman pembayarannya terbuka sebagai popup atau Anda dialihkan ke halaman penyedia pembayaran.</li>
+                                <li>Bila tagihan gagal dibuat atau sudah kedaluwarsa, pengajuan Anda TIDAK hilang: buka detail pengajuan lalu tekan <b>Buat Tagihan Pembayaran</b>.</li>
+                                <li>Status pembayaran diperbarui otomatis setelah pembayaran terkonfirmasi — biasanya beberapa detik, paling lambat sekitar setengah jam. Tidak perlu mengirim bukti transfer.</li>
+                                <li>Status pesanan (<i>Menunggu, Diproses, Selesai</i>) dan nomor resi pengiriman dapat dipantau di halaman yang sama.</li>
                             </ol>
                         </div>
                     </div>
@@ -124,7 +127,7 @@ $is_super = ($current_role === 'super_admin');
                             <ul class="list-disc pl-5 space-y-1">
                                 <li>Buka menu <b>Donasi Alumni</b>. Pilih kampanye donasi yang aktif.</li>
                                 <li>Masukkan nominal, nama donatur (bisa Anonim), dan pesan/doa.</li>
-                                <li>Lakukan pembayaran instan via Midtrans. Donasi akan otomatis tercatat dan memperbarui progress bar kampanye jika berhasil.</li>
+                                <li>Rincian biaya tampil sebelum membayar. Lakukan pembayaran, lalu Anda kembali ke halaman donasi. Donasi tercatat dan memperbarui progres kampanye setelah pembayaran terkonfirmasi.</li>
                             </ul>
                         </div>
                     </div>
@@ -190,7 +193,9 @@ $is_super = ($current_role === 'super_admin');
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Masuk ke menu <b>Kelola Legalisir</b>. Di sini terdapat daftar permohonan dari alumni.</p>
                             <ul class="list-disc pl-5 space-y-1">
-                                <li>Permohonan dengan status pembayaran <i>success</i> / lunas dapat langsung Anda proses (Klik <b>Process</b>).</li>
+                                <li>Permohonan berstatus <i>Lunas</i> dapat langsung diproses. Yang belum lunas tetap dapat diproses, tetapi Anda akan diberi peringatan dan kejadiannya dicatat di Audit Trail — kecuali super admin mengaktifkan aturan "wajib lunas", yang membuatnya ditolak.</li>
+                                <li>Pembayaran tunai ditandai lewat tombol <b>verifikasi tunai</b>. Tombol itu sekaligus menutup tagihan online yang masih terbuka, supaya alumni tidak membayar dua kali.</li>
+                                <li>Pengajuan yang sudah lunas tidak dapat dihapus, supaya uangnya tetap tercatat di Laporan Keuangan. Bila memang batal, tolak pengajuannya.</li>
                                 <li>Setelah dokumen selesai dilegalisir, jika opsi pengiriman adalah kurir, masukkan Nomor Resi dan klik <b>Mark as Completed</b>. Notifikasi akan otomatis terkirim ke alumni.</li>
                                 <li>Jika tidak memenuhi syarat, klik <b>Reject</b> dan sertakan alasannya.</li>
                             </ul>
@@ -242,7 +247,9 @@ $is_super = ($current_role === 'super_admin');
                     <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm">
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Laporan Keuangan</h3>
                         <div class="space-y-2 text-sm text-slate-600">
-                            <p>Di menu <b>Laporan Keuangan</b>, Anda dapat memantau mutasi dan rekapitulasi dana masuk (dari Legalisir maupun Donasi) dengan akurasi 100% yang disinkronisasi melalui *Webhook Payment Gateway* Midtrans.</p>
+                            <p>Di menu <b>Laporan Keuangan</b>, Anda dapat memantau rekapitulasi dana <b>legalisir</b> yang sudah lunas, dipisah per cara bayar: tunai, dan per penyedia pembayaran. Jumlah seluruh kartu selalu sama dengan totalnya.</p>
+                            <p><b>Donasi belum masuk laporan ini.</b> Rekap donasi ada di menu <b>Kelola Donasi</b>.</p>
+                            <p>Status pembayaran diperbarui dari pemberitahuan penyedia pembayaran, dan diperiksa ulang secara berkala ke sistem mereka — jadi pembayaran tetap tercatat walau pemberitahuannya terlambat atau hilang.</p>
                         </div>
                     </div>
                 </div>
@@ -264,11 +271,28 @@ $is_super = ($current_role === 'super_admin');
                             <p>Masuk ke menu <b>Konfigurasi Sistem</b> untuk mengontrol aspek fundamental web:</p>
                             <ul class="list-disc pl-5 space-y-1">
                                 <li><b>Konfigurasi Identitas:</b> Ubah Logo, Nama Institusi, dan Kontak.</li>
-                                <li><b>Midtrans:</b> Masukkan Client Key & Server Key. Gunakan opsi *Sandbox* untuk testing dan *Production* untuk Go-Live.</li>
+                                <li><b>Pembayaran:</b> kredensial, tarif, dan sakelar penyedia pembayaran ada di menu tersendiri, <b>Gateway Pembayaran</b> (lihat di bawah).</li>
                                 <li><b>Email SMTP:</b> Wajib diisi agar fitur Lupa Sandi dan Email Broadcast bekerja.</li>
                                 <li><b>Google SSO:</b> Masukkan *Google Client ID*. Anda bisa menentukan apakah *user* yang mendaftar via Google otomatis *Verified* atau harus disetujui manual.</li>
                                 <li><b>Maintenance Mode:</b> Matikan akses *user* awam ketika Anda perlu melakukan perbaikan web.</li>
                             </ul>
+                        </div>
+                    </div>
+
+                    <div class="glass p-6 rounded-[2rem] border border-white/50 shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="credit-card" class="w-5 h-5 text-purple-600"></i> Gateway Pembayaran</h3>
+                        <div class="space-y-2 text-sm text-slate-600">
+                            <p>Menu <b>Gateway Pembayaran</b> mengatur seluruh urusan uang: kredensial, tarif, dan penyedia mana yang dipakai.</p>
+                            <ul class="list-disc pl-5 space-y-1">
+                                <li><b>Satu penyedia aktif.</b> Yang aktif menentukan lewat mana tagihan BARU terbit. Tagihan yang sudah terbit tetap dibayar lewat penyedia asalnya, jadi memindahkan sakelar tidak membatalkan tagihan siapa pun.</li>
+                                <li><b>Kredensial hanya-tulis.</b> Kunci yang sudah tersimpan tidak pernah ditampilkan kembali; kolom yang dikosongkan berarti "tidak diubah". Mengubah kunci atau mode membatalkan hasil tes koneksi terakhir.</li>
+                                <li><b>Tes koneksi dulu.</b> Penyedia hanya bisa diaktifkan bila kredensialnya lengkap, tes koneksi berhasil dalam 24 jam terakhir pada mode yang sama, dan tarifnya sudah Anda cocokkan dengan tarif resmi.</li>
+                                <li><b>Tarif.</b> Setiap perubahan menampilkan contoh perhitungan langsung. Tarif hanya berlaku untuk tagihan baru; tagihan yang sudah terbit tidak berubah.</li>
+                                <li><b>Transaksi uji Rp 10.000</b> (hanya mode sandbox) membuktikan jalur bayar sampai konfirmasi berfungsi, tanpa menyentuh data legalisir atau donasi.</li>
+                                <li><b>Monitor</b> menampilkan transaksi dan pemberitahuan terakhir. Bila alumni mengaku sudah membayar tetapi status belum berubah, tekan <b>Cek status</b> pada barisnya.</li>
+                                <li><b>URL callback</b> di halaman ini wajib didaftarkan di dashboard penyedia. Tanpa itu, pembayaran hanya terkonfirmasi lewat pemeriksaan berkala.</li>
+                            </ul>
+                            <p class="text-xs text-slate-400">Langkah lengkap saat salah satu penyedia bermasalah ada di <b>_dev/PEMBAYARAN.md</b>.</p>
                         </div>
                     </div>
 

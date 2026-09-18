@@ -96,7 +96,8 @@ includes/    pustaka bersama (auth, settings, mailer, pagination, …)
 pages/       badan halaman — SELALU dimuat lewat index.php
 handlers/    aksi POST
 api/         endpoint JSON
-cron/        pekerjaan terjadwal (antrean e-mail, geocoder, cadangan)
+cron/        pekerjaan terjadwal (antrean e-mail, geocoder, cadangan,
+             rekonsiliasi pembayaran)
 tests/       uji asap, lint, dan suite
 _dev/build/  sumber Tailwind
 ```
@@ -119,6 +120,43 @@ penjagaan sesi, verifikasi, mode perawatan, dan RBAC.
 - **Escape saat menampilkan, bukan saat menyimpan.** Data yang sama dipakai
   di HTML, CSV, e-mail, dan JSON — masing-masing butuh escape berbeda.
   Fungsinya `e()` di `includes/settings.php`.
+
+---
+
+## Pembayaran
+
+Dua gateway — **Midtrans** dan **Flip** — tetapi hanya **satu aktif** pada
+satu waktu. Yang aktif menentukan lewat mana tagihan **baru** terbit;
+tagihan yang sudah terbit tetap dibayar dan dikonfirmasi lewat gateway
+asalnya. Sakelarnya ada di **Pengaturan Sistem → Gateway Pembayaran**
+(khusus super admin), bukan di berkas konfigurasi.
+
+URL yang harus didaftarkan di dashboard gateway:
+
+```
+Midtrans   https://<domain>/alumnilink/handlers/midtrans_webhook.php
+Flip       https://<domain>/alumnilink/handlers/flip_callback.php
+```
+
+Tiga hal yang membedakannya dari integrasi pembayaran kebanyakan:
+
+- **Callback hanya pemicu.** Setelah diautentikasi, status selalu diambil
+  ulang dari API gateway dan nominalnya dicocokkan sebelum apa pun berubah.
+  Tanda tangan Midtrans tidak mengikat `transaction_status`, dan callback
+  Flip tidak bertanda tangan sama sekali.
+- **Uang yang masuk selalu menang.** `expired` tetap bisa menjadi `paid`;
+  `paid` tidak pernah mundur. Satu fungsi yang mengubah status, dengan kunci
+  baris dan efek samping setelah commit.
+- **Ledger tanpa foreign key.** `payment_transactions` tidak ikut terhapus
+  ketika alumni, pengajuan, atau kampanye dihapus.
+
+Callback bisa hilang — produksi tidak pernah menerima satu pun sebelum
+upgrade ini. Karena itu `cron/payment_reconcile.php` menarik status secara
+berkala, dan panel punya tombol cek status manual.
+
+Rumus biaya, runbook pindah gateway, dan penanganan kasus tidak biasa
+(bayar ganda, nominal tidak cocok, tunai) ada di
+[`_dev/PEMBAYARAN.md`](_dev/PEMBAYARAN.md).
 
 ---
 

@@ -17,7 +17,9 @@
  * perubahan konfigurasi apa pun di sisi dashboard Midtrans.
  *
  * Seluruh logika -- termasuk verifikasi signature SHA-512 -- tetap berada
- * di midtrans_webhook.php. Jangan menduplikasi logika di sini.
+ * di midtrans_webhook.php, yang kini hanya meneruskan ke penerima callback
+ * bersama includes/payment/callback.php (dipakai Midtrans dan Flip).
+ * Jangan menduplikasi logika di sini.
  */
 
 require __DIR__ . '/midtrans_webhook.php';

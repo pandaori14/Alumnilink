@@ -93,6 +93,29 @@ Uji asap memeriksa berkas ini ada.
 
 ---
 
+## Layanan pihak ketiga (bukan pustaka)
+
+Tidak ada SDK yang dipasang. Kedua gateway dipanggil langsung lewat cURL
+dari `includes/payment/`, sehingga tidak ada dependensi yang perlu ikut
+naik dan tidak ada versi pustaka yang bisa usang diam-diam.
+
+| Layanan | Dipakai untuk | Versi API | Dokumentasi |
+|---|---|---|---|
+| Midtrans | Snap (buat tagihan), API status, notifikasi | Snap v1 + API v2 | <https://docs.midtrans.com> |
+| Flip for Business | Accept Payment (Bill), status, callback | v2 | <https://docs.flip.id> |
+
+Catatan:
+
+- Adaptor Flip memakai **v2**; v3 belum diimplementasikan. Versinya ada di
+  kode (`includes/payment/flip.php`), bukan di pengaturan.
+- `docs.flip.id` menolak pengambilan otomatis (403), jadi perubahan API-nya
+  tidak dapat dipantau lewat skrip. Periksa manual bila ada galat yang
+  belum pernah muncul.
+- Kredensial tidak pernah ada di berkas; semuanya di tabel `settings` dan
+  disunting lewat halaman Gateway Pembayaran.
+
+---
+
 ## Build (hanya lokal)
 
 | Pustaka | Versi | Lokasi |

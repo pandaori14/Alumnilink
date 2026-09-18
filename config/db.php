@@ -743,7 +743,6 @@ try {
         'flip_secret_key'                 => '',
         'flip_validation_token'           => '',
         'flip_is_production'              => '0',
-        'flip_api_version'                => 'v2',
         'fee_midtrans_percent'            => $nilai_lama('midtrans_mdr_rate', '4.00'),
         'fee_midtrans_vat_percent'        => $nilai_lama('midtrans_ppn_rate', '11.00'),
         'fee_midtrans_flat'               => $nilai_lama('midtrans_payout_fee', '2500'),

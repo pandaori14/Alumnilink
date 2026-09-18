@@ -243,4 +243,67 @@ CREATE TABLE `alumni_geocoding_cache` (
   CONSTRAINT `alumni_geocoding_cache_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Ledger pembayaran dan jurnal callback (lihat _dev/PEMBAYARAN.md).
+-- payment_transactions sengaja TANPA foreign key: menghapus alumni,
+-- pengajuan, atau kampanye tidak boleh menghapus jejak uang.
+DROP TABLE IF EXISTS `midtrans_notifications`;
+CREATE TABLE `midtrans_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` varchar(120) NOT NULL,
+  `transaction_status` varchar(50) NOT NULL,
+  `transaction_id` varchar(120) DEFAULT NULL,
+  `gross_amount` decimal(15,2) DEFAULT NULL,
+  `processed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_order_status` (`order_id`,`transaction_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `payment_transactions`;
+CREATE TABLE `payment_transactions` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `gateway` varchar(20) NOT NULL,
+  `purpose` varchar(20) NOT NULL,
+  `subject_id` varchar(64) NOT NULL,
+  `merchant_ref` varchar(64) NOT NULL,
+  `provider_ref` varchar(120) DEFAULT NULL,
+  `amount_expected` decimal(15,2) DEFAULT NULL,
+  `fee_breakdown` longtext DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `snap_token` varchar(255) DEFAULT NULL,
+  `pay_url` varchar(500) DEFAULT NULL,
+  `channel` varchar(50) DEFAULT NULL,
+  `flag` varchar(40) DEFAULT NULL,
+  `last_error` varchar(255) DEFAULT NULL,
+  `created_by` varchar(128) DEFAULT NULL,
+  `expires_at` datetime DEFAULT NULL,
+  `paid_at` datetime DEFAULT NULL,
+  `last_checked_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_merchant_ref` (`merchant_ref`),
+  KEY `idx_provider` (`gateway`,`provider_ref`),
+  KEY `idx_subject` (`purpose`,`subject_id`),
+  KEY `idx_status_expiry` (`status`,`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `payment_callbacks`;
+CREATE TABLE `payment_callbacks` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `gateway` varchar(20) NOT NULL,
+  `transaction_id` bigint(20) unsigned DEFAULT NULL,
+  `merchant_ref` varchar(64) DEFAULT NULL,
+  `provider_ref` varchar(120) DEFAULT NULL,
+  `provider_event` varchar(120) DEFAULT NULL,
+  `provider_status` varchar(40) DEFAULT NULL,
+  `outcome` varchar(30) NOT NULL,
+  `detail` varchar(255) DEFAULT NULL,
+  `payload_sha256` char(64) DEFAULT NULL,
+  `remote_ip` varchar(45) DEFAULT NULL,
+  `received_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_gw_ref` (`gateway`,`merchant_ref`),
+  KEY `idx_received` (`received_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 SET FOREIGN_KEY_CHECKS=1;
