@@ -456,9 +456,12 @@ echo "\n=== G. Tidak ada pengaturan yang tersembunyi dari antarmuka ===\n";
 $dikelola_panel = ['midtrans_server_key', 'midtrans_client_key', 'midtrans_is_production',
     'flip_secret_key', 'flip_validation_token', 'flip_is_production', 'payment_gateway_active',
     'payment_fallback_enabled', 'payment_expiry', 'payment_custom_charge_legalisir',
-    'payment_custom_charge_donasi', 'legalisir_require_paid', 'payment_fallback_notice_at'];
+    'payment_custom_charge_donasi', 'legalisir_require_paid', 'payment_fallback_notice_at',
+    'payment_margin_legalisir', 'payment_margin_donasi',
+    'payment_gateway_enabled_midtrans', 'payment_gateway_enabled_flip',
+    'payment_channels_midtrans', 'payment_channels_flip'];
 foreach (['midtrans', 'flip'] as $g) {
-    foreach (['percent', 'vat_percent', 'flat', 'app', 'min', 'reviewed'] as $k) {
+    foreach (['percent', 'vat_percent', 'flat', 'min', 'reviewed'] as $k) {
         $dikelola_panel[] = "fee_{$g}_{$k}";
     }
     $dikelola_panel[] = "payment_last_test_$g";
@@ -481,7 +484,9 @@ $internal = [
     'midtrans_margin_admin'    => 'kunci tarif lama, hanya dibaca saat migrasi',
     'custom_tax_value'         => 'kunci tarif lama, hanya dibaca saat migrasi',
     'shipping_fee'             => 'ongkir cadangan bila zona kosong',
-    'admin_fee'                => 'potongan laporan keuangan, belum ada di antarmuka',
+    'admin_fee'                => 'kunci lama; sejak 18 Sep 2026 tidak dibaca kode mana pun',
+    'fee_midtrans_app'         => 'kunci lama; margin fakultas kini payment_margin_{layanan}',
+    'fee_flip_app'             => 'kunci lama; margin fakultas kini payment_margin_{layanan}',
 ];
 
 $dibaca = [];

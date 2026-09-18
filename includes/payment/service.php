@@ -165,6 +165,7 @@ function payment_breakdown_snapshot(array $quote)
         'shipping'      => $quote['shipping'] ?? 0,
         'base'          => $quote['base'] ?? 0,
         'custom'        => $quote['custom'] ?? 0,
+        'margin'        => $quote['margin'] ?? 0,
         'fee'           => $quote['fee'] ?? 0,
         'admin_total'   => $quote['admin_total'] ?? 0,
         'total'         => $quote['total'] ?? 0,

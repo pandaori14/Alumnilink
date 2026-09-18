@@ -22,6 +22,7 @@ $KUNCI = ['payment_gateway_active', 'midtrans_server_key', 'midtrans_client_key'
     'fee_midtrans_percent', 'fee_midtrans_vat_percent', 'fee_midtrans_flat', 'fee_midtrans_app', 'fee_midtrans_min',
     'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min',
     'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'price_per_doc', 'shipping_zones',
+    'payment_margin_legalisir', 'payment_margin_donasi',
     'payment_expiry', 'smtp_force_real', 'payment_fallback_enabled', 'payment_fallback_notice_at',
     'fee_midtrans_reviewed', 'fee_flip_reviewed', 'payment_last_test_midtrans', 'payment_last_test_flip',
     'payment_gateway_enabled_midtrans', 'payment_gateway_enabled_flip',
@@ -76,8 +77,12 @@ foreach ([
     'midtrans_is_production' => '0',
     'flip_secret_key' => 'rahasia-flip-uji', 'flip_validation_token' => 'token-flip-uji', 'flip_is_production' => '0',
     'fee_midtrans_percent' => '5.00', 'fee_midtrans_vat_percent' => '11.00',
-    'fee_midtrans_flat' => '5550', 'fee_midtrans_app' => '2500', 'fee_midtrans_min' => '0',
-    'fee_flip_percent' => '0', 'fee_flip_vat_percent' => '0', 'fee_flip_flat' => '4000', 'fee_flip_app' => '0', 'fee_flip_min' => '0',
+    'fee_midtrans_flat' => '5550', 'fee_midtrans_min' => '0',
+    'fee_flip_percent' => '0', 'fee_flip_vat_percent' => '0', 'fee_flip_flat' => '4000', 'fee_flip_min' => '0',
+    // Margin fakultas kini satu angka untuk semua cara bayar, bukan 'biaya
+    // aplikasi' yang dulu berbeda per gateway. Nilainya disamakan dengan
+    // margin Midtrans lama supaya keempat angka acuan tetap berlaku.
+    'payment_margin_legalisir' => '2500', 'payment_margin_donasi' => '2500',
     'fee_midtrans_reviewed' => '1', 'fee_flip_reviewed' => '1', 'payment_fallback_enabled' => '0',
     'payment_gateway_enabled_midtrans' => '1', 'payment_gateway_enabled_flip' => '1',
     'payment_channels_midtrans' => '', 'payment_channels_flip' => '',
@@ -210,7 +215,11 @@ $r = payment_create('legalisir', $A, $A, $q, $pelanggan);
 cek($r['ok'] && $r['txn']->status === 'pending' && $r['txn']->snap_token, 'tagihan dibuat, token tersimpan');
 cek((float)$r['txn']->amount_expected === 68344.0, 'amount_expected = total pratinjau', (string)$r['txn']->amount_expected);
 $rinci = json_decode($r['txn']->fee_breakdown, true);
-cek(($rinci['fee'] ?? null) === 11844 && ($rinci['custom'] ?? null) === 6500, 'rincian biaya tersimpan per transaksi');
+cek(($rinci['fee'] ?? null) === 9344 && ($rinci['custom'] ?? null) === 6500 && ($rinci['margin'] ?? null) === 2500,
+    'rincian memisahkan potongan penyedia dari uang fakultas',
+    json_encode(['fee' => $rinci['fee'] ?? null, 'custom' => $rinci['custom'] ?? null, 'margin' => $rinci['margin'] ?? null]));
+cek($rinci['base'] + $rinci['custom'] + $rinci['margin'] + $rinci['fee'] === $rinci['total'],
+    'keempat komponen berjumlah persis sebesar tagihan', (string)$rinci['total']);
 $lama = kolom_lama($A);
 cek($lama->midtrans_order_id === $A && $lama->midtrans_snap_token === $r['txn']->snap_token, 'kolom lama midtrans_* disinkronkan');
 $tA = $r['txn'];
@@ -721,10 +730,14 @@ cek(!payment_online_available(), 'pembayaran online benar-benar tertutup');
 cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_TOGGLE'")->fetchColumn() === $log_awal + 1,
     'perubahan tercatat di Audit Trail');
 
-// Pengajuan legalisir tetap diterima, tetapi sebagai tagihan tunai
+// Pengajuan legalisir tetap diterima, tetapi sebagai tagihan tunai. Tanpa
+// penyedia yang memotong apa pun, biaya gateway TIDAK ikut ditagihkan:
+// memungutnya berarti menarik potongan yang tidak pernah diambil siapa pun.
 $S2 = 'LEG-UJIBAYAR-S2';
 $q = payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri']);
-cek($q['ok'] && $q['total'] === 68344, 'rincian biaya tetap dapat dihitung walau pembayaran online tutup', $q['total']);
+cek($q['ok'] && $q['gateway'] === 'cash' && $q['fee'] === 0, 'pembayaran tunai tidak dikenai biaya gateway', $q['gateway'] . ' fee=' . $q['fee']);
+cek($q['total'] === 59000 && $q['total'] === $q['base'] + $q['custom'] + $q['margin'],
+    'yang ditagih hanya pokok + biaya tambahan + margin fakultas', $q['total']);
 buat_legalisir($S2, $q['total'], ['payment_method' => 'cash']);
 $GLOBALS['PANGGILAN'] = [];
 cek(count($GLOBALS['PANGGILAN']) === 0, 'tidak ada panggilan ke gateway mana pun saat tertutup');

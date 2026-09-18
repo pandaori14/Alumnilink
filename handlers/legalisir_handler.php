@@ -216,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (id, user_id, documents, delivery_method, shipping_address, amount, status, payment_status, payment_method)
              VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)")
             ->execute([$order_id, $user_id, $documents_json, $delivery_method,
-                       $shipping_address_json, $quote['total'], $online ? $quote['gateway'] : 'cash']);
+                       $shipping_address_json, $quote['total'], $quote['gateway']]);
     } catch (PDOException $e) {
         error_log("Legalisir Request Error: " . $e->getMessage());
         error_system('Terjadi kesalahan sistem saat memproses pengajuan legalisir. Silakan hubungi administrator.');

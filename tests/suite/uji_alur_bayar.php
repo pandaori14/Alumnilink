@@ -29,7 +29,8 @@ $BASE = uji_base_url();
 $KUNCI = ['midtrans_server_key', 'midtrans_client_key', 'midtrans_is_production',
           'flip_secret_key', 'flip_validation_token', 'flip_is_production',
           'payment_gateway_active', 'smtp_force_real', 'payment_last_test_midtrans', 'payment_last_test_flip',
-          'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min', 'fee_flip_reviewed',
+          'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_min', 'fee_flip_reviewed',
+          'payment_margin_legalisir', 'payment_margin_donasi',
           'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'payment_expiry',
           // Ditulis ulang oleh setiap POST ke handler Pengaturan (bagian K)
           'google_oauth_auto_verify', 'dashboard_bg_animation', 'email_send_direct', 'audit_log_auto_erase',
@@ -599,7 +600,7 @@ cek(setting('flip_validation_token', 'KOSONG') === 'KOSONG','kotak "Kosongkan" m
 
 // Profil biaya dan pengaturan umum
 $profil_awal = payment_fee_profile('flip');
-$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '-1', 'vat_percent' => 0, 'flat' => 4321, 'app' => 0, 'min' => 0]);
+$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '-1', 'vat_percent' => 0, 'flat' => 4321, 'min' => 0]);
 $pesan = $flash($SESI['sa']);
 all_settings(true);
 cek(payment_fee_profile('flip') === $profil_awal, 'persen negatif ditolak, profil tidak berubah');

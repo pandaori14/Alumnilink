@@ -32,7 +32,7 @@ define('BASE_URL', getenv('APP_URL') ?: $default_url);
  * Naikkan nomor versi di bawah setiap kali menambahkan migrasi baru, agar
  * migrasi tersebut ikut berjalan sekali di server setelah di-upload.
  */
-define('ALUMNILINK_SCHEMA_VERSION', '2026.09.17.1');
+define('ALUMNILINK_SCHEMA_VERSION', '2026.09.18.1');
 
 /**
  * Benar bila skema database sudah sesuai versi yang diharapkan kode ini.
@@ -94,6 +94,14 @@ try {
 
     // Seluruh blok migrasi di bawah hanya berjalan sekali per versi skema.
     if (!alumnilink_schema_is_current($pdo)) {
+
+    // Ditandai supaya cache pengaturan dapat disegarkan setelah blok ini.
+    // Migrasi menyemai kunci BARU, sementara sebagian kode di dalamnya sudah
+    // sempat membaca daftar pengaturan lebih dulu. Tanpa penyegaran, PERMINTAAN
+    // PERTAMA sesudah pembaruan memakai nilai lama — untuk tarif, itu berarti
+    // satu tagihan alumni dihitung dengan angka yang salah, sekali, tanpa
+    // jejak apa pun.
+    $GLOBALS['alumnilink_migrasi_dijalankan'] = true;
 
     // Auto-initialize majors table if not exists
     $pdo->exec("CREATE TABLE IF NOT EXISTS `majors` (
@@ -750,6 +758,14 @@ try {
         $v = trim((string)($lama_bayar[$k] ?? ''));
         return ($v !== '' && is_numeric($v)) ? $v : $bawaan;
     };
+    $pilihan_gw = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'payment_gateway_active'")->fetchColumn();
+    $pilihan_gw = in_array($pilihan_gw, ['midtrans', 'flip'], true) ? $pilihan_gw : 'flip';
+    $margin_lama = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'fee_{$pilihan_gw}_app'")->fetchColumn();
+    if (!is_numeric($margin_lama)) {
+        $margin_lama = $nilai_lama('midtrans_margin_admin', '0');
+    }
+    $margin_lama = (string)(int)$margin_lama;
+
     $semai_bayar = $pdo->prepare("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)");
     foreach ([
         // Pilihan utama fakultas adalah Flip. Selama kredensial dan tarif
@@ -783,6 +799,13 @@ try {
         'fee_flip_reviewed'               => '0',
         'payment_custom_charge_legalisir' => $nilai_lama('custom_tax_value', '0'),
         'payment_custom_charge_donasi'    => '0',
+        // Margin fakultas dulu tertanam di profil biaya tiap gateway sebagai
+        // 'biaya aplikasi', sehingga nilainya berbeda-beda tergantung penyedia
+        // yang kebetulan dipakai, dan pembayaran tunai tidak mendapat margin
+        // sama sekali. Disemai dari gateway yang sedang jadi PILIHAN UTAMA,
+        // supaya tagihan yang berlaku hari ini tidak berubah nominalnya.
+        'payment_margin_legalisir'        => $margin_lama,
+        'payment_margin_donasi'           => $margin_lama,
         'legalisir_require_paid'          => '0',
     ] as $k => $v) {
         $semai_bayar->execute([$k, $v]);
@@ -821,6 +844,12 @@ require_once dirname(__DIR__) . '/includes/logger.php';
 // Akses pengaturan terpusat. Dimuat di sini agar fungsi setting() tersedia
 // di seluruh halaman, handler, dan cron tanpa perlu di-require satu per satu.
 require_once dirname(__DIR__) . '/includes/settings.php';
+
+// Lihat penjelasan di awal blok migrasi: kunci yang baru disemai harus
+// terbaca pada permintaan yang sama, bukan baru pada permintaan berikutnya.
+if (!empty($GLOBALS['alumnilink_migrasi_dijalankan'])) {
+    all_settings(true);
+}
 
 // Logika bersama Tracer Study (normalisasi jawaban, penyaringan kohort,
 // deduplikasi responden, agregasi pertanyaan). Dimuat global dengan alasan

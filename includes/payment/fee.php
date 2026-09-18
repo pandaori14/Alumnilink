@@ -24,11 +24,23 @@
  * ── Rumus ──────────────────────────────────────────────────────────────
  *   base   = dokumen x price_per_doc + ongkir     (legalisir)
  *          | nominal donasi                        (donasi)
- *   custom = payment_custom_charge_{purpose}      (Rp, flat)
+ *   custom = payment_custom_charge_{purpose}      (Rp, flat) -> fakultas
+ *   margin = payment_margin_{purpose}             (Rp, flat) -> fakultas
  *   m      = persen/100 x (1 + ppn/100)
- *   fee    = ceil( ((base + custom) x m + flat + app) / (1 - m) )
+ *   fee    = ceil( ((base + custom + margin) x m + flat) / (1 - m) )
  *   fee    = max(fee, min)
- *   total  = base + fee + custom
+ *   total  = base + custom + margin + fee
+ *
+ * Tiga uang yang berbeda pemiliknya, dan karena itu dipisah:
+ *   base + custom + margin  diterima FAKULTAS
+ *   fee                     diambil PENYEDIA pembayaran
+ *
+ * Margin dulu bernama 'biaya aplikasi' dan berada di dalam profil biaya
+ * tiap gateway (disemai dari midtrans_margin_admin). Itu keliru dua kali:
+ * nilainya jadi berbeda-beda tergantung penyedia mana yang kebetulan
+ * dipakai, dan pembayaran tunai — yang tidak punya profil gateway sama
+ * sekali — tidak mendapat margin apa pun. Sekarang margin adalah satu
+ * pengaturan layanan, berlaku sama untuk Flip, Midtrans, maupun tunai.
  *
  * Bentuknya sengaja SAMA dengan pratinjau yang dilihat alumni hari ini,
  * sehingga nominal baru = angka yang sudah mereka lihat selama ini.
@@ -43,10 +55,33 @@ function payment_fee_profile($gateway)
         'percent'     => (float)setting("fee_{$g}_percent", '0'),
         'vat_percent' => (float)setting("fee_{$g}_vat_percent", '0'),
         'flat'        => (int)setting("fee_{$g}_flat", '0'),
-        'app'         => (int)setting("fee_{$g}_app", '0'),
         'min'         => (int)setting("fee_{$g}_min", '0'),
         'reviewed'    => setting("fee_{$g}_reviewed", '0') === '1',
     ];
+}
+
+/**
+ * Profil untuk pembayaran yang tidak lewat penyedia mana pun.
+ *
+ * Uang tunai sampai utuh ke loket: tidak ada persen, tidak ada biaya tetap.
+ * Menagihkan biaya gateway pada pembayaran tunai berarti memungut potongan
+ * yang tidak pernah dipotong siapa pun.
+ */
+function payment_fee_profile_cash()
+{
+    return ['gateway' => 'cash', 'percent' => 0.0, 'vat_percent' => 0.0,
+            'flat' => 0, 'min' => 0, 'reviewed' => true];
+}
+
+/**
+ * Margin fakultas untuk satu jenis layanan (Rp, flat).
+ *
+ * Selalu diterima fakultas, apa pun cara bayarnya. Transaksi uji tidak
+ * memungutnya: ia hanya membuktikan jalur bayar, bukan menjual apa pun.
+ */
+function payment_service_margin($purpose)
+{
+    return $purpose === 'uji' ? 0 : (int)setting('payment_margin_' . preg_replace('/[^a-z]/', '', (string)$purpose), '0');
 }
 
 /**
@@ -57,7 +92,7 @@ function payment_fee_profile($gateway)
  */
 function payment_fee_profile_error(array $p)
 {
-    foreach (['percent', 'vat_percent', 'flat', 'app', 'min'] as $k) {
+    foreach (['percent', 'vat_percent', 'flat', 'min'] as $k) {
         if (!is_finite((float)$p[$k]) || $p[$k] < 0) {
             return "Nilai biaya '$k' tidak boleh negatif.";
         }
@@ -81,15 +116,20 @@ function payment_fee_multiplier(array $p)
 }
 
 /**
- * Biaya gateway (belum termasuk custom), dibulatkan ke atas.
+ * Potongan penyedia, dinaikkan supaya yang tersisa untuk fakultas persis
+ * sebesar $fakultas. Dibulatkan ke atas.
  *
  * ceil() diterapkan pada round(x, 6): hasil perkalian float semacam
  * 11843,000000000002 tidak boleh menambah satu rupiah.
+ *
+ * @param int $base     pokok layanan (dokumen + ongkir, atau nominal donasi)
+ * @param int $fakultas tambahan yang juga harus sampai ke fakultas utuh
+ *                      (biaya tambahan layanan + margin)
  */
-function payment_fee_compute($base, $custom, array $p)
+function payment_fee_compute($base, $fakultas, array $p)
 {
     $m = payment_fee_multiplier($p);
-    $mentah = ((($base + $custom) * $m) + $p['flat'] + $p['app']) / (1.0 - $m);
+    $mentah = ((($base + $fakultas) * $m) + $p['flat']) / (1.0 - $m);
     $fee = (int)ceil(round($mentah, 6));
     return max($fee, (int)$p['min'], 0);
 }
@@ -153,8 +193,15 @@ function payment_shipping_cost($province)
  */
 function payment_quote($purpose, array $input, $gateway = null)
 {
-    $gateway = $gateway ?: payment_active_gateway_code();
-    $profil = payment_fee_profile($gateway);
+    // Tanpa satu pun gateway yang dinyalakan, tagihan ini akan dibayar tunai
+    // di loket. Menghitungnya dengan profil gateway berarti menagih potongan
+    // yang tidak akan diambil siapa pun.
+    if (!$gateway) {
+        $gateway = function_exists('payment_online_available') && !payment_online_available()
+            ? 'cash'
+            : payment_active_gateway_code();
+    }
+    $profil = $gateway === 'cash' ? payment_fee_profile_cash() : payment_fee_profile($gateway);
     $galat = payment_fee_profile_error($profil);
     if ($galat !== null) {
         return ['ok' => false, 'error' => $galat];
@@ -190,8 +237,9 @@ function payment_quote($purpose, array $input, $gateway = null)
         return ['ok' => false, 'error' => 'Jenis pembayaran tidak dikenal.'];
     }
 
-    $fee = payment_fee_compute($base, $custom, $profil);
-    $total = $base + $fee + $custom;
+    $margin = payment_service_margin($purpose);
+    $fee = payment_fee_compute($base, $custom + $margin, $profil);
+    $total = $base + $custom + $margin + $fee;
 
     // item_details Midtrans WAJIB berjumlah sama dengan gross_amount, dan
     // item berharga 0 tidak dikirim.
@@ -204,8 +252,8 @@ function payment_quote($purpose, array $input, $gateway = null)
     } else {
         $items[] = ['id' => strtoupper($purpose), 'name' => $purpose === 'donasi' ? 'Donasi Pokok' : 'Transaksi Uji', 'price' => $base, 'quantity' => 1];
     }
-    if ($fee + $custom > 0) {
-        $items[] = ['id' => 'FEE', 'name' => 'Biaya Admin & Layanan', 'price' => $fee + $custom, 'quantity' => 1];
+    if ($fee + $custom + $margin > 0) {
+        $items[] = ['id' => 'FEE', 'name' => 'Biaya Admin & Layanan', 'price' => $fee + $custom + $margin, 'quantity' => 1];
     }
 
     return [
@@ -219,8 +267,9 @@ function payment_quote($purpose, array $input, $gateway = null)
         'price_per_doc' => $price,
         'shipping'      => $shipping,
         'custom'        => $custom,
+        'margin'        => $margin,
         'fee'           => $fee,
-        'admin_total'   => $fee + $custom,
+        'admin_total'   => $fee + $custom + $margin,
         'total'         => $total,
         'items'         => $items,
         'profile'       => $profil,

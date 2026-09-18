@@ -72,6 +72,8 @@ $umum = [
     'legalisir' => (int)setting('payment_custom_charge_legalisir', '0'),
     'donasi'    => (int)setting('payment_custom_charge_donasi', '0'),
     'expiry'    => setting_int('payment_expiry', 1440, 15),
+    'margin_legalisir' => (int)setting('payment_margin_legalisir', '0'),
+    'margin_donasi'    => (int)setting('payment_margin_donasi', '0'),
     'wajib_lunas' => setting('legalisir_require_paid', '0') === '1',
     'cadangan'    => setting('payment_fallback_enabled', '1') === '1',
 ];
@@ -360,7 +362,7 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                         <input type="hidden" name="gateway" value="<?php echo e($kode); ?>">
                         <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                             <?php foreach (['percent' => ['Persen gateway (%)', '0.01'], 'vat_percent' => ['PPN atas biaya (%)', '0.01'],
-                                            'flat' => ['Biaya tetap (Rp)', '1'], 'app' => ['Biaya aplikasi (Rp)', '1'], 'min' => ['Biaya minimum (Rp)', '1']] as $k => [$label, $step]): ?>
+                                            'flat' => ['Biaya tetap (Rp)', '1'], 'min' => ['Biaya minimum (Rp)', '1']] as $k => [$label, $step]): ?>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1.5" for="fee_<?php echo e($kode . '_' . $k); ?>"><?php echo e($label); ?></label>
                                 <input id="fee_<?php echo e($kode . '_' . $k); ?>" type="number" min="0" step="<?php echo e($step); ?>" name="<?php echo e($k); ?>" required
@@ -374,8 +376,14 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                             Tarif ini sudah dicocokkan dengan tarif resmi <?php echo e($g['label']); ?> yang berlaku untuk akun fakultas.
                         </label>
                         <p class="text-[10px] text-slate-400 leading-relaxed">
-                            Rumus: biaya = (pokok × m + tetap + aplikasi) ÷ (1 − m), dengan m = persen × (1 + PPN), dibulatkan ke atas
-                            dan tidak kurang dari minimum. Alumni membayar pokok + biaya + biaya tambahan layanan. Tagihan yang sudah terbit tidak berubah.
+                            Isi dengan tarif yang benar-benar dipungut <?php echo e($g['label']); ?> — angka di sini tidak menentukan
+                            berapa yang mereka ambil, hanya berapa yang ditagihkan ke alumni untuk menutupinya. Dikosongkan berarti
+                            fakultas menanggung sendiri potongan penyedia.
+                        </p>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">
+                            Rumus: biaya = ((pokok + biaya tambahan + margin) × m + tetap) ÷ (1 − m), dengan m = persen × (1 + PPN),
+                            dibulatkan ke atas dan tidak kurang dari minimum. Margin fakultas diatur sekali di Pengaturan umum, bukan di sini.
+                            Tagihan yang sudah terbit tidak berubah.
                         </p>
                         <button type="submit" class="w-full py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all">Simpan profil biaya <?php echo e($g['label']); ?></button>
                     </form>
@@ -439,8 +447,12 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
     <!-- Pengaturan umum -->
     <div id="umum" class="glass p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-white">
         <h2 class="text-lg font-black outfit text-slate-800 mb-1">Pengaturan umum</h2>
-        <p class="text-xs text-slate-400 mb-6">Berlaku untuk semua gateway. Harga per dokumen dan zona ongkir diatur di Konfigurasi Sistem.</p>
-        <form method="POST" action="handlers/admin_payment_gateway_handler.php" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <p class="text-xs text-slate-400 mb-6">
+            Berlaku untuk semua cara bayar, termasuk tunai. Harga per dokumen dan zona ongkir diatur di Konfigurasi Sistem.
+            <b>Biaya tambahan</b> dan <b>margin fakultas</b> sama-sama diterima fakultas utuh — keduanya dipisah supaya laporan
+            dapat membedakan pungutan layanan dari keuntungan. Yang diambil penyedia pembayaran diatur di profil biaya tiap gateway.
+        </p>
+        <form method="POST" action="handlers/admin_payment_gateway_handler.php" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <?php csrf_field(); ?>
             <input type="hidden" name="aksi" value="umum">
             <div>
@@ -452,11 +464,19 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                 <input id="u_don" type="number" min="0" step="1" name="payment_custom_charge_donasi" value="<?php echo e($umum['donasi']); ?>" required class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none text-sm font-bold">
             </div>
             <div>
+                <label class="block text-xs font-bold text-slate-700 mb-2" for="u_mrg_leg">Margin fakultas — legalisir (Rp)</label>
+                <input id="u_mrg_leg" type="number" min="0" step="1" name="payment_margin_legalisir" value="<?php echo e($umum['margin_legalisir']); ?>" required class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none text-sm font-bold">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-2" for="u_mrg_don">Margin fakultas — donasi (Rp)</label>
+                <input id="u_mrg_don" type="number" min="0" step="1" name="payment_margin_donasi" value="<?php echo e($umum['margin_donasi']); ?>" required class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none text-sm font-bold">
+            </div>
+            <div>
                 <label class="block text-xs font-bold text-slate-700 mb-2" for="u_exp">Masa berlaku tagihan (menit)</label>
                 <input id="u_exp" type="number" min="15" max="10080" step="1" name="payment_expiry" value="<?php echo e($umum['expiry']); ?>" required class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none text-sm font-bold">
             </div>
-            <button type="submit" class="py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all">Simpan</button>
-            <label class="md:col-span-4 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
+            <button type="submit" class="py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all sm:col-span-2 lg:col-span-3">Simpan pengaturan umum</button>
+            <label class="sm:col-span-2 lg:col-span-3 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
                 <input type="checkbox" name="payment_fallback_enabled" value="1" <?php echo e($umum['cadangan'] ? 'checked' : ''); ?> class="accent-blue-600 mt-0.5">
                 <span>
                     <span class="font-bold text-slate-800 block mb-1">Pakai gateway cadangan bila yang utama gagal</span>
@@ -466,7 +486,7 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                     tetap menjadi jalan terakhir lewat verifikasi manual.
                 </span>
             </label>
-            <label class="md:col-span-4 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
+            <label class="sm:col-span-2 lg:col-span-3 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
                 <input type="checkbox" name="legalisir_require_paid" value="1" <?php echo e($umum['wajib_lunas'] ? 'checked' : ''); ?> class="accent-blue-600 mt-0.5">
                 <span>
                     <span class="font-bold text-slate-800 block mb-1">Legalisir wajib lunas sebelum diproses</span>

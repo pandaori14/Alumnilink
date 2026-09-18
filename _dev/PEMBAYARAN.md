@@ -138,18 +138,45 @@ Satu fungsi, `payment_quote()`. Pratinjau yang dilihat alumni dan tagihan
 yang terbit memanggil fungsi yang sama — keduanya tidak mungkin berbeda.
 
 ```
-pokok  = jumlah dokumen × harga per dokumen + ongkir      (legalisir)
-       | nominal donasi                                    (donasi)
+pokok    = jumlah dokumen × harga per dokumen + ongkir    (legalisir)
+         | nominal donasi                                  (donasi)
 tambahan = payment_custom_charge_{legalisir,donasi}
-m      = persen/100 × (1 + PPN/100)
-biaya  = ceil( ((pokok + tambahan) × m + tetap + aplikasi) ÷ (1 − m) )
-biaya  = max(biaya, minimum)
-total  = pokok + biaya + tambahan
+margin   = payment_margin_{legalisir,donasi}
+m        = persen/100 × (1 + PPN/100)
+biaya    = ceil( ((pokok + tambahan + margin) × m + tetap) ÷ (1 − m) )
+biaya    = max(biaya, minimum)
+total    = pokok + tambahan + margin + biaya
 ```
+
+Empat komponen, dan yang membedakannya adalah **siapa pemilik uangnya**:
+
+| Komponen | Diatur di | Diterima |
+|---|---|---|
+| pokok | Konfigurasi Sistem (harga per dokumen, zona ongkir) | Fakultas |
+| tambahan | Panel → Pengaturan umum | Fakultas |
+| margin | Panel → Pengaturan umum | Fakultas |
+| biaya | Panel → Profil biaya tiap gateway | **Penyedia pembayaran** |
 
 Pembagian dengan `(1 − m)` adalah *gross-up*: fakultas menerima utuh, biaya
 gateway ditanggung pembayar. Persen **selalu ditulis sebagai persen** (5
 berarti 5%), dan pembagian 100 hanya terjadi di satu tempat.
+
+**Margin bukan bagian profil gateway.** Sampai 18 September 2026 ia bernama
+"biaya aplikasi" dan hidup di dalam profil tiap gateway (disemai dari
+`midtrans_margin_admin`). Akibatnya margin fakultas berubah-ubah tergantung
+penyedia mana yang kebetulan dipakai, dan pembayaran **tunai** — yang tidak
+punya profil gateway sama sekali — tidak mendapat margin apa pun. Sekarang
+margin satu angka untuk semua cara bayar.
+
+**Pembayaran tunai tidak dikenai biaya gateway.** Bila tidak ada satu pun
+gateway yang dinyalakan, `payment_quote()` memakai profil `cash` yang nol:
+alumni membayar pokok + tambahan + margin, tanpa potongan penyedia yang
+tidak akan diambil siapa pun.
+
+**Profil biaya yang dikosongkan tidak berarti gratis.** Penyedia tetap
+memotong tarifnya; yang hilang hanya penagihannya ke alumni, sehingga
+fakultas menanggung sendiri potongan itu tanpa muncul di laporan mana pun.
+Isi profil dengan tarif resmi penyedia, bukan dengan angka yang diinginkan.
 
 Profil biaya disimpan **per gateway** (`fee_midtrans_*`, `fee_flip_*`), dan
 **rincian tagihan disimpan per transaksi**. Mengubah tarif tidak pernah
@@ -302,7 +329,9 @@ Seluruhnya diatur dari panel; tidak ada yang perlu diubah di berkas.
 | `flip_secret_key`, `flip_validation_token`, `flip_is_production` | Kredensial dan mode Flip |
 | `fee_{midtrans,flip}_{percent,vat_percent,flat,app,min}` | Profil biaya per gateway |
 | `fee_{midtrans,flip}_reviewed` | Tanda "tarif sudah dicocokkan"; syarat mengaktifkan |
-| `payment_custom_charge_{legalisir,donasi}` | Biaya tambahan layanan |
+| `payment_custom_charge_{legalisir,donasi}` | Biaya tambahan layanan (diterima fakultas) |
+| `payment_margin_{legalisir,donasi}` | Margin fakultas, berlaku untuk semua cara bayar termasuk tunai |
+| ~~`fee_{midtrans,flip}_app`~~ | **Tidak lagi dibaca.** Digantikan `payment_margin_{layanan}` |
 | `payment_expiry` | Masa berlaku tagihan (menit) |
 | `payment_last_test_{midtrans,flip}` | Hasil tes koneksi terakhir |
 | ~~`admin_fee`~~ | **Tidak lagi dibaca.** Laporan Keuangan dulu mengurangkannya dari setiap baris; sekarang biaya dibaca per transaksi dari `fee_breakdown` |

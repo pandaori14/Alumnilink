@@ -16,8 +16,8 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 982 pemeriksaan |
-| Versi skema | `2026.09.17.1` |
+| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 984 pemeriksaan |
+| Versi skema | `2026.09.18.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
 diunggah, produksi masih memakai kode lama.
@@ -122,6 +122,25 @@ sehingga menghapusnya ikut menghapus catatan uang dari Laporan Keuangan.
 Halaman Kelola User yang selama ini membuang seluruh pesan galat dari handler
 kini menampilkannya. Dijaga 9 pemeriksaan baru di `uji_rbac`.
 
+**Margin fakultas dilepas dari profil gateway** · 18 September 2026
+Margin dulu bernama "biaya aplikasi" dan berada di dalam profil biaya tiap
+gateway, disemai dari `midtrans_margin_admin`. Nilainya jadi berbeda-beda
+tergantung penyedia yang kebetulan dipakai (Midtrans 2.500, Flip 1.000), dan
+pembayaran tunai tidak mendapat margin sama sekali. Sekarang ia satu
+pengaturan layanan, `payment_margin_{legalisir,donasi}`, berlaku sama untuk
+Flip, Midtrans, maupun tunai — disemai dari gateway pilihan utama supaya
+tagihan yang berlaku tidak berubah nominalnya.
+
+Sekaligus menutup dua hal lain. Laporan keuangan kini benar: `fee` hanya
+berisi potongan penyedia, sehingga "Diterima Fakultas" tidak lagi kehilangan
+margin. Dan tagihan yang pasti dibayar tunai — ketika semua gateway
+dimatikan — tidak lagi dikenai biaya gateway yang tidak akan diambil siapa
+pun (Rp 63.933 → Rp 57.500 untuk satu dokumen).
+
+Versi skema naik ke `2026.09.18.1`. Migrasi kini menyegarkan cache
+pengaturan, karena permintaan pertama sesudah pembaruan sempat memakai nilai
+lama — untuk tarif, itu berarti satu tagihan dihitung salah tanpa jejak.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.1 Donasi masuk Laporan Keuangan** · sedang
@@ -202,4 +221,4 @@ seperti `uji_responsif`.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 982 pemeriksaan sekarang berarti.
+membuat 984 pemeriksaan sekarang berarti.

@@ -108,7 +108,7 @@ switch ($aksi) {
 
     case 'biaya':
         $profil = ['gateway' => $gateway];
-        foreach (['percent' => true, 'vat_percent' => true, 'flat' => false, 'app' => false, 'min' => false] as $k => $desimal) {
+        foreach (['percent' => true, 'vat_percent' => true, 'flat' => false, 'min' => false] as $k => $desimal) {
             $v = panel_angka($k, $desimal);
             if ($v === null) {
                 panel_kembali(false, "Profil biaya {$gw->label()}: kolom '$k' wajib berupa angka tidak negatif.", 'biaya-' . $gateway);
@@ -119,12 +119,12 @@ switch ($aksi) {
             panel_kembali(false, "Profil biaya {$gw->label()} tidak disimpan: $galat", 'biaya-' . $gateway);
         }
         $ditinjau = !empty($_POST['reviewed']) ? '1' : '0';
-        foreach (['percent', 'vat_percent', 'flat', 'app', 'min'] as $k) {
+        foreach (['percent', 'vat_percent', 'flat', 'min'] as $k) {
             setting_save("fee_{$gateway}_$k", (string)$profil[$k]);
         }
         setting_save("fee_{$gateway}_reviewed", $ditinjau);
-        log_activity('PAYMENT_FEE_PROFILE', sprintf('Profil biaya %s oleh %s: %s%% + PPN %s%%, flat Rp %d, aplikasi Rp %d, minimum Rp %d, ditinjau=%s.',
-            $gw->label(), $oleh, $profil['percent'], $profil['vat_percent'], $profil['flat'], $profil['app'], $profil['min'], $ditinjau));
+        log_activity('PAYMENT_FEE_PROFILE', sprintf('Profil biaya %s oleh %s: %s%% + PPN %s%%, flat Rp %d, minimum Rp %d, ditinjau=%s.',
+            $gw->label(), $oleh, $profil['percent'], $profil['vat_percent'], $profil['flat'], $profil['min'], $ditinjau));
         panel_kembali(true, 'Profil biaya ' . $gw->label() . ' disimpan.'
             . ($gateway === payment_active_gateway_code() ? ' Berlaku untuk tagihan BARU; tagihan yang sudah terbit tidak berubah.' : ''), 'biaya-' . $gateway);
 
@@ -132,10 +132,12 @@ switch ($aksi) {
         $leg = panel_angka('payment_custom_charge_legalisir', false);
         $don = panel_angka('payment_custom_charge_donasi', false);
         $exp = panel_angka('payment_expiry', false);
-        if ($leg === null || $don === null || $exp === null) {
+        $mrg_leg = panel_angka('payment_margin_legalisir', false);
+        $mrg_don = panel_angka('payment_margin_donasi', false);
+        if ($leg === null || $don === null || $exp === null || $mrg_leg === null || $mrg_don === null) {
             panel_kembali(false, 'Semua kolom wajib berupa angka tidak negatif.', 'umum');
         }
-        if ($leg > 1000000 || $don > 1000000) {
+        if ($leg > 1000000 || $don > 1000000 || $mrg_leg > 1000000 || $mrg_don > 1000000) {
             panel_kembali(false, 'Biaya tambahan di atas Rp 1.000.000 — kemungkinan salah ketik.', 'umum');
         }
         if ($exp < 15 || $exp > 10080) {
@@ -145,10 +147,12 @@ switch ($aksi) {
         $cadangan    = !empty($_POST['payment_fallback_enabled']) ? '1' : '0';
         setting_save('payment_custom_charge_legalisir', (string)$leg);
         setting_save('payment_custom_charge_donasi', (string)$don);
+        setting_save('payment_margin_legalisir', (string)$mrg_leg);
+        setting_save('payment_margin_donasi', (string)$mrg_don);
         setting_save('payment_expiry', (string)$exp);
         setting_save('legalisir_require_paid', $wajib_lunas);
         setting_save('payment_fallback_enabled', $cadangan);
-        log_activity('PAYMENT_GENERAL_SETTINGS', "Pengaturan umum pembayaran oleh $oleh: biaya tambahan legalisir Rp $leg, donasi Rp $don, masa berlaku $exp menit, wajib lunas sebelum diproses = $wajib_lunas, gateway cadangan = $cadangan.");
+        log_activity('PAYMENT_GENERAL_SETTINGS', "Pengaturan umum pembayaran oleh $oleh: biaya tambahan legalisir Rp $leg, donasi Rp $don, margin legalisir Rp $mrg_leg, margin donasi Rp $mrg_don, masa berlaku $exp menit, wajib lunas sebelum diproses = $wajib_lunas, gateway cadangan = $cadangan.");
         panel_kembali(true, 'Pengaturan umum pembayaran disimpan. Berlaku untuk tagihan baru.', 'umum');
 
     case 'sakelar':
