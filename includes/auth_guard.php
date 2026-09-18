@@ -294,6 +294,9 @@ function page_capability_map()
         'admin_donasi'        => 'keuangan.kelola',
         'admin_keuangan'      => 'keuangan.lihat',
         'admin_users'         => 'pengguna.kelola',
+        // Kredensial gateway dan sakelar pembayaran: kapabilitas yang sama
+        // dengan Pengaturan Sistem, yang selalu khusus super_admin.
+        'admin_payment_gateway' => 'pengaturan.kelola',
     ];
 }
 

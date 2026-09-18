@@ -35,9 +35,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$hasil['ok']) {
                 header("Location: ../index.php?page=admin_legalisir&error=" .
-                    ($_POST['status'] === 'rejected' ? 'alasan_wajib' : 'status'));
+                    ($hasil['kode'] ?? ($_POST['status'] === 'rejected' ? 'alasan_wajib' : 'status')));
                 exit();
             }
+            $peringatan = $hasil['peringatan'] ?? '';
 
             log_activity('UPDATE_LEGALISIR',
                 "Pengajuan $id: {$hasil['status_lama']} -> {$_POST['status']}");
@@ -66,7 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header("Location: ../index.php?page=admin_legalisir&success=updated");
+        header("Location: ../index.php?page=admin_legalisir&success=updated"
+            . (!empty($peringatan) ? '&peringatan=' . $peringatan : ''));
         exit();
     } catch (PDOException $e) {
         error_log("Admin Update Legalisir Error: " . $e->getMessage());

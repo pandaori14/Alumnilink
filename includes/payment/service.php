@@ -347,6 +347,7 @@ function payment_apply_status($txn_id, $baru, array $info, $source)
     }
 
     $flag_ganda = false;
+    $selisih_baru = null;
     try {
         $pdo->beginTransaction();
         $q = $pdo->prepare("SELECT * FROM payment_transactions WHERE id = ? FOR UPDATE");
@@ -366,14 +367,32 @@ function payment_apply_status($txn_id, $baru, array $info, $source)
             $outcome = 'amount_mismatch';
             error_log(sprintf('Pembayaran %s: nominal TIDAK COCOK, tercatat %s, gateway %s. Tidak ditandai lunas.',
                 $t->merchant_ref, $t->amount_expected, $info['amount']));
+            // Status TIDAK diubah — retry berikutnya tetap diproses — tetapi
+            // kejadiannya ditandai di ledger. Tanpa ini, uang yang sudah
+            // berpindah hanya meninggalkan jejak di log server.
+            $tandai = $pdo->prepare("UPDATE payment_transactions SET flag = 'amount_mismatch', last_error = ?
+                                      WHERE id = ? AND (flag IS NULL OR flag <> 'amount_mismatch')");
+            $tandai->execute([substr(sprintf('Gateway melaporkan lunas Rp %s, tagihan Rp %s.',
+                number_format((float)$info['amount'], 0, ',', '.'), number_format((float)$t->amount_expected, 0, ',', '.')), 0, 255), $t->id]);
+            if ($tandai->rowCount() > 0) {
+                $selisih_baru = (float)$info['amount'];
+            }
         }
 
         if ($outcome !== 'applied') {
             $pdo->commit();
+            if ($selisih_baru !== null) {
+                notify_roles(['super_admin'], 'Nominal pembayaran TIDAK COCOK',
+                    sprintf('%s %s: %s melaporkan lunas Rp %s, padahal tagihannya Rp %s. Tidak ditandai lunas — periksa di dashboard gateway.',
+                        ucfirst($t->purpose), $t->subject_id, payment_gateway_label($t->gateway),
+                        number_format($selisih_baru, 0, ',', '.'), number_format((float)$t->amount_expected, 0, ',', '.')),
+                    'error', 'index.php?page=admin_payment_gateway#monitor');
+            }
             return ['outcome' => $outcome, 'status' => $lama, 'changed' => false, 'error' => null];
         }
 
-        $flag = $t->flag;
+        // Tanda selisih nominal gugur begitu pembayaran yang benar diterapkan.
+        $flag = $t->flag === 'amount_mismatch' ? null : $t->flag;
         if ($baru === 'paid') {
             $lain = $pdo->prepare("SELECT COUNT(*) FROM payment_transactions
                                     WHERE purpose = ? AND subject_id = ? AND status = 'paid' AND id <> ?");
@@ -598,6 +617,16 @@ function payment_after_paid($t, $source)
         if (!empty($d->email)) {
             send_donation_receipt($d->email, $d->donor_name, $t->merchant_ref, (float)$d->amount, $judul);
         }
+        return;
+    }
+
+    if ($t->purpose === 'uji') {
+        // Transaksi uji dari panel gateway: tidak menyentuh legalisir maupun
+        // donasi. Pemberitahuan ini bukti jalur bayar -> callback -> lunas.
+        notify_roles(['super_admin'], 'Transaksi Uji Lunas',
+            "Transaksi uji {$t->merchant_ref} sebesar $nominal lunas via $via (sumber: $source). Jalur pembayaran "
+            . payment_gateway_label($t->gateway) . ' berfungsi.',
+            'success', 'index.php?page=admin_payment_gateway#monitor');
     }
 }
 

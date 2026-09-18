@@ -72,6 +72,7 @@ if ($status === 'rejected' && mb_strlen($alasan) < 10) {
 $berhasil = 0;
 $gagal    = [];
 $surat    = [];
+$belum_lunas = 0;
 
 try {
     $pdo->beginTransaction();
@@ -80,6 +81,9 @@ try {
         if ($h['ok']) {
             $berhasil++;
             $surat[] = $h['email'];
+            if (($h['peringatan'] ?? '') === 'belum_lunas') {
+                $belum_lunas++;
+            }
         } else {
             $gagal[] = $id . ' (' . $h['error'] . ')';
         }
@@ -103,4 +107,5 @@ if ($gagal) {
 }
 log_activity('BULK_UPDATE_LEGALISIR', $ringkas);
 
-bulk_kembali(['success' => 'bulk', 'n' => $berhasil, 'gagal' => count($gagal)]);
+bulk_kembali(['success' => 'bulk', 'n' => $berhasil, 'gagal' => count($gagal)]
+    + ($belum_lunas ? ['belum_lunas' => $belum_lunas] : []));

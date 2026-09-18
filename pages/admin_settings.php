@@ -404,61 +404,30 @@ $color_map = [
         </div>
 
         <div class="settings-tab-content tab-payment space-y-8 hidden">
-            <!-- 5. Integrasi Midtrans -->
+            <!-- 5. Gateway pembayaran: dipindah ke halaman sendiri -->
+            <?php
+                require_once __DIR__ . '/../includes/payment/gateway.php';
+                $gw_aktif = payment_active_gateway_code();
+            ?>
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
-                <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
-                    <i data-lucide="credit-card" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-xl font-bold outfit text-slate-800">Integrasi Pembayaran</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_is_production">Environment</label>
-                    <select id="f_midtrans_is_production" name="midtrans_is_production" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none text-sm cursor-pointer">
-                        <option value="0" <?php echo e(($settings['midtrans_is_production'] ?? '0') == '0' ? 'selected' : ''); ?>>Sandbox (Testing)</option>
-                        <option value="1" <?php echo e(($settings['midtrans_is_production'] ?? '0') == '1' ? 'selected' : ''); ?>>Production (Live)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_server_key">Server Key</label>
-                    <input id="f_midtrans_server_key" type="text" name="midtrans_server_key" value="<?php echo e($settings['midtrans_server_key'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-mono text-xs">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_client_key">Client Key</label>
-                    <input id="f_midtrans_client_key" type="text" name="midtrans_client_key" value="<?php echo e($settings['midtrans_client_key'] ?? ''); ?>" class="w-full px-5 py-4 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-mono text-xs">
-                </div>
-                
-                <!-- NEW GROSS-UP CONFIG FIELDS -->
-                <div class="md:col-span-2 mt-4 pt-4 border-t border-slate-100">
-                    <h3 class="text-sm font-bold text-slate-800 mb-4">Pengaturan Biaya & Pajak Midtrans</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_mdr_rate">MDR Rate (%)</label>
-                            <input id="f_midtrans_mdr_rate" type="number" step="0.01" name="midtrans_mdr_rate" value="<?php echo e($settings['midtrans_mdr_rate'] ?? '4.00'); ?>" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-medium text-xs">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="credit-card" class="w-6 h-6"></i>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_ppn_rate">PPN Midtrans (%)</label>
-                            <input id="f_midtrans_ppn_rate" type="number" step="0.01" name="midtrans_ppn_rate" value="<?php echo e($settings['midtrans_ppn_rate'] ?? '11.00'); ?>" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-medium text-xs">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_payout_fee">Biaya Payout (Rp)</label>
-                            <input id="f_midtrans_payout_fee" type="number" name="midtrans_payout_fee" value="<?php echo e($settings['midtrans_payout_fee'] ?? '2500'); ?>" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-medium text-xs">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-2 ml-1" for="f_midtrans_margin_admin">Application Fee (Rp)</label>
-                            <input id="f_midtrans_margin_admin" type="number" name="midtrans_margin_admin" value="<?php echo e($settings['midtrans_margin_admin'] ?? '2500'); ?>" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-medium text-xs">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-2 ml-1" for="f_custom_tax_value">Custom Tax Value (Rp)</label>
-                            <input id="f_custom_tax_value" type="number" name="custom_tax_value" value="<?php echo e($settings['custom_tax_value'] ?? '0'); ?>" class="w-full px-5 py-3 rounded-2xl bg-white border border-slate-100 focus:border-blue-500 outline-none font-medium text-xs">
+                            <h2 class="text-xl font-bold outfit text-slate-800">Gateway Pembayaran</h2>
+                            <p class="text-xs text-slate-400">
+                                Aktif: <span class="font-bold text-slate-600"><?php echo e(payment_gateway_label($gw_aktif)); ?></span>.
+                                Kredensial, tarif, sakelar Midtrans/Flip, transaksi uji, dan monitor kini ada di halaman tersendiri.
+                            </p>
                         </div>
                     </div>
+                    <a href="index.php?page=admin_payment_gateway" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-sm font-bold hover:bg-black transition-all flex items-center gap-2 shrink-0">
+                        Buka Gateway Pembayaran <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </a>
                 </div>
-
             </div>
-            </div>
-
             <!-- 7. Zona Pengiriman -->
             <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center justify-between mb-8">
@@ -674,6 +643,7 @@ $color_map = [
                         ['geocoder.php',            'Peta Persebaran',   'Menerjemahkan alamat alumni menjadi titik koordinat.',      'Setiap 30 menit'],
                         ['tracer_reminder.php',     'Pengingat Tracer',  'Mengingatkan alumni memperbarui data tracer study.',        'Sebulan sekali'],
                         ['backup.php',              'Cadangan Basis Data', 'Menyimpan dump ke folder backups/ dan membuang yang lama.', 'Sehari sekali'],
+                        ['payment_reconcile.php',   'Rekonsiliasi Pembayaran', 'Mengambil ulang status tagihan yang callback-nya terlambat atau hilang.', 'Setiap 30 menit'],
                     ];
                 ?>
                 <div class="space-y-4">

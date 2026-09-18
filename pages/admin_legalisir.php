@@ -169,6 +169,17 @@ foreach ($requests as $r) {
         </div>
     <?php endif; ?>
 
+    <?php if (($_GET['peringatan'] ?? '') === 'belum_lunas' || !empty($_GET['belum_lunas'])): ?>
+        <div class="mb-8 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl flex items-center gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0"></i>
+            <span class="font-medium">
+                <?php echo e(!empty($_GET['belum_lunas']) ? (int)$_GET['belum_lunas'] . ' pengajuan' : 'Pengajuan ini'); ?>
+                diproses padahal pembayarannya BELUM LUNAS. Perubahan tetap disimpan dan dicatat di Audit Trail.
+                Bila pembayaran diterima tunai, tandai lunas lewat tombol verifikasi tunai.
+            </span>
+        </div>
+    <?php endif; ?>
+
     <?php
     $l_pesan_galat = [
         'alasan_wajib'        => 'Penolakan wajib disertai alasan minimal 10 karakter.',
@@ -179,6 +190,7 @@ foreach ($requests as $r) {
         'bulk_terlalu_banyak' => 'Terlalu banyak pengajuan dipilih sekaligus (maksimal 100).',
         'bulk_gagal'          => 'Perubahan dibatalkan seluruhnya; tidak ada yang tersimpan.',
         'delete_paid'         => 'Pengajuan yang sudah lunas tidak dapat dihapus, supaya pembayarannya tetap tercatat di Laporan Keuangan. Tolak pengajuan bila memang dibatalkan.',
+        'belum_lunas'         => 'Pengajuan belum lunas, jadi tidak dapat diproses atau diselesaikan (aturan "wajib lunas" aktif di Gateway Pembayaran). Verifikasi pembayaran tunai lebih dulu.',
     ];
     ?>
     <?php if (isset($_GET['error']) && isset($l_pesan_galat[$_GET['error']])): ?>

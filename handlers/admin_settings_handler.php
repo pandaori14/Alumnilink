@@ -129,6 +129,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($_POST as $key => $value) {
             // Skip file input placeholders, CSRF, zones, menus, and our custom settings (already handled)
             if (in_array($key, ['system_logo_file', 'csrf_token', 'zones', 'menus', 'sidebar_action', 'google_oauth_auto_verify', 'dashboard_bg_animation', 'smtp_force_real', 'email_send_direct', 'audit_log_auto_erase', 'rbac_enforce'])) continue;
+
+            // DAFTAR TOLAK. Kunci di bawah TIDAK PERNAH ditulis dari sini,
+            // walau di-POST langsung:
+            //   - pembayaran (midtrans_*, flip_*, fee_*, payment_*): dikelola
+            //     pages/admin_payment_gateway.php, dengan validasi, rahasia
+            //     hanya-tulis, dan jejak audit. Formulir ini dulu mengirim
+            //     ulang tarif pada SETIAP penyimpanan — menyimpan logo pun
+            //     ikut menulis tarif.
+            //   - penanda migrasi dan rahasia turunan sistem.
+            if (!is_string($key)
+                || preg_match('/^(midtrans_|flip_|fee_|payment_)/', $key)
+                || in_array($key, ['schema_version', 'cron_token', 'app_signing_secret', 'custom_tax_value'], true)) {
+                continue;
+            }
             
             $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
             $stmt->execute([$key, $value, $value]);

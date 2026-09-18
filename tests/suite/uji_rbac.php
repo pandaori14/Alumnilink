@@ -53,6 +53,7 @@ $endpoint = [
     'handlers/admin_use_repository.php'            => 'repositori.kelola',
     'api/admin/tracer_analytics.php'               => 'analitik.lihat',
     'cetak_label.php?id=X'                         => 'legalisir.kelola',
+    'handlers/admin_payment_gateway_handler.php'   => 'pengaturan.kelola',
 ];
 
 $matrix = capability_matrix();
@@ -122,6 +123,9 @@ $sebelum = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action='RB
 $sesudah = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action='RBAC_AUDIT'")->fetchColumn();
 cek($c !== 403, 'mode audit: pelanggaran TIDAK ditolak', "HTTP $c");
 cek($sesudah > $sebelum, 'mode audit: pelanggaran tercatat di Audit Trail', "$sebelum -> $sesudah");
+// Kredensial dan sakelar gateway TIDAK ikut longgar dalam mode audit.
+[$c, $raw] = panggil($sid_k, "$BASE/handlers/admin_payment_gateway_handler.php", ['csrf_token' => $csrf, 'aksi' => 'tes', 'gateway' => 'flip']);
+cek($c === 403, 'mode audit: panel gateway pembayaran TETAP ditolak', "HTTP $c");
 
 $pdo->exec("UPDATE settings SET setting_value='1' WHERE setting_key='rbac_enforce'");
 [$c] = panggil($sid_k, "$BASE/handlers/admin_news_handler.php", ['csrf_token' => $csrf]);

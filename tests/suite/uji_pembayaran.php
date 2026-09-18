@@ -12,6 +12,7 @@
  */
 require_once __DIR__ . '/_bootstrap.php';
 require_once AKAR . '/includes/payment/callback.php';
+require_once AKAR . '/includes/payment/panel.php';
 
 $BASE = uji_base_url();
 
@@ -21,7 +22,8 @@ $KUNCI = ['payment_gateway_active', 'midtrans_server_key', 'midtrans_client_key'
     'fee_midtrans_percent', 'fee_midtrans_vat_percent', 'fee_midtrans_flat', 'fee_midtrans_app', 'fee_midtrans_min',
     'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min',
     'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'price_per_doc', 'shipping_zones',
-    'payment_expiry', 'smtp_force_real'];
+    'payment_expiry', 'smtp_force_real',
+    'fee_midtrans_reviewed', 'fee_flip_reviewed', 'payment_last_test_midtrans', 'payment_last_test_flip'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
     $q = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
@@ -30,9 +32,14 @@ foreach ($KUNCI as $k) {
     $SEMULA[$k] = $v === false ? null : $v;
 }
 
+// Callback yang gagal autentikasi tercatat TANPA merchant_ref, jadi tidak
+// tertangkap pola di bawah. Semua baris jurnal sejak uji dimulai dihapus.
+$JURNAL_AWAL = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM payment_callbacks")->fetchColumn();
+
 function bersihkan()
 {
-    global $pdo;
+    global $pdo, $JURNAL_AWAL;
+    $pdo->prepare("DELETE FROM payment_callbacks WHERE id > ?")->execute([$JURNAL_AWAL]);
     $pdo->exec("DELETE FROM payment_callbacks WHERE merchant_ref LIKE '%UJIBAYAR%' OR provider_ref LIKE '99001%'");
     $pdo->exec("DELETE FROM payment_transactions WHERE purpose = 'donasi' AND subject_id IN
                 (SELECT CAST(id AS CHAR) FROM donations WHERE donor_name = 'UJIBAYAR')");
@@ -40,6 +47,9 @@ function bersihkan()
     $pdo->exec("DELETE FROM donations WHERE donor_name = 'UJIBAYAR'");
     $pdo->exec("DELETE FROM legalisir_requests WHERE id LIKE '%UJIBAYAR%'");
     $pdo->exec("DELETE FROM notifications WHERE message LIKE '%UJIBAYAR%'");
+    $pdo->exec("DELETE FROM notifications WHERE title = 'Transaksi Uji Lunas' AND message LIKE '%UJI-%' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    $pdo->exec("DELETE FROM payment_transactions WHERE purpose = 'uji' AND created_by = 'UJIBAYAR'");
+    $pdo->exec("DELETE FROM activity_logs WHERE description LIKE '%oleh UJIBAYAR%'");
 }
 
 register_shutdown_function(function () use ($SEMULA) {
@@ -219,9 +229,20 @@ $tB = payment_create('legalisir', $B, $B, $q, $pelanggan)['txn'];
 palsu([['GET', '#/v2/.+/status#', fn() => mt_status('settlement', 1000)]]);
 $h = payment_recheck($tB, 'uji', true);
 cek($h['outcome'] === 'amount_mismatch' && payment_txn_get($tB->id)->status === 'pending', 'nominal tidak cocok -> tetap pending', $h['outcome']);
+cek(payment_txn_get($tB->id)->flag === 'amount_mismatch', 'nominal tidak cocok -> ditandai di ledger', (string)payment_txn_get($tB->id)->flag);
+$selisih = function () use ($B) {
+    global $pdo;
+    $q = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE title = 'Nominal pembayaran TIDAK COCOK' AND message LIKE ?");
+    $q->execute(['%' . $B . '%']);
+    return (int)$q->fetchColumn();
+};
+$n_selisih = $selisih();
+$h = payment_recheck(payment_txn_get($tB->id), 'uji', true);
+cek($n_selisih > 0 && $selisih() === $n_selisih, 'callback berulang: super admin diberi tahu sekali saja', "$n_selisih -> " . $selisih());
 palsu([['GET', '#/v2/.+/status#', fn() => mt_status('settlement', 68344)]]);
 $h = payment_recheck(payment_txn_get($tB->id), 'uji', true);
 cek($h['outcome'] === 'applied', 'retry dengan nominal benar TETAP diproses', $h['outcome']);
+cek(payment_txn_get($tB->id)->flag === null, 'tanda selisih gugur setelah lunas dengan nominal benar', (string)payment_txn_get($tB->id)->flag);
 
 // Uang yang masuk selalu menang
 $C = 'LEG-UJIBAYAR-C';
@@ -414,5 +435,109 @@ cek($c === 401, 'tanpa login -> 401', "HTTP $c");
 [$c] = kutip($sid, null, ['purpose' => 'legalisir', 'doc_count' => 1]);
 cek($c === 403, 'tanpa CSRF -> 403', "HTTP $c");
 
+// ═════════════════════════════════════════════════════════════════════
+echo "\n=== H. Panel gateway, sakelar, transaksi uji, cron ===\n";
+
+cek(payment_secret_hint('SB-Mid-server-abcdEFGH1234') === 'Terisi · ••••1234', 'petunjuk rahasia: hanya 4 karakter terakhir');
+cek(payment_secret_hint('pendek') === 'Terisi · ••••', 'petunjuk rahasia: kunci pendek tidak dibocorkan sebagian');
+cek(payment_secret_hint('') === 'Belum diisi', 'petunjuk rahasia: kosong');
+
+setting_save('payment_gateway_active', 'midtrans');
+setting_save('fee_flip_reviewed', '0');
+payment_forget_test('flip');
+payment_forget_test('midtrans');
+$alasan = implode(' | ', payment_switch_blockers('flip'));
+cek(strpos($alasan, 'tes koneksi') !== false && strpos($alasan, 'belum ditandai') !== false,
+    'Flip tanpa tes & tarif belum ditinjau: dua penghalang', $alasan);
+$h = payment_switch_gateway('flip', 'UJIBAYAR');
+cek(!$h['ok'] && payment_active_gateway_code() === 'midtrans', 'sakelar menolak, gateway aktif tidak berubah');
+
+palsu([['GET', '#/v2/pwf/bill$#', ['status' => 200, 'body' => '[]']]]);
+payment_record_test('flip', payment_gateway('flip')->testConnection());
+cek(payment_last_test('flip')['ok'] === true, 'tes koneksi Flip tercatat berhasil');
+cek(payment_switch_blockers('flip') === ['Profil biaya belum ditandai sudah dicocokkan dengan tarif resmi Flip.'],
+    'tinggal satu penghalang: tarif belum ditinjau');
+
+setting_save('flip_is_production', '1');
+$alasan = implode(' | ', payment_switch_blockers('flip'));
+cek(strpos($alasan, 'mode sandbox') !== false, 'tes di sandbox tidak berlaku untuk mode produksi', $alasan);
+setting_save('flip_is_production', '0');
+
+$tes = payment_last_test('flip');
+$tes['at'] = date('Y-m-d H:i:s', time() - 25 * 3600);
+setting_save('payment_last_test_flip', json_encode($tes));
+cek(strpos(implode(' ', payment_switch_blockers('flip')), '24 jam') !== false, 'tes berumur > 24 jam tidak berlaku');
+payment_record_test('flip', ['ok' => true, 'message' => 'uji']);
+
+setting_save('fee_flip_reviewed', '1');
+$log_awal = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_SWITCH'")->fetchColumn();
+$h = payment_switch_gateway('flip', 'UJIBAYAR');
+cek($h['ok'] && payment_active_gateway_code() === 'flip', 'semua syarat terpenuhi: gateway aktif pindah ke Flip');
+cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_SWITCH'")->fetchColumn() === $log_awal + 1,
+    'perpindahan tercatat di Audit Trail');
+cek(!payment_switch_gateway('flip', 'UJIBAYAR')['ok'], 'memindahkan ke gateway yang sudah aktif ditolak');
+
+$h = payment_switch_gateway('midtrans', 'UJIBAYAR');
+cek(!$h['ok'] && payment_active_gateway_code() === 'flip', 'kembali ke Midtrans juga wajib tes koneksi', (string)$h['error']);
+palsu([['GET', '#/v2/.+/status#', ['status' => 404, 'body' => json_encode(['status_code' => '404'])]]]);
+payment_record_test('midtrans', payment_gateway('midtrans')->testConnection());
+cek(payment_switch_gateway('midtrans', 'UJIBAYAR')['ok'] && payment_active_gateway_code() === 'midtrans', 'setelah tes: kembali ke Midtrans');
+
+// Transaksi uji
+setting_save('flip_is_production', '1');
+$GLOBALS['PANGGILAN'] = [];
+$h = payment_create_test('flip', $pelanggan, 'UJIBAYAR');
+cek(!$h['ok'] && !$GLOBALS['PANGGILAN'], 'transaksi uji di mode produksi ditolak tanpa memanggil API', (string)$h['error']);
+setting_save('flip_is_production', '0');
+palsu([['POST', '#/v2/pwf/bill$#', ['status' => 200, 'body' => json_encode(['link_id' => 990077, 'link_url' => 'flip.id/$ujipanel'])]]]);
+$h = payment_create_test('flip', $pelanggan, 'UJIBAYAR');
+$tU = $h['txn'];
+cek($h['ok'] && $tU->purpose === 'uji' && strpos($tU->merchant_ref, 'UJI-') === 0 && $tU->status === 'pending',
+    'transaksi uji sandbox terbit (purpose uji)', $tU->merchant_ref ?? '-');
+cek((float)$tU->amount_expected === (float)payment_quote('uji', ['amount' => 10000], 'flip')['total'], 'nominal uji = Rp 10.000 + biaya Flip');
+palsu([['GET', '#/v2/pwf/990077/payment#', ['status' => 200, 'body' => json_encode(['data' => [['id' => 'PGPWF77', 'status' => 'SUCCESSFUL', 'amount' => (float)$tU->amount_expected, 'sender_bank' => 'qris']]])]]]);
+$h = payment_recheck($tU, 'uji', true);
+$q = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE title = 'Transaksi Uji Lunas' AND message LIKE ?");
+$q->execute(['%' . $tU->merchant_ref . '%']);
+cek($h['outcome'] === 'applied' && (int)$q->fetchColumn() > 0, 'uji lunas: super admin diberi tahu', $h['outcome']);
+
+// Cron rekonsiliasi — tagihan lain di basis data TIDAK boleh tersentuh:
+// ditandai "baru dicek" selama uji, lalu dikembalikan persis.
+$J = 'LEG-UJIBAYAR-J';
+buat_legalisir($J, 68344);
+palsu([['POST', '#/snap/v1/transactions#', fn() => mt_token()]]);
+$tJ = payment_create('legalisir', $J, $J, $q_cron = payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri']), $pelanggan)['txn'];
+$K = 'LEG-UJIBAYAR-K';
+buat_legalisir($K, 68344);
+$tK = payment_create('legalisir', $K, $K, $q_cron, $pelanggan)['txn'];
+$pdo->prepare("UPDATE payment_transactions SET created_at = DATE_SUB(NOW(), INTERVAL 1 HOUR) WHERE id = ?")->execute([$tJ->id]);
+
+$lain = $pdo->query("SELECT id, last_checked_at FROM payment_transactions
+                      WHERE status = 'pending' AND merchant_ref NOT LIKE '%UJIBAYAR%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+$pdo->exec("UPDATE payment_transactions SET last_checked_at = NOW()
+             WHERE status = 'pending' AND merchant_ref NOT LIKE '%UJIBAYAR%'");
+$GLOBALS['PANGGILAN'] = [];
+palsu([['GET', '#/v2/LEG-UJIBAYAR-J/status#', fn() => mt_status('settlement', 68344)]]);
+ob_start();
+try {
+    include AKAR . '/cron/payment_reconcile.php';
+} finally {
+    $keluaran_cron = ob_get_clean();
+    $pulihkan = $pdo->prepare("UPDATE payment_transactions SET last_checked_at = ? WHERE id = ?");
+    foreach ($lain as $id => $waktu) {
+        $pulihkan->execute([$waktu, $id]);
+    }
+}
+cek(payment_txn_get($tJ->id)->status === 'paid' && kolom_lama($J)->payment_status === 'settlement',
+    'cron: tagihan > 20 menit yang sudah dibayar menjadi lunas', payment_txn_get($tJ->id)->status);
+cek(payment_txn_get($tK->id)->status === 'pending' && payment_txn_get($tK->id)->last_checked_at === null,
+    'cron: tagihan yang baru terbit tidak diperiksa');
+$url_dipanggil = array_column($GLOBALS['PANGGILAN'], 1);
+cek(count($url_dipanggil) === 1 && strpos($url_dipanggil[0], 'LEG-UJIBAYAR-J') !== false,
+    'cron: hanya tagihan uji yang ditanyakan ke gateway', count($url_dipanggil) . ' panggilan');
+cek(strpos($keluaran_cron, '1 berubah') !== false, 'cron: ringkasan jalan tercetak', trim(substr($keluaran_cron, -80)));
+$masih = $pdo->query("SELECT id, last_checked_at FROM payment_transactions
+                       WHERE status = 'pending' AND merchant_ref NOT LIKE '%UJIBAYAR%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+cek($masih == $lain, 'cron: tagihan lain dikembalikan persis', count($masih) . ' baris');
 printf("\n────────────────────────────────\n  LULUS: %d   GAGAL: %d\n", $pass, $fail);
 exit($fail > 0 ? 1 : 0);

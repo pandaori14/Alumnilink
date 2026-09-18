@@ -302,6 +302,7 @@ $titles = [
     'profile'   => 'Profil Saya',
     'settings'  => 'Pengaturan',
     'admin_keuangan' => 'Laporan Keuangan',
+    'admin_payment_gateway' => 'Gateway Pembayaran',
     'admin_tracer' => 'Laporan Tracer Alumni',
     'admin_legalisir' => 'Kelola Legalisir',
     'admin_news' => 'Kelola Berita & Event',

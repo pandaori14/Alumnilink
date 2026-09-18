@@ -26,8 +26,14 @@ require_once AKAR . '/includes/payment/report.php';
 $BASE = uji_base_url();
 
 // ── Setting yang diubah, dikembalikan di akhir ───────────────────────
-$KUNCI = ['midtrans_server_key', 'flip_secret_key', 'flip_validation_token',
-          'payment_gateway_active', 'smtp_force_real'];
+$KUNCI = ['midtrans_server_key', 'midtrans_client_key', 'midtrans_is_production',
+          'flip_secret_key', 'flip_validation_token', 'flip_is_production',
+          'payment_gateway_active', 'smtp_force_real', 'payment_last_test_midtrans', 'payment_last_test_flip',
+          'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min', 'fee_flip_reviewed',
+          'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'payment_expiry',
+          // Ditulis ulang oleh setiap POST ke handler Pengaturan (bagian K)
+          'google_oauth_auto_verify', 'dashboard_bg_animation', 'email_send_direct', 'audit_log_auto_erase',
+          'rbac_enforce', 'cron_token', 'ujialur_kunci_bebas', 'legalisir_require_paid'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
     $q = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
@@ -507,5 +513,157 @@ cek(abs($pendapatan['midtrans'] + $pendapatan['flip'] + $pendapatan['cash'] + $p
 [$c, $b] = minta($SESI['sa'], 'handlers/export_keuangan.php?method=cash');
 cek($c === 200 && strpos($b, 'Tunai') !== false, 'ekspor: label metode "Tunai"', "HTTP $c");
 
+// ═════════════════════════════════════════════════════════════════════
+echo "\n=== K. Panel gateway pembayaran ===\n";
+
+$panel = function ($sid, array $post) use ($CSRF) {
+    return minta($sid, 'handlers/admin_payment_gateway_handler.php', http_build_query(array_merge(['csrf_token' => $CSRF], $post)));
+};
+$flash = function ($sid) {
+    [, $b] = minta($sid, 'index.php?page=admin_payment_gateway');
+    return preg_match('#<span class="text-sm font-medium">([^<]*)</span>#', $b, $m) ? html_entity_decode($m[1]) : '';
+};
+
+$rahasia = 'SB-Mid-server-UJIALURRAHASIA9876';
+setting_save('midtrans_server_key', $rahasia);
+[$c, $b] = minta($SESI['sa'], 'index.php?page=admin_payment_gateway');
+cek($c === 200 && tanpa_galat_php($b) && strpos($b, 'Gateway Pembayaran') !== false, 'panel tampil bagi super admin', "HTTP $c");
+cek(strpos($b, $rahasia) === false && strpos($b, '••••9876') !== false, 'server key tidak pernah dicetak, hanya 4 karakter terakhir');
+cek(strpos($b, 'handlers/midtrans_webhook.php') !== false && strpos($b, 'handlers/flip_callback.php') !== false, 'kedua URL callback ditampilkan');
+cek(strpos($b, 'Belum dapat dijadikan aktif') !== false, 'Flip tanpa tes: penghalang sakelar ditampilkan');
+setting_save('midtrans_server_key', '');
+
+$SESI['legalisir'] = sesi_palsu($uid_sa, 'admin_legalisir', $CSRF);
+[$c, $b] = minta($SESI['legalisir'], 'index.php?page=admin_payment_gateway');
+cek($c === 302 || strpos($b, 'Akses Ditolak') !== false, 'admin legalisir tidak dapat membuka panel', "HTTP $c");
+cek(strpos($b, 'handlers/flip_callback.php') === false, 'isi panel tidak bocor ke peran lain');
+[$c] = $panel($SESI['legalisir'], ['aksi' => 'umum', 'payment_custom_charge_legalisir' => 0, 'payment_custom_charge_donasi' => 0, 'payment_expiry' => 60]);
+cek($c === 403, 'handler menolak peran selain super admin', "HTTP $c");
+[$c] = minta($SESI['sa'], 'handlers/admin_payment_gateway_handler.php', http_build_query(['aksi' => 'tes', 'gateway' => 'flip']));
+cek($c === 403, 'handler tanpa token CSRF ditolak', "HTTP $c");
+
+// Kredensial: rahasia hanya-tulis
+$panel($SESI['sa'], ['aksi' => 'kredensial', 'gateway' => 'flip', 'mode' => '0', 'flip_secret_key' => 'rahasia-flip-ujialur', 'flip_validation_token' => 'token-ujialur']);
+all_settings(true);
+cek(setting('flip_secret_key', '') === 'rahasia-flip-ujialur' && setting('flip_validation_token', '') === 'token-ujialur', 'kredensial Flip tersimpan');
+setting_save('payment_last_test_flip', json_encode(['at' => date('Y-m-d H:i:s'), 'ok' => true, 'message' => 'uji', 'production' => false]));
+$panel($SESI['sa'], ['aksi' => 'kredensial', 'gateway' => 'flip', 'mode' => '0', 'flip_secret_key' => '', 'flip_validation_token' => '']);
+all_settings(true);
+cek(setting('flip_secret_key', '') === 'rahasia-flip-ujialur', 'kolom rahasia kosong = tidak diubah');
+cek(setting('payment_last_test_flip', '') !== '', 'tanpa perubahan: tes koneksi terakhir tetap berlaku');
+$panel($SESI['sa'], ['aksi' => 'kredensial', 'gateway' => 'flip', 'mode' => '0', 'flip_secret_key' => 'rahasia baru', 'flip_validation_token' => '']);
+all_settings(true);
+cek(setting('flip_secret_key', '') === 'rahasia-flip-ujialur', 'rahasia berisi spasi ditolak');
+$panel($SESI['sa'], ['aksi' => 'kredensial', 'gateway' => 'flip', 'mode' => '0', 'flip_secret_key' => 'rahasia-flip-kedua', 'flip_validation_token' => '']);
+all_settings(true);
+cek(setting('flip_secret_key', '') === 'rahasia-flip-kedua' && setting('payment_last_test_flip', '') === '', 'kunci diganti: tes koneksi lama dibatalkan');
+$panel($SESI['sa'], ['aksi' => 'kredensial', 'gateway' => 'flip', 'mode' => '0', 'hapus_flip_validation_token' => '1']);
+all_settings(true);
+cek(setting('flip_validation_token', 'KOSONG') === 'KOSONG','kotak "Kosongkan" menghapus rahasia');
+
+// Profil biaya dan pengaturan umum
+$profil_awal = payment_fee_profile('flip');
+$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '-1', 'vat_percent' => 0, 'flat' => 4321, 'app' => 0, 'min' => 0]);
+$pesan = $flash($SESI['sa']);
+all_settings(true);
+cek(payment_fee_profile('flip') === $profil_awal, 'persen negatif ditolak, profil tidak berubah');
+cek(strpos($pesan, 'tidak negatif') !== false, 'pesan penolakan ditampilkan di panel', $pesan);
+$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '40', 'vat_percent' => 0, 'flat' => 4321, 'app' => 0, 'min' => 0]);
+$pesan = $flash($SESI['sa']);
+all_settings(true);
+cek(payment_fee_profile('flip') === $profil_awal && strpos($pesan, '30%') !== false, 'persen di atas batas wajar ditolak', $pesan);
+$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '0.7', 'vat_percent' => '11', 'flat' => 4000, 'app' => 0, 'min' => 0, 'reviewed' => '1']);
+all_settings(true);
+$pf = payment_fee_profile('flip');
+cek($pf['percent'] == 0.7 && $pf['flat'] === 4000 && $pf['reviewed'], 'profil biaya Flip tersimpan dan ditandai ditinjau');
+$panel($SESI['sa'], ['aksi' => 'biaya', 'gateway' => 'flip', 'percent' => '0.7', 'vat_percent' => '11', 'flat' => 4000, 'app' => 0, 'min' => 0]);
+all_settings(true);
+cek(!payment_fee_profile('flip')['reviewed'], 'disimpan tanpa centang: tanda ditinjau dilepas');
+$panel($SESI['sa'], ['aksi' => 'umum', 'payment_custom_charge_legalisir' => 6500, 'payment_custom_charge_donasi' => 0, 'payment_expiry' => 5]);
+all_settings(true);
+cek(setting('payment_expiry', '') !== '5', 'masa berlaku di bawah 15 menit ditolak');
+
+// Sakelar lewat HTTP
+$panel($SESI['sa'], ['aksi' => 'aktifkan', 'gateway' => 'flip']);
+$pesan = $flash($SESI['sa']);
+all_settings(true);
+cek(payment_active_gateway_code() === 'midtrans' && strpos($pesan, 'Gateway tidak dipindah') !== false,
+    'aktifkan Flip tanpa syarat lengkap: ditolak dengan alasan', $pesan);
+
+// Transaksi uji: kredensial Midtrans kosong -> ditolak, tanpa baris ledger
+$sebelum_uji = (int)$pdo->query("SELECT COUNT(*) FROM payment_transactions WHERE purpose = 'uji'")->fetchColumn();
+$panel($SESI['sa'], ['aksi' => 'uji', 'gateway' => 'midtrans']);
+cek((int)$pdo->query("SELECT COUNT(*) FROM payment_transactions WHERE purpose = 'uji'")->fetchColumn() === $sebelum_uji,
+    'transaksi uji tanpa kredensial: tidak ada transaksi terbit');
+
+// Handler Pengaturan menolak kunci pembayaran
+$centang = [];
+foreach (['google_oauth_auto_verify', 'dashboard_bg_animation', 'smtp_force_real', 'email_send_direct', 'audit_log_auto_erase', 'rbac_enforce'] as $k) {
+    if (setting($k, '0') === '1') {
+        $centang[$k] = '1';     // dikirim apa adanya: tidak ada sakelar yang berubah
+    }
+}
+$lindung = ['midtrans_server_key', 'fee_midtrans_percent', 'payment_gateway_active', 'flip_secret_key', 'cron_token'];
+$sebelum_lindung = [];
+foreach ($lindung as $k) {
+    $sebelum_lindung[$k] = setting($k, null);
+}
+minta($SESI['sa'], 'handlers/admin_settings_handler.php', http_build_query(array_merge($centang, [
+    'csrf_token' => $CSRF, 'midtrans_server_key' => 'DISUSUPKAN', 'fee_midtrans_percent' => '99',
+    'payment_gateway_active' => 'flip', 'flip_secret_key' => 'DISUSUPKAN', 'cron_token' => 'DISUSUPKAN',
+    'ujialur_kunci_bebas' => 'tersimpan',
+])));
+all_settings(true);
+$sesudah_lindung = [];
+foreach ($lindung as $k) {
+    $sesudah_lindung[$k] = setting($k, null);
+}
+cek($sesudah_lindung === $sebelum_lindung, 'handler Pengaturan menolak kunci pembayaran & rahasia sistem');
+cek(setting('ujialur_kunci_bebas', '') === 'tersimpan', 'kunci biasa tetap tersimpan lewat Pengaturan');
+[$c, $b] = minta($SESI['sa'], 'index.php?page=admin_settings');
+cek(strpos($b, 'name="midtrans_server_key"') === false && strpos($b, 'index.php?page=admin_payment_gateway') !== false,
+    'Pengaturan: kolom Midtrans diganti tautan ke panel');
+cek(strpos($b, 'payment_reconcile.php') !== false, 'Pengaturan: cron rekonsiliasi tercantum');
+// ═════════════════════════════════════════════════════════════════════
+echo "\n=== L. Legalisir wajib lunas sebelum diproses ===\n";
+
+$ubah_status = function ($id, $status, $alasan = '') use ($SESI, $CSRF) {
+    return minta($SESI['sa'], 'handlers/admin_update_legalisir.php', http_build_query(
+        ['csrf_token' => $CSRF, 'id' => $id, 'status' => $status, 'rejection_reason' => $alasan]));
+};
+$status_leg = function ($id) {
+    return baris_legalisir($id)->status;
+};
+$belum = $id_k ?? null;   // pengajuan kurir dari bagian A: tagihannya gagal, belum lunas
+if ($belum === null) {
+    cek(false, 'pengajuan belum lunas tersedia untuk uji');
+} else {
+    setting_save('legalisir_require_paid', '0');
+    $log_awal = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'LEGALISIR_UNPAID_PROCESSED'")->fetchColumn();
+    [, , $loc] = $ubah_status($belum, 'processing');
+    cek(strpos($loc, 'success=updated') !== false && strpos($loc, 'peringatan=belum_lunas') !== false && $status_leg($belum) === 'processing',
+        'mode peringatan: tetap diproses, admin diberi peringatan', $loc);
+    cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'LEGALISIR_UNPAID_PROCESSED'")->fetchColumn() === $log_awal + 1,
+        'mode peringatan: tercatat di Audit Trail');
+    [, $b] = minta($SESI['sa'], 'index.php?page=admin_legalisir&success=updated&peringatan=belum_lunas');
+    cek(strpos($b, 'BELUM LUNAS') !== false, 'mode peringatan: pemberitahuan tampil di Kelola Legalisir');
+
+    setting_save('legalisir_require_paid', '1');
+    [, , $loc] = $ubah_status($belum, 'completed');
+    cek(strpos($loc, 'error=belum_lunas') !== false && $status_leg($belum) === 'processing',
+        'mode wajib lunas: diselesaikan ditolak', $loc);
+    [, , $loc] = minta($SESI['sa'], 'handlers/admin_legalisir_bulk.php', http_build_query(
+        ['csrf_token' => $CSRF, 'ids' => [$belum], 'status' => 'completed']));
+    cek(strpos($loc, 'n=0') !== false && strpos($loc, 'gagal=1') !== false && $status_leg($belum) === 'processing',
+        'mode wajib lunas: aksi massal juga ditolak', $loc);
+    [, , $loc] = $ubah_status($belum, 'rejected', 'Pengajuan uji ditolak untuk memeriksa aturan wajib lunas.');
+    cek(strpos($loc, 'success=updated') !== false && $status_leg($belum) === 'rejected', 'mode wajib lunas: penolakan tetap diizinkan', $loc);
+    [, , $loc] = $ubah_status($id1, 'completed');
+    cek(strpos($loc, 'success=updated') !== false && strpos($loc, 'peringatan') === false && $status_leg($id1) === 'completed',
+        'mode wajib lunas: pengajuan LUNAS tidak terhalang', $loc);
+    [, $b] = minta($SESI['sa'], 'index.php?page=admin_legalisir&error=belum_lunas');
+    cek(strpos($b, 'wajib lunas') !== false, 'pesan penolakan tampil di Kelola Legalisir');
+    setting_save('legalisir_require_paid', '0');
+}
 echo "\n────────────────────────────────\n  LULUS: $pass   GAGAL: $fail\n";
 exit($fail ? 1 : 0);

@@ -70,6 +70,7 @@ function all_menu_definitions()
             ['key' => 'admin_users',          'label' => 'Kelola User',            'icon' => 'user-cog',        'group' => 'Pengaturan Sistem'],
             ['key' => 'admin_majors',         'label' => 'Kelola Prodi',           'icon' => 'book-copy',       'group' => 'Pengaturan Sistem'],
             ['key' => 'admin_settings',       'label' => 'Konfigurasi Sistem',     'icon' => 'settings',        'group' => 'Pengaturan Sistem'],
+            ['key' => 'admin_payment_gateway','label' => 'Gateway Pembayaran',     'icon' => 'credit-card',     'group' => 'Pengaturan Sistem'],
             ['key' => 'admin_logs',           'label' => 'Audit Trail',            'icon' => 'shield-check',    'group' => 'Pengaturan Sistem'],
         ],
     ];

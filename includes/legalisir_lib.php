@@ -119,11 +119,33 @@ function apply_legalisir_status($pdo, $id, $status, $reason = '')
         return ['ok' => false, 'error' => 'Alasan penolakan wajib diisi minimal 10 karakter.', 'email' => null];
     }
 
-    $q = $pdo->prepare("SELECT user_id, documents, status, verification_token FROM legalisir_requests WHERE id = ?");
+    $q = $pdo->prepare("SELECT user_id, documents, status, verification_token, payment_status FROM legalisir_requests WHERE id = ?");
     $q->execute([$id]);
     $req = $q->fetch();
     if (!$req) {
         return ['ok' => false, 'error' => 'Pengajuan tidak ditemukan.', 'email' => null];
+    }
+
+    // Diproses atau diselesaikan padahal BELUM LUNAS.
+    //
+    // settings.legalisir_require_paid:
+    //   '0' (bawaan) = hanya peringatan: perubahan tetap berjalan, dicatat
+    //                  di Audit Trail, dan admin melihat pemberitahuan.
+    //                  Dipasang begitu supaya alur kerja yang sudah berjalan
+    //                  (mis. bayar tunai saat mengambil dokumen) tidak
+    //                  tiba-tiba terhenti.
+    //   '1'          = ditolak. Pembayaran tunai diverifikasi lebih dulu.
+    // Menolak pengajuan tidak pernah dijaga.
+    $peringatan = '';
+    if (in_array($status, ['processing', 'completed'], true) && $req->status !== $status
+        && $req->payment_status !== 'settlement') {
+        if (setting('legalisir_require_paid', '0') === '1') {
+            return ['ok' => false, 'kode' => 'belum_lunas', 'email' => null,
+                    'error' => "Pengajuan $id belum lunas. Verifikasi pembayaran tunai, atau tunggu pembayaran online terkonfirmasi."];
+        }
+        $peringatan = 'belum_lunas';
+        log_activity('LEGALISIR_UNPAID_PROCESSED',
+            "Pengajuan $id diubah ke $status padahal pembayarannya belum lunas (mode peringatan).");
     }
 
     $docs     = json_decode((string)$req->documents, true) ?: [];
@@ -179,7 +201,7 @@ function apply_legalisir_status($pdo, $id, $status, $reason = '')
         }
     }
 
-    return ['ok' => true, 'error' => '', 'email' => $surat, 'status_lama' => $req->status];
+    return ['ok' => true, 'error' => '', 'email' => $surat, 'status_lama' => $req->status, 'peringatan' => $peringatan];
 }
 
 /**
