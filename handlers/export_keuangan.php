@@ -62,8 +62,10 @@ foreach ($records as $r) {
         number_format($r['tagihan'], 0, ',', '.'),
         // Baris lama tanpa rincian tidak ditebak angkanya; ditulis apa adanya
         // supaya pembaca berkas tahu mana yang pasti dan mana yang batas atas.
-        $r['pasti'] ? number_format($r['biaya'], 0, ',', '.') : 'tanpa rincian',
-        number_format($r['diterima'], 0, ',', '.')
+        $r['lunas'] ? ($r['pasti'] ? number_format($r['biaya'], 0, ',', '.') : 'tanpa rincian') : '-',
+        // Yang belum lunas belum menghasilkan apa pun. Menuliskan nominal
+        // tagihannya di kolom "diterima" akan dibaca sebagai uang yang masuk.
+        $r['lunas'] ? number_format($r['diterima'], 0, ',', '.') : '-'
     ], ',', '"', '\\');
 }
 

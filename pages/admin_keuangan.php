@@ -224,10 +224,12 @@ $warna_jenis = ['legalisir' => 'bg-blue-100 text-blue-700', 'donasi' => 'bg-pink
                 </div>
                 <div class="text-right">
                     <span class="font-bold text-slate-800 text-sm">Rp <?php echo number_format($r['tagihan'], 0, ',', '.'); ?></span>
-                    <span class="block text-[10px] font-medium <?php echo e($r['pasti'] ? 'text-blue-600' : 'text-amber-600'); ?>">
-                        <?php echo e($r['pasti']
-                            ? 'diterima Rp ' . number_format($r['diterima'], 0, ',', '.')
-                            : 'biaya tanpa rincian'); ?>
+                    <span class="block text-[10px] font-medium <?php echo e(!$paid ? 'text-slate-400' : ($r['pasti'] ? 'text-blue-600' : 'text-amber-600')); ?>">
+                        <?php echo e(!$paid
+                            ? ($r['bayar'] === 'pending' ? 'belum dibayar' : 'tidak jadi dibayar')
+                            : ($r['pasti']
+                                ? 'diterima Rp ' . number_format($r['diterima'], 0, ',', '.')
+                                : 'biaya tanpa rincian')); ?>
                     </span>
                 </div>
             </div>
@@ -238,60 +240,62 @@ $warna_jenis = ['legalisir' => 'bg-blue-100 text-blue-700', 'donasi' => 'bg-pink
     <!-- Desktop Table -->
     <div class="hidden md:block glass rounded-[2rem] overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm min-w-[900px]">
+        <table class="w-full text-left border-collapse text-sm min-w-[820px]">
             <thead>
                 <tr class="bg-white/40 border-b border-white/20">
-                    <th class="px-5 py-4 font-semibold text-slate-600">Tanggal</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600">Jenis</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600">Pembayar</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600">Keterangan</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600">Metode Bayar</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600">Status Bayar</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600 text-right">Dibayar</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600 text-right">Diterima Fakultas</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600">Tanggal</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600">Pembayar</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600">Keterangan</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600">Metode</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600">Status</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600 text-right">Dibayar</th>
+                    <th class="px-4 py-4 font-semibold text-slate-600 text-right">Diterima Fakultas</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-white/20">
                 <?php if (empty($records)): ?>
-                <tr><td colspan="8" class="px-6 py-10 text-center text-slate-400 italic">Tidak ada data.</td></tr>
+                <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">Tidak ada data.</td></tr>
                 <?php else:
                     $statusLabels = ['pending'=>'Menunggu','processing'=>'Diproses','completed'=>'Selesai','rejected'=>'Dibatalkan'];
                     foreach ($records as $r):
                     $paid = $r['lunas'];
                 ?>
                 <tr class="hover:bg-white/30 transition-all">
-                    <td class="px-5 py-4 text-slate-500 whitespace-nowrap"><?php echo date('d M Y', strtotime($r['created_at'])); ?></td>
-                    <td class="px-5 py-4">
-                        <span class="px-2 py-1 rounded-lg text-[10px] font-bold <?php echo e($warna_jenis[$r['jenis']]); ?>"><?php echo e(ucfirst($r['jenis'])); ?></span>
-                    </td>
-                    <td class="px-5 py-4">
+                    <td class="px-4 py-4 text-slate-500 whitespace-nowrap"><?php echo date('d M Y', strtotime($r['created_at'])); ?></td>
+                    <td class="px-4 py-4">
                         <p class="font-bold text-slate-800"><?php echo e($r['nama']); ?></p>
                         <p class="text-[10px] text-slate-400"><?php echo e($r['identitas']); ?></p>
                     </td>
-                    <td class="px-5 py-4 text-slate-600">
+                    <td class="px-4 py-4 text-slate-600">
+                        <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold mr-1 <?php echo e($warna_jenis[$r['jenis']]); ?>"><?php echo e(ucfirst($r['jenis'])); ?></span>
                         <?php echo e($r['keterangan']); ?>
                         <?php if ($r['status_doc'] !== null): ?>
-                            <span class="block text-[10px] text-slate-400"><?php echo e($statusLabels[$r['status_doc']] ?? ucfirst((string)$r['status_doc'])); ?></span>
+                            <span class="block text-[10px] text-slate-400 mt-0.5"><?php echo e($statusLabels[$r['status_doc']] ?? ucfirst((string)$r['status_doc'])); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td class="px-5 py-4">
+                    <td class="px-4 py-4">
                         <span class="px-2 py-1 rounded-lg text-[10px] font-bold <?php echo e($r['metode'] === 'cash' ? 'bg-emerald-100 text-emerald-700' : ($r['metode'] ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500')); ?>">
                             <?php echo e(payment_method_report_label($r['metode'])); ?>
                         </span>
                     </td>
-                    <td class="px-5 py-4">
+                    <td class="px-4 py-4">
                         <span class="px-2 py-1 rounded-lg text-[10px] font-bold <?php echo e($paid ? 'bg-green-100 text-green-700' : ($r['bayar'] === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600')); ?>">
                             <?php echo e($paid ? 'Lunas' : ($r['bayar'] === 'pending' ? 'Pending' : 'Gagal')); ?>
                         </span>
                     </td>
-                    <td class="px-5 py-4 text-right font-bold text-slate-800 whitespace-nowrap">
+                    <td class="px-4 py-4 text-right font-bold text-slate-800 whitespace-nowrap">
                         Rp <?php echo number_format($r['tagihan'], 0, ',', '.'); ?>
                     </td>
-                    <td class="px-5 py-4 text-right whitespace-nowrap">
-                        <span class="font-bold text-slate-800">Rp <?php echo number_format($r['diterima'], 0, ',', '.'); ?></span>
-                        <span class="block text-[10px] font-medium <?php echo e($r['pasti'] ? 'text-slate-400' : 'text-amber-600'); ?>">
-                            <?php echo e($r['pasti'] ? 'biaya Rp ' . number_format($r['biaya'], 0, ',', '.') : 'biaya tanpa rincian'); ?>
-                        </span>
+                    <td class="px-4 py-4 text-right whitespace-nowrap">
+                        <?php if (!$paid): ?>
+                            <span class="text-slate-300">&mdash;</span>
+                            <span class="block text-[10px] text-slate-400"><?php echo e($r['bayar'] === 'pending' ? 'belum dibayar' : 'tidak jadi dibayar'); ?></span>
+                        <?php else: ?>
+                            <span class="font-bold text-slate-800">Rp <?php echo number_format($r['diterima'], 0, ',', '.'); ?></span>
+                            <span class="block text-[10px] font-medium <?php echo e($r['pasti'] ? 'text-slate-400' : 'text-amber-600'); ?>">
+                                <?php echo e($r['pasti'] ? 'biaya Rp ' . number_format($r['biaya'], 0, ',', '.') : 'biaya tanpa rincian'); ?>
+                            </span>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; endif; ?>
@@ -299,11 +303,11 @@ $warna_jenis = ['legalisir' => 'bg-blue-100 text-blue-700', 'donasi' => 'bg-pink
             <?php if (!empty($records)): ?>
             <tfoot>
                 <tr class="bg-white/40 border-t border-white/30">
-                    <td colspan="6" class="px-5 py-4 font-bold text-slate-700 text-right">TOTAL LUNAS:</td>
-                    <td class="px-5 py-4 text-right font-black text-slate-700 text-base whitespace-nowrap">
+                    <td colspan="5" class="px-4 py-4 font-bold text-slate-700 text-right">TOTAL LUNAS:</td>
+                    <td class="px-4 py-4 text-right font-black text-slate-700 text-base whitespace-nowrap">
                         Rp <?php echo number_format($total_revenue, 0, ',', '.'); ?>
                     </td>
-                    <td class="px-5 py-4 text-right font-black text-blue-700 text-base whitespace-nowrap">
+                    <td class="px-4 py-4 text-right font-black text-blue-700 text-base whitespace-nowrap">
                         Rp <?php echo number_format($neto_fakultas, 0, ',', '.'); ?>
                     </td>
                 </tr>
