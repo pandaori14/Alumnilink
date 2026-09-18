@@ -210,6 +210,41 @@ cek(in_array('price_per_doc', $nama_kolom, true) && in_array('smtp_host', $nama_
     'kolom dari kelima bagian ikut terkirim dalam satu formulir');
 
 // ═════════════════════════════════════════════════════════════════════
+// ── Pencarian pengaturan ─────────────────────────────────────────────
+//
+// Halaman ini memuat lebih dari seratus kolom. Pencarian adalah satu-satunya
+// cara menemukan satu kolom tanpa hafal ia ada di bagian mana — dan tanpa
+// bertanya kepada pembuat sistem.
+cek(strpos($html, 'id="cari-pengaturan"') !== false, 'kotak pencarian tersedia');
+cek(strpos($html, 'id="spanduk-cari"') !== false && strpos($html, 'id="hapus-cari"') !== false,
+    'spanduk hasil dan tombol "Tampilkan semua" tersedia');
+
+// Setiap kartu wajib punya kata kunci sehari-hari. Judul resminya
+// "Tarif Pengiriman (Zona)", tetapi yang diketik orang adalah "ongkir".
+$jml_kartu = preg_match_all('/<div[^>]*class="[^"]*glass[^"]*"[^>]*>\s*\n\s*<div class="flex items-center gap-4/', $html);
+$jml_kata = preg_match_all('/data-cari="([^"]+)"/', $html, $m_kata);
+cek($jml_kata >= 20, 'kartu pengaturan diberi kata kunci pencarian', $jml_kata . ' kartu');
+
+$semua_kata = strtolower(implode(' ', $m_kata[1]));
+$istilah = ['ongkir', 'backup', 'password', 'smtp', 'logo', 'cron', 'rbac', 'whatsapp', 'ijazah', 'paginasi'];
+$tidak_ketemu = [];
+foreach ($istilah as $kata) {
+    if (strpos($semua_kata, $kata) === false) {
+        $tidak_ketemu[] = $kata;
+    }
+}
+cek($tidak_ketemu === [], 'istilah sehari-hari terwakili di kata kunci',
+    implode(', ', $tidak_ketemu) ?: count($istilah) . ' istilah diperiksa');
+
+// Navigasi bagian memakai keterangan singkat, bukan hanya nama.
+cek(preg_match_all('/<button[^>]*settings-tab-btn/', $html) === 5, 'lima tombol bagian');
+cek(substr_count($html, 'text-[10px] font-medium opacity-70') === 5,
+    'setiap bagian menjelaskan isinya dalam satu baris');
+
+// Aset dipanggil dengan penanda versi, supaya peramban tidak memakai
+// salinan lama setelah berkasnya diperbarui lewat FTP.
+cek(preg_match('#assets/css/app\.css\?v=\d+#', $html) === 1, 'CSS dipanggil dengan penanda versi');
+
 echo "\n=== B. Menyimpan tanpa mengubah apa pun ===\n";
 
 $sebelum = settings_kini();

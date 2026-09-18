@@ -26,9 +26,9 @@ if (empty($token)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verifikasi Dokumen Digital - AlumniLink</title>
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
-    <script src="assets/js/lucide.min.js"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
     <style>
         body { font-family: 'Outfit', sans-serif; background-color: #f8fafc; }
         .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }

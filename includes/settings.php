@@ -153,6 +153,26 @@ function nama_institusi()
     return trim((string)setting('system_name', '')) ?: 'AlumniLink';
 }
 
+/**
+ * Alamat berkas aset beserta penanda versinya.
+ *
+ * ── Mengapa perlu ──────────────────────────────────────────────────────
+ * assets/css/app.css berubah isinya tetapi TIDAK pernah berubah namanya.
+ * Peramban yang sudah menyimpannya akan terus memakai salinan lama —
+ * kadang berhari-hari — sehingga tata letak baru tidak muncul setelah
+ * upload, dan yang terlihat justru versi separuh lama yang berantakan.
+ *
+ * Waktu ubah berkas ditempelkan sebagai ?v=..., jadi setiap kali berkasnya
+ * benar-benar berubah, alamatnya ikut berubah dan peramban mengambil ulang.
+ * Selama tidak berubah, salinan cache tetap dipakai.
+ */
+function aset($jalur)
+{
+    $bersih = ltrim((string)$jalur, '/');
+    $waktu = @filemtime(dirname(__DIR__) . '/' . $bersih);
+    return $bersih . ($waktu ? '?v=' . $waktu : '');
+}
+
 /** Ambil pengaturan sebagai bilangan bulat, dengan batas minimum opsional. */
 function setting_int($key, $default = 0, $min = null)
 {

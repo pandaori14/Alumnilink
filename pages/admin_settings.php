@@ -69,7 +69,7 @@ $color_map = [
 ];
 ?>
 
-<div class="max-w-6xl mx-auto pb-24">
+<div class="max-w-7xl mx-auto pb-24">
 
     <div class="mb-8 px-1 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
@@ -84,33 +84,60 @@ $color_map = [
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
 
         <aside id="settings-nav" class="lg:col-span-1 lg:sticky lg:top-6 space-y-4 min-w-0">
-            <nav aria-label="Bagian pengaturan" class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+                <div class="relative mb-3">
+                    <label for="cari-pengaturan" class="sr-only">Cari pengaturan</label>
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    <input id="cari-pengaturan" type="search" autocomplete="off"
+                           placeholder="Cari pengaturan…"
+                           class="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-200 focus:border-blue-500 outline-none text-sm">
+                </div>
+                <nav aria-label="Bagian pengaturan" class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
                 <button type="button" onclick="switchSettingsTab('tab-identitas')" id="btn-tab-identitas"
                         aria-current="true"
-                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap bg-blue-600 text-white shadow-lg shadow-blue-200">
-                    <i data-lucide="building-2" class="w-4 h-4 shrink-0"></i> Identitas & Tampilan
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left bg-blue-600 text-white shadow-lg shadow-blue-200">
+                    <i data-lucide="building-2" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span class="min-w-0">
+                        <span class="block whitespace-nowrap lg:whitespace-normal">Identitas & Tampilan</span>
+                        <span class="hidden lg:block text-[10px] font-medium opacity-70 leading-snug mt-0.5">Logo, warna, kontak, halaman depan</span>
+                    </span>
                 </button>
                 <button type="button" onclick="switchSettingsTab('tab-layanan')" id="btn-tab-layanan"
                         aria-current="false"
-                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
-                    <i data-lucide="award" class="w-4 h-4 shrink-0"></i> Layanan & Biaya
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="award" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span class="min-w-0">
+                        <span class="block whitespace-nowrap lg:whitespace-normal">Layanan & Biaya</span>
+                        <span class="hidden lg:block text-[10px] font-medium opacity-70 leading-snug mt-0.5">Harga, ongkir, dokumen, SLA</span>
+                    </span>
                 </button>
                 <button type="button" onclick="switchSettingsTab('tab-integrasi')" id="btn-tab-integrasi"
                         aria-current="false"
-                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
-                    <i data-lucide="plug" class="w-4 h-4 shrink-0"></i> Integrasi & E-mail
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="plug" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span class="min-w-0">
+                        <span class="block whitespace-nowrap lg:whitespace-normal">Integrasi & E-mail</span>
+                        <span class="hidden lg:block text-[10px] font-medium opacity-70 leading-snug mt-0.5">SMTP, antrean, Google, AI</span>
+                    </span>
                 </button>
                 <button type="button" onclick="switchSettingsTab('tab-keamanan')" id="btn-tab-keamanan"
                         aria-current="false"
-                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
-                    <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i> Keamanan & Akses
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="shield-check" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span class="min-w-0">
+                        <span class="block whitespace-nowrap lg:whitespace-normal">Keamanan & Akses</span>
+                        <span class="hidden lg:block text-[10px] font-medium opacity-70 leading-snug mt-0.5">Izin peran, kata sandi, audit</span>
+                    </span>
                 </button>
                 <button type="button" onclick="switchSettingsTab('tab-operasional')" id="btn-tab-operasional"
                         aria-current="false"
-                        class="settings-tab-btn shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-800 hover:bg-slate-50">
-                    <i data-lucide="server-cog" class="w-4 h-4 shrink-0"></i> Operasional
+                        class="settings-tab-btn shrink-0 lg:w-full flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left text-slate-500 hover:text-slate-800 hover:bg-slate-50">
+                    <i data-lucide="server-cog" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span class="min-w-0">
+                        <span class="block whitespace-nowrap lg:whitespace-normal">Operasional</span>
+                        <span class="hidden lg:block text-[10px] font-medium opacity-70 leading-snug mt-0.5">Cadangan, cron, batas unggah</span>
+                    </span>
                 </button>
-            </nav>
+                </nav>
                 <div class="glass rounded-[2rem] p-4 border border-white shadow-sm">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Menu terkait</p>
                     <div class="grid grid-cols-2 lg:grid-cols-1 gap-1">
@@ -158,13 +185,20 @@ $color_map = [
             <form action="handlers/admin_settings_handler.php" method="POST" enctype="multipart/form-data" class="space-y-8" id="settings-form">
                 <?php csrf_field(); ?>
 
+                <div id="spanduk-cari" class="hidden p-4 rounded-2xl bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm font-medium text-blue-800" role="status" aria-live="polite" id="teks-hasil-cari"></p>
+                    <button type="button" id="hapus-cari" class="px-4 py-2 rounded-xl bg-white border border-blue-200 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-all">
+                        Tampilkan semua
+                    </button>
+                </div>
+
         <div class="settings-tab-content tab-identitas space-y-8">
             <header class="px-1">
                 <h2 class="text-base font-black outfit text-slate-800">Identitas &amp; Tampilan</h2>
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Logo, warna, kontak bantuan, dan isi halaman depan yang dilihat publik.</p>
             </header>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="logo lambang nama kampus universitas institusi berkas gambar" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="building-2" class="w-6 h-6"></i>
@@ -193,7 +227,7 @@ $color_map = [
             </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="favicon ikon warna tema brand kontras aksesibilitas" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
                         <i data-lucide="palette" class="w-6 h-6"></i>
@@ -289,7 +323,7 @@ $color_map = [
             </div>
 
             <!-- 3. KONTAK BANTUAN WHATSAPP (CARD TERPISAH) -->
-            <div class="bg-gradient-to-br from-green-500 to-emerald-600 p-1 rounded-[3rem] shadow-xl shadow-green-100">
+            <div data-cari="whatsapp wa nomor telepon hotline bantuan support email kontak alamat" class="bg-gradient-to-br from-green-500 to-emerald-600 p-1 rounded-[3rem] shadow-xl shadow-green-100">
                 <div class="bg-white p-10 rounded-[2.8rem] h-full">
                     <div class="flex items-center gap-4 mb-8">
                     <div class="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center">
@@ -363,7 +397,7 @@ $color_map = [
 
             <!-- 9. Konfigurasi Landing Page (Super Admin Only) -->
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="beranda halaman depan hero judul tagline maintenance perawatan statistik animasi" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
             <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="layout-template" class="w-6 h-6"></i>
@@ -437,7 +471,7 @@ $color_map = [
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Harga legalisir, ongkir, jenis dokumen, dan syarat layanan alumni. Kredensial gateway pembayaran ada di menunya sendiri.</p>
             </header>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="harga tarif biaya legalisir per lembar dokumen ongkir rupiah" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
                         <i data-lucide="receipt" class="w-6 h-6"></i>
@@ -467,7 +501,7 @@ $color_map = [
                 require_once __DIR__ . '/../includes/payment/gateway.php';
                 $gw_aktif = payment_active_gateway_code();
             ?>
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="midtrans flip pembayaran payment qris virtual account bayar tagihan" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
@@ -488,7 +522,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="ongkir ongkos kirim kurir pengiriman zona provinsi wilayah biaya kirim" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center">
@@ -546,7 +580,7 @@ $color_map = [
             </div>
         </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="ijazah transkrip akreditasi jenis dokumen legalisir prodi" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center">
@@ -572,7 +606,7 @@ $color_map = [
                    value="<?php echo e($dt_tersimpan); ?>">
             </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="stempel watermark tanda air cap digital softcopy" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="shield-check" class="w-6 h-6"></i>
@@ -591,7 +625,7 @@ $color_map = [
             </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="tracer masa berlaku pengingat prodi cadangan sla batas waktu survei pengguna lulusan" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
                         <i data-lucide="scroll-text" class="w-6 h-6"></i>
@@ -643,7 +677,7 @@ $color_map = [
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Sambungan ke layanan luar: pengiriman e-mail dan masuk lewat Google.</p>
             </header>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="smtp email surel mail server kirim lupa sandi broadcast gmail port tls" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="mail" class="w-6 h-6"></i>
@@ -725,7 +759,7 @@ $color_map = [
             </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="antrean batch throttle jeda batas harian limit bounce macet email surel notifikasi sistem" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center border border-violet-100">
                         <i data-lucide="mail-check" class="w-6 h-6"></i>
@@ -774,7 +808,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="google sso oauth login masuk client id secret verifikasi otomatis" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="key" class="w-6 h-6"></i>
@@ -819,7 +853,7 @@ $color_map = [
                 </div>
             </div>
             </div>
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="ai gemini kecerdasan buatan analitik api key insight" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center border border-violet-100">
                         <i data-lucide="sparkles" class="w-6 h-6"></i>
@@ -853,7 +887,7 @@ $color_map = [
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Siapa boleh membuka apa, kebijakan kata sandi, pembatasan laju, dan jejak audit.</p>
             </header>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="rbac peran role izin hak akses staf admin pembatasan" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
                         <i data-lucide="shield-alert" class="w-6 h-6"></i>
@@ -882,7 +916,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="mt-8">
+            <div data-cari="menu sidebar navigasi peran role tampilan menu izin" class="mt-8">
                 <div class="overflow-hidden rounded-[3rem] border-2 border-slate-900 shadow-2xl shadow-slate-900/10">
             <!-- Header Section -->
             <div class="bg-slate-900 px-10 py-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1015,7 +1049,7 @@ $color_map = [
         </div>
         </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="kata sandi password panjang minimal sesi timeout keluar otomatis reset tautan" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
                         <i data-lucide="shield-check" class="w-6 h-6"></i>
@@ -1045,7 +1079,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="rate limit pembatasan laju brute force percobaan login spam gagal" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
                         <i data-lucide="gauge" class="w-6 h-6"></i>
@@ -1106,7 +1140,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="audit log riwayat aktivitas retensi hapus otomatis penyimpanan" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
                         <i data-lucide="history" class="w-6 h-6"></i>
@@ -1149,7 +1183,7 @@ $color_map = [
                 <p class="text-xs text-slate-400 mt-1 leading-relaxed">Pemeliharaan rutin: cadangan, penjadwal, batas unggah, dan tampilan data.</p>
             </header>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="backup cadangan dump database unduh restore pulihkan sql gz" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
                         <i data-lucide="database-backup" class="w-6 h-6"></i>
@@ -1236,7 +1270,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="cron penjadwal terjadwal scheduler token url otomatis berkala" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
                         <i data-lucide="clock" class="w-6 h-6"></i>
@@ -1336,7 +1370,7 @@ $color_map = [
                 </div>
             </div>
 
-        <div class="glass p-10 rounded-[3rem] shadow-sm border border-white mt-8 animate-in fade-in duration-500">
+        <div data-cari="peta map geocoding koordinat lokasi sinkron alamat" class="glass p-10 rounded-[3rem] shadow-sm border border-white mt-8 animate-in fade-in duration-500">
             <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="map-pin" class="w-6 h-6"></i>
@@ -1360,7 +1394,7 @@ $color_map = [
         </div>
         </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="peta map geocoding koordinat lokasi batch alamat" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
                         <i data-lucide="map-pin" class="w-6 h-6"></i>
@@ -1380,7 +1414,7 @@ $color_map = [
                 </div>
             </div>
 
-            <div class="glass p-10 rounded-[3rem] shadow-sm border border-white">
+            <div data-cari="unggah upload ukuran berkas format maksimal impor csv baris" class="glass p-10 rounded-[3rem] shadow-sm border border-white">
                 <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
                     <i data-lucide="upload-cloud" class="w-6 h-6"></i>
@@ -1414,7 +1448,7 @@ $color_map = [
             </div>
             </div>
 
-            <div class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
+            <div data-cari="paginasi baris per halaman tabel jumlah data" class="glass p-8 md:p-10 rounded-[2.5rem] border border-white shadow-sm">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="w-12 h-12 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center border border-slate-100">
                         <i data-lucide="table-2" class="w-6 h-6"></i>
@@ -1752,4 +1786,80 @@ $color_map = [
             switchSettingsTab('tab-' + bagian, false);
         }
     });
+
+    // ── Pencarian pengaturan ─────────────────────────────────────────
+    //
+    // Halaman ini memuat lebih dari seratus kolom di lima bagian. Tanpa
+    // pencarian, menemukan satu kolom menuntut hafal ia ada di bagian mana —
+    // itulah yang membuat orang harus bertanya ke pembuatnya.
+    //
+    // Pencocokan memakai teks yang TERLIHAT pada setiap kartu (judul,
+    // keterangan, dan label kolomnya), jadi "ongkir", "smtp", atau "sandi"
+    // sama-sama menemukan kartunya.
+    (function () {
+        const input = document.getElementById('cari-pengaturan');
+        if (!input) return;
+
+        const bagian = [...document.querySelectorAll('.settings-tab-content')];
+        const spanduk = document.getElementById('spanduk-cari');
+        const teksHasil = document.getElementById('teks-hasil-cari');
+        const tombolHapus = document.getElementById('hapus-cari');
+
+        function kartuDi(sec) {
+            return [...sec.children].filter(el => el.tagName !== 'HEADER');
+        }
+
+        function keluarDariPencarian() {
+            bagian.forEach(sec => {
+                kartuDi(sec).forEach(k => k.classList.remove('hidden'));
+                const h = sec.querySelector('header');
+                if (h) h.classList.remove('hidden');
+            });
+            spanduk.classList.add('hidden');
+            const aktif = document.querySelector('.settings-tab-btn[aria-current="true"]');
+            switchSettingsTab(aktif ? aktif.id.replace('btn-', '') : 'tab-identitas', false);
+        }
+
+        function cari(q) {
+            q = q.trim().toLowerCase();
+            if (q === '') { keluarDariPencarian(); return; }
+
+            let cocok = 0;
+            bagian.forEach(sec => {
+                let diSini = 0;
+                kartuDi(sec).forEach(k => {
+                    // Teks yang terlihat DITAMBAH kata kunci sehari-hari pada
+                    // data-cari: judul resminya "Tarif Pengiriman (Zona)",
+                    // tetapi orang mengetik "ongkir".
+                    const teks = ((k.innerText || '') + ' ' + (k.dataset.cari || '')).toLowerCase();
+                    const ada = teks.includes(q);
+                    k.classList.toggle('hidden', !ada);
+                    if (ada) diSini++;
+                });
+                const h = sec.querySelector('header');
+                if (h) h.classList.toggle('hidden', diSini === 0);
+                sec.classList.toggle('hidden', diSini === 0);
+                cocok += diSini;
+            });
+
+            spanduk.classList.remove('hidden');
+            teksHasil.textContent = cocok === 0
+                ? 'Tidak ada pengaturan yang cocok dengan "' + q + '".'
+                : cocok + ' kelompok pengaturan cocok dengan "' + q + '" — ditampilkan dari seluruh bagian.';
+        }
+
+        let tunda;
+        input.addEventListener('input', function () {
+            clearTimeout(tunda);
+            tunda = setTimeout(() => cari(input.value), 150);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { input.value = ''; keluarDariPencarian(); }
+        });
+        tombolHapus.addEventListener('click', function () {
+            input.value = '';
+            keluarDariPencarian();
+            input.focus();
+        });
+    })();
 </script>

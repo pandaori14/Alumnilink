@@ -75,9 +75,9 @@ $docs = json_decode($req->documents ?? '[]', true);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cetak Label Pengiriman<?php echo count($daftar_req) > 1 ? ' (' . count($daftar_req) . ' label)' : ' - ' . htmlspecialchars($req->id); ?></title>
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
-    <script src="assets/js/lucide.min.js"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .outfit { font-family: 'Outfit', sans-serif; }

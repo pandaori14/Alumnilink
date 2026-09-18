@@ -44,8 +44,8 @@ if (empty($email) || empty($token) || !verify_token($email, $token, 'unsubscribe
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Berhenti Berlangganan - AlumniLink</title>
     <!-- Use the same script/css setup if possible, or plain tailwind CDN for simplicity -->
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>

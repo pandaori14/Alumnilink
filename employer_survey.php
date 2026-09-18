@@ -82,8 +82,8 @@ $galat  = $_GET['error'] ?? '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Survei Kepuasan Pengguna Lulusan — <?php echo htmlspecialchars($institusi); ?></title>
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .outfit { font-family: 'Outfit', sans-serif; }
@@ -108,7 +108,7 @@ $galat  = $_GET['error'] ?? '';
                 evaluasi mutu lulusan <?php echo htmlspecialchars($institusi); ?>.
             </p>
         </div>
-        <script src="assets/js/lucide.min.js"></script>
+        <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
         <script>lucide.createIcons();</script>
         </main></body></html>
         <?php exit; ?>
@@ -205,7 +205,7 @@ $galat  = $_GET['error'] ?? '';
     <p class="text-center text-[11px] text-slate-400 mt-6"><?php echo htmlspecialchars($institusi); ?></p>
 </main>
 
-<script src="assets/js/lucide.min.js"></script>
+<script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
 <script>lucide.createIcons();</script>
 </body>
 </html>

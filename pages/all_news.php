@@ -37,9 +37,9 @@ $institution_name = $sys_settings['institution_name'] ?? 'Universitas';
     <meta property="og:description" content="Informasi terkini mengenai agenda, berita, dan perkembangan terbaru di lingkungan alumni <?php echo htmlspecialchars($institution_name); ?>.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="<?php echo htmlspecialchars($system_logo); ?>">
-    <link rel="stylesheet" href="assets/css/app.css">
-    <script src="assets/js/lucide.min.js"></script>
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .outfit { font-family: 'Outfit', sans-serif; }

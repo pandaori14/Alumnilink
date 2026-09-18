@@ -113,8 +113,8 @@ $qr_api = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=png&m
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Softcopy Legalisir - <?php echo htmlspecialchars($request->alumni_name); ?></title>
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <style>
         :root {
             --doc-scale: 1;
@@ -575,7 +575,7 @@ $qr_api = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=png&m
 
     <script src="assets/js/pdf.min.js"></script>
     <script src="assets/js/html2pdf.bundle.min.js"></script>
-    <script src="assets/js/sweetalert2.min.js"></script>
+    <script src="<?php echo e(aset('assets/js/sweetalert2.min.js')); ?>"></script>
     <script>
         function showSwalAlert(title, text, icon = 'info') {
             Swal.fire({

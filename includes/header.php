@@ -165,10 +165,10 @@ $dashboard_bg_animation = ($sys_settings['dashboard_bg_animation'] ?? '1') == '1
        blok PHP saat itu juga -- termasuk di dalam komentar // maupun # --
        sehingga sisa komentar ikut tercetak sebagai teks di halaman. */
     ?>
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
-    <script src="assets/js/lucide.min.js"></script>
-    <script src="assets/js/sweetalert2.min.js"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
+    <script src="<?php echo e(aset('assets/js/sweetalert2.min.js')); ?>"></script>
     <script>
         // Premium Global SweetAlert2 Helpers for unified UI/UX
         function confirmDelete(e, url, message = 'Yakin ingin menghapus data ini?') {
@@ -395,7 +395,7 @@ $dashboard_bg_animation = ($sys_settings['dashboard_bg_animation'] ?? '1') == '1
             });
         }
     </script>
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <script>
         /**
          * Alamat dirapikan: index.php?page=admin_settings -> /admin_settings

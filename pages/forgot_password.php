@@ -28,9 +28,9 @@ try {
     $base_path = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
     ?>
     <base href="<?php echo e($base_path); ?>">
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
-    <script src="assets/js/lucide.min.js"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; scroll-behavior: smooth; }
         .outfit { font-family: 'Outfit', sans-serif; }

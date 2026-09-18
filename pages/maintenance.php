@@ -21,9 +21,9 @@ $institution_name = $sys_settings['institution_name'] ?? 'Universitas';
     <base href="<?php echo $base_path; ?>">
     <link rel="icon" type="image/png" href="<?php echo htmlspecialchars($system_logo); ?>">
     <link rel="shortcut icon" type="image/png" href="<?php echo htmlspecialchars($system_logo); ?>">
-    <link rel="stylesheet" href="assets/css/app.css">
-    <script src="assets/js/lucide.min.js"></script>
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
+    <link rel="stylesheet" href="<?php echo e(aset('assets/css/app.css')); ?>">
+    <script src="<?php echo e(aset('assets/js/lucide.min.js')); ?>"></script>
+    <link rel="stylesheet" href="<?php echo e(aset('assets/fonts/fonts.css')); ?>">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .outfit { font-family: 'Outfit', sans-serif; }

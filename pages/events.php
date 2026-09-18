@@ -118,7 +118,7 @@ $event_url = pager_url_builder(['page' => 'events']);
     ?>
 </div>
 
-<script src="assets/js/sweetalert2.min.js"></script>
+<script src="<?php echo e(aset('assets/js/sweetalert2.min.js')); ?>"></script>
 <script>
 function alertTracer() {
     Swal.fire({
