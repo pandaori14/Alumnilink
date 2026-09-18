@@ -16,7 +16,7 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 984 pemeriksaan |
+| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 994 pemeriksaan |
 | Versi skema | `2026.09.18.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
@@ -141,13 +141,21 @@ Versi skema naik ke `2026.09.18.1`. Migrasi kini menyegarkan cache
 pengaturan, karena permintaan pertama sesudah pembaruan sempat memakai nilai
 lama — untuk tarif, itu berarti satu tagihan dihitung salah tanpa jejak.
 
-### Prioritas 1 — Uang dan keamanan
-
-**1.1 Donasi masuk Laporan Keuangan** · sedang
-Laporan Keuangan hanya menghitung legalisir. Rekap donasi terpisah di
+**Donasi masuk Laporan Keuangan** · 18 September 2026
+Laporan Keuangan hanya menghitung legalisir; rekap donasi berdiri sendiri di
 Kelola Donasi, dan tidak ada satu angka pun yang menyatukan keduanya.
-*Selesai bila:* Laporan Keuangan punya penyaring jenis (legalisir/donasi/
-semua), ekspornya ikut, dan jumlah kartunya tetap sama dengan total.
+Sekarang keduanya dibangun satu fungsi (`payment_finance_rows()`) dengan
+penyaring jenis, tanggal, bulan, status, dan metode — dan halaman maupun
+ekspor CSV memanggil fungsi yang sama, sehingga berkas yang diunduh tidak
+mungkin berbeda dari layar. Kartu dihitung dari baris yang sedang tampil,
+jadi jumlahnya selalu sama dengan tabelnya, termasuk saat penyaring aktif.
+
+Nominal donasi diambil dari ledger, bukan `donations.amount`: kolom itu
+menyimpan donasi POKOK, sedangkan yang dibayar donatur termasuk biaya
+layanan. Metode bayarnya juga dari ledger, karena tabel donasi tidak pernah
+menyimpannya. Dijaga 11 pemeriksaan baru.
+
+### Prioritas 1 — Uang dan keamanan
 
 **1.4 Riwayat perubahan pengaturan** · sedang
 Audit Trail hanya mencatat "Administrator updated system settings" — tanpa
@@ -215,10 +223,10 @@ seperti `uji_responsif`.
 
 1. **Unggah dulu** kode yang sudah selesai (lihat `_dev/UPLOAD.md`), lalu
    konfigurasi Flip (lihat `_dev/PEMBAYARAN.md` bagian 5–6).
-2. Prioritas 1.1 dan 1.4 — menyentuh laporan dan jejak audit.
+2. Prioritas 1.4 — menyentuh jejak audit.
 4. Prioritas 2.2 (Status Sistem) — paling terasa bagi operator harian.
 5. Sisanya sesuai kebutuhan.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 984 pemeriksaan sekarang berarti.
+membuat 994 pemeriksaan sekarang berarti.

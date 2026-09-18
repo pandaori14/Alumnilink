@@ -852,5 +852,48 @@ $ganda = payment_revenue_summary($pdo);
 cek(abs($ganda['biaya'] - $sesudah['biaya']) < 0.01,
     'transaksi bayar ganda tidak menambah biaya; ditangani sebagai refund manual');
 
+// ---- Donasi ikut dilaporkan ----------------------------------------
+//
+// Donasi selama ini tidak pernah masuk Laporan Keuangan: rekapnya berdiri
+// sendiri di Kelola Donasi, sehingga tidak ada satu angka pun yang menyatakan
+// berapa uang yang benar-benar masuk ke fakultas.
+echo "\n-- Donasi dalam laporan --\n";
+
+$kamp = $pdo->query("SELECT id FROM donation_campaigns ORDER BY id LIMIT 1")->fetchColumn();
+$pdo->prepare("INSERT INTO donations (campaign_id, user_id, donor_name, amount, status, midtrans_order_id)
+               VALUES (?, ?, 'UJIBAYAR', 50000, 'success', ?)")
+    ->execute([$kamp ?: null, $alum->id, 'DON-UJIBAYAR-R']);
+$don_id = (int)$pdo->lastInsertId();
+$pdo->prepare("INSERT INTO payment_transactions
+        (gateway, purpose, subject_id, merchant_ref, amount_expected, fee_breakdown, status, paid_at)
+     VALUES ('flip', 'donasi', ?, 'DON-UJIBAYAR-R', 61462, ?, 'paid', NOW())")
+    ->execute([(string)$don_id, json_encode(['base' => 50000, 'custom' => 0, 'margin' => 2500, 'fee' => 8962, 'total' => 61462])]);
+
+$leg_saja = payment_finance_summary(payment_finance_rows($pdo, ['jenis' => 'legalisir']));
+$don_saja = payment_finance_summary(payment_finance_rows($pdo, ['jenis' => 'donasi']));
+$semua    = payment_finance_summary(payment_finance_rows($pdo, ['jenis' => 'semua']));
+
+cek(abs($don_saja['bruto'] - 61462) < 0.01 && abs($don_saja['biaya'] - 8962) < 0.01,
+    'donasi dilaporkan sebesar yang DIBAYAR donatur, bukan donasi pokok', $don_saja['bruto']);
+cek(abs($semua['bruto'] - ($leg_saja['bruto'] + $don_saja['bruto'])) < 0.01,
+    'gabungan = legalisir + donasi, tanpa tumpang tindih', $semua['bruto']);
+cek(abs($semua['neto'] - ($semua['bruto'] - $semua['biaya'])) < 0.01, 'neto gabungan tetap konsisten');
+cek(abs($don_saja['metode']['flip'] - 61462) < 0.01 && $don_saja['metode']['lainnya'] == 0.0,
+    'metode donasi dibaca dari ledger, karena tabel donasi tidak menyimpannya', $don_saja['metode']['flip']);
+
+$baris_don = payment_finance_rows($pdo, ['jenis' => 'donasi']);
+$punya = array_values(array_filter($baris_don, fn($b) => $b['id'] === (string)$don_id));
+cek(count($punya) === 1 && $punya[0]['nama'] === 'UJIBAYAR' && $punya[0]['lunas'], 'baris donasi membawa nama dan status pembayarnya');
+cek(abs($punya[0]['diterima'] - 52500) < 0.01, 'diterima fakultas = dibayar donatur - potongan penyedia', $punya[0]['diterima']);
+
+$hanya_leg = payment_finance_rows($pdo, ['jenis' => 'legalisir']);
+cek(!array_filter($hanya_leg, fn($b) => $b['jenis'] === 'donasi'), 'penyaring "legalisir saja" tidak membawa donasi');
+cek(!array_filter($baris_don, fn($b) => $b['jenis'] === 'legalisir'), 'penyaring "donasi saja" tidak membawa legalisir');
+
+$saring = payment_finance_rows($pdo, ['jenis' => 'semua', 'method' => 'cash']);
+cek($saring && !array_filter($saring, fn($b) => $b['metode'] !== 'cash'), 'penyaring metode berlaku untuk kedua jenis');
+$kosong = payment_finance_rows($pdo, ['jenis' => 'semua', 'start_date' => '2099-01-01']);
+cek($kosong === [], 'penyaring tanggal menutup seluruh baris bila tidak ada yang cocok');
+
 printf("\n────────────────────────────────\n  LULUS: %d   GAGAL: %d\n", $pass, $fail);
 exit($fail > 0 ? 1 : 0);

@@ -74,7 +74,7 @@ function payment_fee_by_subject(PDO $pdo, $purpose = 'legalisir', array $subject
     if ($subject_ids !== null && !$subject_ids) {
         return [];
     }
-    $sql = "SELECT subject_id, gateway, fee_breakdown
+    $sql = "SELECT subject_id, gateway, fee_breakdown, amount_expected
               FROM payment_transactions
              WHERE purpose = ? AND status = 'paid'";
     $params = [$purpose];
@@ -96,52 +96,178 @@ function payment_fee_by_subject(PDO $pdo, $purpose = 'legalisir', array $subject
         if (isset($hasil[$id])) {
             continue;
         }
+        $umum = ['gateway' => $r->gateway, 'bruto' => (float)$r->amount_expected];
         if ($r->gateway === 'cash') {
-            $hasil[$id] = ['fee' => 0.0, 'pasti' => true];
+            $hasil[$id] = $umum + ['fee' => 0.0, 'pasti' => true];
             continue;
         }
         $rincian = $r->fee_breakdown ? json_decode($r->fee_breakdown, true) : null;
-        $hasil[$id] = isset($rincian['fee'])
+        $hasil[$id] = $umum + (isset($rincian['fee'])
             ? ['fee' => (float)$rincian['fee'], 'pasti' => true]
-            : ['fee' => 0.0, 'pasti' => false];
+            : ['fee' => 0.0, 'pasti' => false]);
     }
     return $hasil;
 }
 
-/**
- * Ringkasan uang untuk kartu Laporan Keuangan.
- *
- * bruto  uang yang dibayar alumni
- * biaya  potongan penyedia pembayaran
- * neto   yang benar-benar diterima fakultas
- * tanpa_rincian  jumlah permohonan lunas yang biayanya tidak dapat dipastikan
- *
- * @return array{bruto:float, biaya:float, neto:float, tanpa_rincian:int, metode:array}
- */
-function payment_revenue_summary(PDO $pdo)
+/** Jenis layanan yang dapat dilaporkan. */
+function payment_report_kinds()
 {
-    $metode = payment_revenue_by_method($pdo);
-    $biaya = 0.0;
-    $tanpa = 0;
+    return ['semua', 'legalisir', 'donasi'];
+}
 
-    $lunas = $pdo->query("SELECT id FROM legalisir_requests WHERE payment_status = 'settlement'")
-        ->fetchAll(PDO::FETCH_COLUMN);
-    $peta = payment_fee_by_subject($pdo, 'legalisir', $lunas);
-    foreach ($lunas as $id) {
-        $b = $peta[(string)$id] ?? ['fee' => 0.0, 'pasti' => false];
-        $biaya += $b['fee'];
-        if (!$b['pasti']) {
-            $tanpa++;
+/**
+ * Baris Laporan Keuangan, legalisir dan donasi dalam satu bentuk.
+ *
+ * Donasi selama ini tidak pernah masuk laporan: rekapnya berdiri sendiri di
+ * Kelola Donasi, dan tidak ada satu angka pun yang menyatukan keduanya.
+ * Padahal uangnya masuk lewat jalur yang sama persis dan dipotong penyedia
+ * yang sama.
+ *
+ * Nominal donasi diambil dari ledger (amount_expected), bukan dari
+ * donations.amount: kolom itu menyimpan donasi POKOK, sedangkan yang
+ * benar-benar dibayar donatur termasuk biaya layanan.
+ *
+ * @param array $f jenis, start_date, end_date, status, method, month
+ * @return array daftar baris, terbaru lebih dulu
+ */
+function payment_finance_rows(PDO $pdo, array $f = [])
+{
+    $jenis = in_array($f['jenis'] ?? 'semua', payment_report_kinds(), true) ? $f['jenis'] : 'semua';
+    $baris = [];
+
+    if ($jenis !== 'donasi') {
+        $q = $pdo->query("SELECT lr.id, lr.created_at, lr.amount, lr.payment_status, lr.payment_method,
+                                 lr.status, lr.documents, u.name, u.email, u.nim
+                            FROM legalisir_requests lr
+                            JOIN users u ON lr.user_id = u.id");
+        $rows = $q->fetchAll(PDO::FETCH_OBJ);
+        $peta = payment_fee_by_subject($pdo, 'legalisir', array_map(fn($r) => $r->id, $rows));
+        foreach ($rows as $r) {
+            $docs = json_decode((string)$r->documents);
+            $nama_dok = array_map(fn($d) => ucfirst(is_object($d) ? ($d->type ?? '-') : (string)$d), (array)$docs);
+            $baris[] = payment_finance_row([
+                'jenis'       => 'legalisir',
+                'id'          => $r->id,
+                'created_at'  => $r->created_at,
+                'nama'        => $r->name,
+                'identitas'   => $r->nim ?: $r->email,
+                'keterangan'  => implode(', ', $nama_dok),
+                'status_doc'  => $r->status,
+                'metode'      => $r->payment_method,
+                'bayar'       => $r->payment_status === 'settlement' ? 'settlement'
+                                 : ($r->payment_status === 'pending' ? 'pending' : 'failed'),
+                'tagihan'     => (float)$r->amount,
+            ], $peta[(string)$r->id] ?? null);
         }
     }
 
-    return [
-        'bruto'         => $metode['total'],
-        'biaya'         => $biaya,
-        'neto'          => $metode['total'] - $biaya,
-        'tanpa_rincian' => $tanpa,
-        'metode'        => $metode,
-    ];
+    if ($jenis !== 'legalisir') {
+        $q = $pdo->query("SELECT d.id, d.created_at, d.amount, d.status, d.donor_name, d.user_id,
+                                 c.title AS kampanye, u.email, u.nim
+                            FROM donations d
+                            LEFT JOIN donation_campaigns c ON c.id = d.campaign_id
+                            LEFT JOIN users u ON u.id = d.user_id");
+        $rows = $q->fetchAll(PDO::FETCH_OBJ);
+        $peta = payment_fee_by_subject($pdo, 'donasi', array_map(fn($r) => (string)$r->id, $rows));
+        foreach ($rows as $r) {
+            $l = $peta[(string)$r->id] ?? null;
+            $baris[] = payment_finance_row([
+                'jenis'       => 'donasi',
+                'id'          => (string)$r->id,
+                'created_at'  => $r->created_at,
+                'nama'        => $r->donor_name ?: 'Hamba Allah',
+                'identitas'   => $r->nim ?: ($r->email ?: '-'),
+                'keterangan'  => $r->kampanye ?: 'Donasi',
+                'status_doc'  => null,
+                // Donasi tidak menyimpan metodenya sendiri; yang tahu adalah
+                // ledger. Tanpa transaksi lunas, metodenya memang belum ada.
+                'metode'      => $l['gateway'] ?? null,
+                'bayar'       => in_array($r->status, ['success', 'completed'], true) ? 'settlement'
+                                 : ($r->status === 'pending' ? 'pending' : 'failed'),
+                'tagihan'     => (float)($l['bruto'] ?? $r->amount),
+            ], $l);
+        }
+    }
+
+    // Penyaringan dilakukan setelah kedua sumber disatukan, supaya aturannya
+    // tertulis sekali dan tidak mungkin berbeda antara legalisir dan donasi.
+    $baris = array_values(array_filter($baris, function ($b) use ($f) {
+        $tgl = substr((string)$b['created_at'], 0, 10);
+        if (!empty($f['start_date']) && $tgl < $f['start_date']) {
+            return false;
+        }
+        if (!empty($f['end_date']) && $tgl > $f['end_date']) {
+            return false;
+        }
+        if (!empty($f['month']) && substr((string)$b['created_at'], 0, 7) !== $f['month']) {
+            return false;
+        }
+        if (!empty($f['status']) && $b['bayar'] !== $f['status']) {
+            return false;
+        }
+        if (!empty($f['method']) && $b['metode'] !== $f['method']) {
+            return false;
+        }
+        return true;
+    }));
+
+    usort($baris, fn($a, $b) => strcmp((string)$b['created_at'], (string)$a['created_at']));
+    return $baris;
+}
+
+/** Satu baris laporan, lengkap dengan uangnya. */
+function payment_finance_row(array $b, $ledger)
+{
+    $lunas = $b['bayar'] === 'settlement';
+    $b['lunas'] = $lunas;
+    $b['biaya'] = $lunas && $ledger ? (float)$ledger['fee'] : 0.0;
+    $b['pasti'] = !$lunas || ($ledger && $ledger['pasti']);
+    $b['diterima'] = max(0.0, $b['tagihan'] - $b['biaya']);
+    return $b;
+}
+
+/**
+ * Ringkasan uang untuk kartu Laporan Keuangan, dihitung DARI BARIS yang
+ * sedang ditampilkan — sehingga jumlah kartu selalu sama dengan tabelnya.
+ *
+ * bruto  uang yang dibayar pembayar (lunas saja)
+ * biaya  potongan penyedia pembayaran
+ * neto   yang benar-benar diterima fakultas
+ * belum_lunas    tagihan yang masih menunggu pembayaran
+ * tanpa_rincian  baris lunas yang biayanya tidak dapat dipastikan
+ */
+function payment_finance_summary(array $baris)
+{
+    $r = ['bruto' => 0.0, 'biaya' => 0.0, 'neto' => 0.0, 'belum_lunas' => 0.0, 'tanpa_rincian' => 0,
+          'metode' => ['midtrans' => 0.0, 'flip' => 0.0, 'cash' => 0.0, 'lainnya' => 0.0, 'total' => 0.0]];
+    foreach ($baris as $b) {
+        if ($b['bayar'] === 'pending') {
+            $r['belum_lunas'] += $b['tagihan'];
+        }
+        if (!$b['lunas']) {
+            continue;
+        }
+        $r['bruto'] += $b['tagihan'];
+        $r['biaya'] += $b['biaya'];
+        if (!$b['pasti']) {
+            $r['tanpa_rincian']++;
+        }
+        $kunci = in_array($b['metode'], ['midtrans', 'flip', 'cash'], true) ? $b['metode'] : 'lainnya';
+        $r['metode'][$kunci] += $b['tagihan'];
+        $r['metode']['total'] += $b['tagihan'];
+    }
+    $r['neto'] = $r['bruto'] - $r['biaya'];
+    return $r;
+}
+
+/**
+ * Ringkasan seluruh data satu jenis layanan, tanpa penyaring.
+ *
+ * @return array{bruto:float, biaya:float, neto:float, tanpa_rincian:int, metode:array}
+ */
+function payment_revenue_summary(PDO $pdo, $jenis = 'legalisir')
+{
+    return payment_finance_summary(payment_finance_rows($pdo, ['jenis' => $jenis]));
 }
 
 /** Label metode untuk laporan, tanpa memuat adaptor gateway. */

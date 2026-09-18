@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 19 suite — **±960 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 19 suite — **±995 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -219,6 +219,15 @@ Rumus biaya, runbook pindah gateway, dan penanganan kasus tidak biasa
 [`_dev/PEMBAYARAN.md`](_dev/PEMBAYARAN.md).
 
 ---
+
+### Laporan Keuangan
+
+Satu halaman untuk legalisir **dan** donasi, dengan penyaring jenis, bulan,
+tanggal, status, dan metode. Uang dibaca dalam tiga angka: dibayar pembayar,
+biaya layanan penyedia (dari rincian yang tersimpan saat tagihan terbit), dan
+diterima fakultas. Kartu dihitung dari baris yang sedang tampil, sehingga
+jumlahnya selalu sama dengan tabelnya; ekspor CSV memakai fungsi penyaring
+yang sama persis dengan halamannya.
 
 ### Menyalakan dan mematikan metode pembayaran
 
