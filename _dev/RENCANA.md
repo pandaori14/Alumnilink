@@ -16,7 +16,7 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 958 pemeriksaan |
+| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 973 pemeriksaan |
 | Versi skema | `2026.09.17.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
@@ -66,6 +66,9 @@ keputusan membuang kode ada di pemilik sistem.
 - Kunci `midtrans_mdr_rate`, `midtrans_ppn_rate`, `midtrans_payout_fee`,
   `midtrans_margin_admin`, `custom_tax_value` — hanya dibaca sekali saat
   migrasi untuk menyemai profil biaya baru. Aman dibiarkan.
+- Kunci `admin_fee` (produksi: 9.997) — sejak 18 September 2026 tidak dibaca
+  kode mana pun. Dibiarkan di basis data sebagai jejak nilai lama; menghapus
+  barisnya tidak berpengaruh pada apa pun.
 - `legacy_unsubscribe_token` — sakelar kompatibilitas tautan berhenti
   berlangganan versi lama. Dapat dimatikan setelah satu siklus broadcast.
 
@@ -97,6 +100,16 @@ Ditambah pilihan kanal pembayaran untuk Midtrans (`enabled_payments`);
 kanal Flip diatur di dashboard Flip dan panel menyatakannya apa adanya.
 Dijaga 27 pemeriksaan baru di `uji_pembayaran` dan `uji_alur_bayar`.
 
+**Laporan keuangan memakai biaya nyata** · 18 September 2026
+Laporan Keuangan dan ekspornya tidak lagi mengurangi potongan tetap
+`admin_fee`. Angka itu tebakan yang tidak pernah cocok dengan tarif gateway
+mana pun; di produksi ia bahkan memotong sepuluh pembayaran **tunai** yang
+tidak pernah dipotong siapa pun, sebesar Rp 99.970. Sekarang uang dibaca
+dalam tiga angka — dibayar alumni, biaya layanan (dari `fee_breakdown` yang
+tersimpan saat tagihan terbit), dan diterima fakultas. Baris lama tanpa
+rincian ditandai "tanpa rincian" dan dihitung nol, bukan ditebak.
+`admin_fee` tidak lagi dibaca kode mana pun. Dijaga 15 pemeriksaan baru.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.1 Donasi masuk Laporan Keuangan** · sedang
@@ -104,24 +117,6 @@ Laporan Keuangan hanya menghitung legalisir. Rekap donasi terpisah di
 Kelola Donasi, dan tidak ada satu angka pun yang menyatukan keduanya.
 *Selesai bila:* Laporan Keuangan punya penyaring jenis (legalisir/donasi/
 semua), ekspornya ikut, dan jumlah kartunya tetap sama dengan total.
-
-**1.2 Laporan keuangan memakai biaya nyata, bukan `admin_fee`** · sedang
-Laporan Keuangan mengurangi potongan tetap `admin_fee` (produksi: 9.997)
-dari setiap transaksi. Angka itu tebakan: biaya yang sesungguhnya sudah
-tercatat per transaksi di `payment_transactions.fee_breakdown`, hasil
-kombinasi profil biaya gateway. Akibatnya laporan tidak cocok dengan uang
-yang benar-benar diterima fakultas.
-
-Keputusan pemilik sistem (18 Sep 2026): `admin_fee` **tidak ditampilkan di
-antarmuka mana pun**. Laporan audit harus bersih dari angka karangan, dan
-fakultas tidak boleh tombok atas biaya di luar yang dibayar alumni.
-
-*Selesai bila:* Laporan Keuangan dan ekspornya menampilkan bruto yang
-dibayar alumni, biaya layanan, dan neto yang diterima fakultas — seluruhnya
-dari `fee_breakdown`; baris lama tanpa rincian memakai cadangan yang jujur
-dan ditandai sebagai perkiraan; `admin_fee` tidak lagi dibaca di
-`pages/admin_keuangan.php`, `handlers/export_keuangan.php`, dan
-`pages/terms.php`.
 
 **1.3 CSRF pada hapus alumni dan hapus user** · kecil
 `admin_alumni_handler.php` dan `admin_user_handler.php` masih menghapus
@@ -196,11 +191,11 @@ seperti `uji_responsif`.
 
 1. **Unggah dulu** kode yang sudah selesai (lihat `_dev/UPLOAD.md`), lalu
    konfigurasi Flip (lihat `_dev/PEMBAYARAN.md` bagian 5–6).
-2. Prioritas 1.2 dan 1.3 — keduanya kecil, langsung menutup risiko.
+2. Prioritas 1.3 — kecil, langsung menutup risiko.
 3. Prioritas 1.1 dan 1.4 — menyentuh laporan dan jejak audit.
 4. Prioritas 2.2 (Status Sistem) — paling terasa bagi operator harian.
 5. Sisanya sesuai kebutuhan.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 958 pemeriksaan sekarang berarti.
+membuat 973 pemeriksaan sekarang berarti.

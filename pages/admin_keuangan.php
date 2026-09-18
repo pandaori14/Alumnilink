@@ -50,18 +50,27 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $records = $stmt->fetchAll();
 
-// Fetch admin fee from settings
-$admin_fee = (int)($pdo->query("SELECT setting_value FROM settings WHERE setting_key='admin_fee'")->fetchColumn() ?: 5000);
-
-// Summary stats (unfiltered for cards, excluding admin fee)
-// Satu agregat bersama dengan kedua dasbor; jumlah kartu = total.
+// Ringkasan uang (seluruh data, bukan hasil saring) — satu agregat bersama
+// dengan kedua dasbor, sehingga jumlah kartu selalu sama dengan totalnya.
+//
+// Biaya layanan dibaca dari rincian yang tersimpan per transaksi, bukan dari
+// potongan tetap `admin_fee` yang dipakai laporan ini sebelumnya. Potongan
+// tetap itu tebakan yang tidak pernah cocok dengan tarif gateway mana pun,
+// dan arah salahnya menentukan apakah fakultas mengira untung atau justru
+// menanggung selisihnya sendiri.
 require_once __DIR__ . '/../includes/payment/report.php';
-$pendapatan      = payment_revenue_by_method($pdo, $admin_fee);
-$total_revenue   = $pendapatan['total'];
+$ringkas         = payment_revenue_summary($pdo);
+$pendapatan      = $ringkas['metode'];
+$total_revenue   = $ringkas['bruto'];
+$biaya_layanan   = $ringkas['biaya'];
+$neto_fakultas   = $ringkas['neto'];
 $midtrans_rev    = $pendapatan['midtrans'];
 $flip_rev        = $pendapatan['flip'];
 $cash_rev        = $pendapatan['cash'];
-$pending_rev     = $pdo->query("SELECT COALESCE(SUM(GREATEST(0, amount - {$admin_fee})),0) FROM legalisir_requests WHERE payment_status='pending'")->fetchColumn();
+$pending_rev     = (float)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM legalisir_requests WHERE payment_status='pending'")->fetchColumn();
+
+// Biaya per baris untuk tabel di bawah, hanya untuk baris yang tampil.
+$biaya_baris = payment_fee_by_subject($pdo, 'legalisir', array_map(fn($r) => $r->id, $records));
 
 // Months for filter
 $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DATE_FORMAT(created_at,'%M %Y') as label FROM legalisir_requests ORDER BY m DESC")->fetchAll();
@@ -84,33 +93,61 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
         </a>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <!-- Ringkasan uang: dibayar alumni -> potongan penyedia -> diterima fakultas -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div class="glass p-5 rounded-2xl shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Pendapatan</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dibayar Alumni</p>
             <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($total_revenue, 0, ',', '.'); ?></h2>
             <p class="text-[10px] text-green-600 font-bold mt-1">Sudah Lunas</p>
         </div>
         <div class="glass p-5 rounded-2xl shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Via Midtrans</p>
-            <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($midtrans_rev, 0, ',', '.'); ?></h2>
-            <p class="text-[10px] text-blue-600 font-bold mt-1 flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3"></i> Digital</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Biaya Layanan</p>
+            <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($biaya_layanan, 0, ',', '.'); ?></h2>
+            <p class="text-[10px] text-slate-500 font-bold mt-1">Potongan penyedia pembayaran</p>
+        </div>
+        <div class="glass p-5 rounded-2xl shadow-sm border border-blue-100">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diterima Fakultas</p>
+            <h2 class="text-lg md:text-xl font-black outfit text-blue-700 mt-1">Rp <?php echo number_format($neto_fakultas, 0, ',', '.'); ?></h2>
+            <p class="text-[10px] text-blue-600 font-bold mt-1">Dibayar alumni &minus; biaya layanan</p>
         </div>
         <div class="glass p-5 rounded-2xl shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Via Tunai</p>
-            <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($cash_rev, 0, ',', '.'); ?></h2>
-            <p class="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1"><i data-lucide="banknote" class="w-3 h-3"></i> Cash</p>
-        </div>
-        <div class="glass p-5 rounded-2xl shadow-sm">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Via Flip</p>
-            <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($flip_rev, 0, ',', '.'); ?></h2>
-            <p class="text-[10px] text-indigo-600 font-bold mt-1 flex items-center gap-1"><i data-lucide="wallet" class="w-3 h-3"></i> Digital</p>
-        </div>
-        <div class="glass p-5 rounded-2xl col-span-2 lg:col-span-1 shadow-sm">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Belum Lunas</p>
             <h2 class="text-lg md:text-xl font-black outfit text-slate-800 mt-1">Rp <?php echo number_format($pending_rev, 0, ',', '.'); ?></h2>
             <p class="text-[10px] text-orange-500 font-bold mt-1">Menunggu Pembayaran</p>
         </div>
+    </div>
+
+    <!-- Rincian per metode: jumlahnya selalu sama dengan "Dibayar Alumni" -->
+    <div class="glass p-4 rounded-2xl mb-6 flex flex-wrap items-center gap-x-8 gap-y-3">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dibayar alumni, per metode</p>
+        <div class="flex items-center gap-2 text-sm">
+            <i data-lucide="credit-card" class="w-4 h-4 text-blue-600"></i>
+            <span class="text-slate-500">Midtrans</span>
+            <span class="font-black text-slate-800">Rp <?php echo number_format($midtrans_rev, 0, ',', '.'); ?></span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+            <i data-lucide="wallet" class="w-4 h-4 text-indigo-600"></i>
+            <span class="text-slate-500">Flip</span>
+            <span class="font-black text-slate-800">Rp <?php echo number_format($flip_rev, 0, ',', '.'); ?></span>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+            <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
+            <span class="text-slate-500">Tunai</span>
+            <span class="font-black text-slate-800">Rp <?php echo number_format($cash_rev, 0, ',', '.'); ?></span>
+        </div>
+        <?php if ($pendapatan['lainnya'] > 0): ?>
+        <div class="flex items-center gap-2 text-sm">
+            <span class="text-slate-500">Lainnya</span>
+            <span class="font-black text-slate-800">Rp <?php echo number_format($pendapatan['lainnya'], 0, ',', '.'); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ($ringkas['tanpa_rincian'] > 0): ?>
+        <p class="w-full text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            <?php echo e($ringkas['tanpa_rincian']); ?> permohonan lunas berasal dari sebelum rincian biaya dicatat per
+            transaksi, sehingga biaya layanannya tidak dapat dipastikan dan dihitung nol. Angka "Diterima Fakultas"
+            untuk baris itu berarti batas atas, bukan hasil pasti.
+        </p>
+        <?php endif; ?>
     </div>
 
     <!-- Filter Bar -->
@@ -159,7 +196,10 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
             $paid = $r->payment_status === 'settlement';
             $docs = json_decode($r->documents);
             $docNames = array_map(fn($d) => ucfirst(is_object($d) ? $d->type : $d), (array)$docs);
-            $net_amount = max(0, $r->amount - $admin_fee);
+            $b = $biaya_baris[(string)$r->id] ?? null;
+            $fee_baris  = $paid && $b ? $b['fee'] : 0.0;
+            $fee_pasti  = !$paid || ($b && $b['pasti']);
+            $net_amount = max(0, $r->amount - $fee_baris);
         ?>
         <div class="glass rounded-2xl p-5 shadow-sm">
             <div class="flex justify-between items-start mb-3">
@@ -177,7 +217,14 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
                     <span class="font-semibold text-slate-700"><?php echo e(strtoupper($r->payment_method)); ?></span>
                     &bull; <?php echo implode(', ', $docNames); ?>
                 </div>
-                <span class="font-bold text-blue-600 text-sm">Rp <?php echo number_format($net_amount, 0, ',', '.'); ?></span>
+                <div class="text-right">
+                    <span class="font-bold text-slate-800 text-sm">Rp <?php echo number_format($r->amount, 0, ',', '.'); ?></span>
+                    <span class="block text-[10px] font-medium <?php echo e($fee_pasti ? 'text-blue-600' : 'text-amber-600'); ?>">
+                        <?php echo e($fee_pasti
+                            ? 'diterima Rp ' . number_format($net_amount, 0, ',', '.')
+                            : 'biaya tanpa rincian'); ?>
+                    </span>
+                </div>
             </div>
         </div>
         <?php endforeach; endif; ?>
@@ -195,19 +242,25 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
                     <th class="px-5 py-4 font-semibold text-slate-600">Metode Bayar</th>
                     <th class="px-5 py-4 font-semibold text-slate-600">Status Bayar</th>
                     <th class="px-5 py-4 font-semibold text-slate-600">Status Dokumen</th>
-                    <th class="px-5 py-4 font-semibold text-slate-600 text-right">Jumlah</th>
+                    <th class="px-5 py-4 font-semibold text-slate-600 text-right">Dibayar Alumni</th>
+                    <th class="px-5 py-4 font-semibold text-slate-600 text-right">Diterima Fakultas</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-white/20">
                 <?php if (empty($records)): ?>
-                <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">Tidak ada data.</td></tr>
+                <tr><td colspan="8" class="px-6 py-10 text-center text-slate-400 italic">Tidak ada data.</td></tr>
                 <?php else: foreach ($records as $r):
                     $paid = $r->payment_status === 'settlement';
                     $docs = json_decode($r->documents);
                     $docNames = array_map(fn($d) => ucfirst(is_object($d) ? $d->type : $d), (array)$docs);
                     $statusColors = ['pending'=>'bg-yellow-100 text-yellow-700','processing'=>'bg-blue-100 text-blue-700','completed'=>'bg-green-100 text-green-700','rejected'=>'bg-red-100 text-red-700'];
                     $statusLabels = ['pending'=>'Menunggu','processing'=>'Diproses','completed'=>'Selesai','rejected'=>'Dibatalkan'];
-                    $net_amount = max(0, $r->amount - $admin_fee);
+                    // Biaya nyata transaksi ini. Permohonan yang belum lunas
+                    // belum dipotong apa pun, jadi netonya sama dengan tagihan.
+                    $b = $biaya_baris[(string)$r->id] ?? null;
+                    $fee_baris  = $paid && $b ? $b['fee'] : 0.0;
+                    $fee_pasti  = !$paid || ($b && $b['pasti']);
+                    $net_amount = max(0, $r->amount - $fee_baris);
                 ?>
                 <tr class="hover:bg-white/30 transition-all">
                     <td class="px-5 py-4 text-slate-500 whitespace-nowrap"><?php echo date('d M Y', strtotime($r->created_at)); ?></td>
@@ -232,7 +285,13 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
                         </span>
                     </td>
                     <td class="px-5 py-4 text-right font-bold text-slate-800 whitespace-nowrap">
-                        Rp <?php echo number_format($net_amount, 0, ',', '.'); ?>
+                        Rp <?php echo number_format($r->amount, 0, ',', '.'); ?>
+                    </td>
+                    <td class="px-5 py-4 text-right whitespace-nowrap">
+                        <span class="font-bold text-slate-800">Rp <?php echo number_format($net_amount, 0, ',', '.'); ?></span>
+                        <span class="block text-[10px] font-medium <?php echo e($fee_pasti ? 'text-slate-400' : 'text-amber-600'); ?>">
+                            <?php echo e($fee_pasti ? 'biaya Rp ' . number_format($fee_baris, 0, ',', '.') : 'biaya tanpa rincian'); ?>
+                        </span>
                     </td>
                 </tr>
                 <?php endforeach; endif; ?>
@@ -240,12 +299,20 @@ $months = $pdo->query("SELECT DISTINCT DATE_FORMAT(created_at,'%Y-%m') as m, DAT
             <?php if (!empty($records)): ?>
             <tfoot>
                 <tr class="bg-white/40 border-t border-white/30">
+                    <?php
+                    $lunas_terpilih = array_filter($records, fn($r) => $r->payment_status === 'settlement');
+                    $bruto_terpilih = array_sum(array_map(fn($r) => (float)$r->amount, $lunas_terpilih));
+                    $neto_terpilih  = array_sum(array_map(function ($r) use ($biaya_baris) {
+                        $b = $biaya_baris[(string)$r->id] ?? null;
+                        return max(0, (float)$r->amount - ($b ? $b['fee'] : 0.0));
+                    }, $lunas_terpilih));
+                    ?>
                     <td colspan="6" class="px-5 py-4 font-bold text-slate-700 text-right">TOTAL LUNAS:</td>
+                    <td class="px-5 py-4 text-right font-black text-slate-700 text-base whitespace-nowrap">
+                        Rp <?php echo number_format($bruto_terpilih, 0, ',', '.'); ?>
+                    </td>
                     <td class="px-5 py-4 text-right font-black text-blue-700 text-base whitespace-nowrap">
-                        Rp <?php
-                        $filtered_total = array_sum(array_map(fn($r) => $r->payment_status === 'settlement' ? max(0, $r->amount - $admin_fee) : 0, $records));
-                        echo number_format($filtered_total, 0, ',', '.');
-                        ?>
+                        Rp <?php echo number_format($neto_terpilih, 0, ',', '.'); ?>
                     </td>
                 </tr>
             </tfoot>

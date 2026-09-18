@@ -43,8 +43,6 @@ if (in_array($method, ['midtrans', 'flip', 'cash'], true)) {
 
 $where_sql = implode(' AND ', $where);
 
-// Fetch admin fee from settings
-$admin_fee = (int)($pdo->query("SELECT setting_value FROM settings WHERE setting_key='admin_fee'")->fetchColumn() ?: 5000);
 require_once __DIR__ . '/../includes/payment/report.php';
 
 // Fetch Data
@@ -60,6 +58,12 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $records = $stmt->fetchAll();
 
+// Biaya layanan NYATA per permohonan, dari rincian yang tersimpan saat
+// tagihan terbit. Ekspor ini dulu mengurangi potongan tetap `admin_fee` dari
+// setiap baris, sehingga angka yang diunduh tidak pernah cocok dengan uang
+// yang benar-benar diterima fakultas.
+$biaya_baris = payment_fee_by_subject($pdo, 'legalisir', array_map(fn($r) => $r->id, $records));
+
 // Output CSV Headers
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="Laporan_Keuangan_AlumniLink_' . date('Ymd_His') . '.csv"');
@@ -72,11 +76,15 @@ $out = fopen('php://output', 'w');
 fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
 // Header Column
-fputcsv($out, ['No','ID Pengajuan','Tanggal','Nama Alumni','NIM','Email','Metode Bayar','Status Bayar','Status Dokumen','Metode Pengiriman','No Resi','Total Biaya (Rp)'], ',', '"', '\\');
+fputcsv($out, ['No','ID Pengajuan','Tanggal','Nama Alumni','NIM','Email','Metode Bayar','Status Bayar','Status Dokumen','Metode Pengiriman','No Resi','Dibayar Alumni (Rp)','Biaya Layanan (Rp)','Diterima Fakultas (Rp)'], ',', '"', '\\');
 
 $no = 1;
 foreach ($records as $r) {
-    $net_amount = max(0, $r->amount - $admin_fee);
+    $lunas = $r->payment_status === 'settlement';
+    $b = $biaya_baris[(string)$r->id] ?? null;
+    $fee_baris  = $lunas && $b ? $b['fee'] : 0.0;
+    $fee_pasti  = !$lunas || ($b && $b['pasti']);
+    $net_amount = max(0, $r->amount - $fee_baris);
     fputcsv($out, [
         $no++,
         $r->id,
@@ -89,6 +97,8 @@ foreach ($records as $r) {
         ucfirst($r->status),
         ucwords(str_replace('_', ' ', $r->delivery_method)),
         $r->tracking_number ?? '-',
+        number_format($r->amount, 0, ',', '.'),
+        $fee_pasti ? number_format($fee_baris, 0, ',', '.') : 'tanpa rincian',
         number_format($net_amount, 0, ',', '.')
     ], ',', '"', '\\');
 }

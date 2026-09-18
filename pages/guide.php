@@ -248,6 +248,8 @@ $is_super = ($current_role === 'super_admin');
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Laporan Keuangan</h3>
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Di menu <b>Laporan Keuangan</b>, Anda dapat memantau rekapitulasi dana <b>legalisir</b> yang sudah lunas, dipisah per cara bayar: tunai, dan per penyedia pembayaran. Jumlah seluruh kartu selalu sama dengan totalnya.</p>
+                            <p>Uang dibaca dalam tiga angka: <b>Dibayar Alumni</b> (yang masuk dari alumni), <b>Biaya Layanan</b> (potongan penyedia pembayaran, diambil dari rincian yang tersimpan saat tagihan itu terbit), dan <b>Diterima Fakultas</b> (selisih keduanya). Pembayaran tunai tidak dipotong apa pun, jadi seluruh uangnya masuk sebagai diterima.</p>
+                            <p>Beberapa pengajuan lama lunas sebelum sistem mencatat rincian biaya per transaksi. Biayanya tidak dapat dipastikan, ditulis <b>tanpa rincian</b>, dan dihitung nol — laporan memberi tahu berapa banyak baris seperti itu, alih-alih menebak angkanya.</p>
                             <p><b>Donasi belum masuk laporan ini.</b> Rekap donasi ada di menu <b>Kelola Donasi</b>.</p>
                             <p>Status pembayaran diperbarui dari pemberitahuan penyedia pembayaran, dan diperiksa ulang secara berkala ke sistem mereka — jadi pembayaran tetap tercatat walau pemberitahuannya terlambat atau hilang.</p>
                         </div>

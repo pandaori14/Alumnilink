@@ -771,5 +771,73 @@ setting_save('payment_channels_midtrans', '');
 setting_save('payment_gateway_active', 'midtrans');
 all_settings(true);
 
+
+// ---- Laporan keuangan: biaya nyata, bukan potongan tetap ------------
+//
+// Laporan dulu mengurangi `admin_fee` (produksi: 9.997) dari SETIAP baris,
+// termasuk pembayaran tunai yang tidak pernah dipotong siapa pun. Sekarang
+// angkanya dibaca dari rincian yang tersimpan saat tagihan terbit.
+echo "\n-- Laporan keuangan --\n";
+require_once AKAR . '/includes/payment/report.php';
+
+$sebelum = payment_revenue_summary($pdo);
+
+// Lunas lewat gateway, rincian biaya tersimpan
+$R1 = 'LEG-UJIBAYAR-R1';
+buat_legalisir($R1, 68344, ['payment_status' => 'settlement', 'payment_method' => 'midtrans']);
+$pdo->prepare("INSERT INTO payment_transactions
+        (gateway, purpose, subject_id, merchant_ref, amount_expected, fee_breakdown, status, paid_at)
+     VALUES ('midtrans', 'legalisir', ?, ?, 68344, ?, 'paid', NOW())")
+    ->execute([$R1, $R1, json_encode(['base' => 50000, 'custom' => 6500, 'fee' => 11844, 'admin_total' => 18344, 'total' => 68344])]);
+
+// Lunas tunai: tidak ada yang memotong, dan itu pasti
+$R2 = 'LEG-UJIBAYAR-R2';
+buat_legalisir($R2, 55000, ['payment_status' => 'settlement', 'payment_method' => 'cash']);
+$pdo->prepare("INSERT INTO payment_transactions
+        (gateway, purpose, subject_id, merchant_ref, amount_expected, status, channel, paid_at)
+     VALUES ('cash', 'legalisir', ?, ?, 55000, 'paid', 'cash', NOW())")
+    ->execute([$R2, 'CASH-' . $R2]);
+
+// Lunas sebelum ledger mencatat rincian: biayanya tidak dapat dipastikan
+$R3 = 'LEG-UJIBAYAR-R3';
+buat_legalisir($R3, 60000, ['payment_status' => 'settlement', 'payment_method' => 'midtrans']);
+$pdo->prepare("INSERT INTO payment_transactions
+        (gateway, purpose, subject_id, merchant_ref, amount_expected, status, paid_at)
+     VALUES ('midtrans', 'legalisir', ?, ?, 60000, 'paid', NOW())")
+    ->execute([$R3, $R3]);
+
+$peta = payment_fee_by_subject($pdo, 'legalisir', [$R1, $R2, $R3]);
+cek(($peta[$R1]['fee'] ?? null) === 11844.0 && $peta[$R1]['pasti'],
+    'biaya dibaca dari rincian transaksi, bukan dari setting', $peta[$R1]['fee'] ?? '-');
+cek(($peta[$R2]['fee'] ?? null) === 0.0 && $peta[$R2]['pasti'],
+    'pembayaran tunai tidak dipotong biaya layanan mana pun');
+cek(($peta[$R3]['fee'] ?? null) === 0.0 && !$peta[$R3]['pasti'],
+    'transaksi lama tanpa rincian ditandai tidak pasti, bukan ditebak');
+
+$sesudah = payment_revenue_summary($pdo);
+cek(abs(($sesudah['bruto'] - $sebelum['bruto']) - 183344) < 0.01,
+    'bruto = seluruh yang dibayar alumni', $sesudah['bruto'] - $sebelum['bruto']);
+cek(abs(($sesudah['biaya'] - $sebelum['biaya']) - 11844) < 0.01,
+    'biaya = jumlah potongan nyata, tunai tidak ikut dipotong', $sesudah['biaya'] - $sebelum['biaya']);
+cek(abs(($sesudah['neto'] - $sebelum['neto']) - 171500) < 0.01,
+    'neto = bruto - biaya', $sesudah['neto'] - $sebelum['neto']);
+cek(abs($sesudah['bruto'] - $sesudah['biaya'] - $sesudah['neto']) < 0.01,
+    'ketiga kartu selalu konsisten satu sama lain');
+cek($sesudah['tanpa_rincian'] - $sebelum['tanpa_rincian'] === 1,
+    'permohonan tanpa rincian dihitung dan dapat diberitahukan');
+
+$m = $sesudah['metode'];
+cek(abs($m['midtrans'] + $m['flip'] + $m['cash'] + $m['lainnya'] - $m['total']) < 0.01,
+    'jumlah per metode tetap sama dengan bruto');
+
+// Bayar ganda tidak dihitung dua kali sebagai pendapatan
+$pdo->prepare("INSERT INTO payment_transactions
+        (gateway, purpose, subject_id, merchant_ref, amount_expected, fee_breakdown, status, paid_at)
+     VALUES ('midtrans', 'legalisir', ?, ?, 68344, ?, 'paid', NOW())")
+    ->execute([$R1, $R1 . '-GANDA', json_encode(['fee' => 11844])]);
+$ganda = payment_revenue_summary($pdo);
+cek(abs($ganda['biaya'] - $sesudah['biaya']) < 0.01,
+    'transaksi bayar ganda tidak menambah biaya; ditangani sebagai refund manual');
+
 printf("\n────────────────────────────────\n  LULUS: %d   GAGAL: %d\n", $pass, $fail);
 exit($fail > 0 ? 1 : 0);

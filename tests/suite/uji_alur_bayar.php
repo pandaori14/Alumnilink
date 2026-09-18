@@ -533,6 +533,20 @@ cek(abs($pendapatan['midtrans'] + $pendapatan['flip'] + $pendapatan['cash'] + $p
 [$c, $b] = minta($SESI['sa'], 'handlers/export_keuangan.php?method=cash');
 cek($c === 200 && strpos($b, 'Tunai') !== false, 'ekspor: label metode "Tunai"', "HTTP $c");
 
+// Laporan tidak lagi mengurangi potongan tetap `admin_fee`. $id1 lunas
+// TUNAI: uangnya sampai utuh ke loket, jadi yang diterima fakultas sama
+// dengan yang dibayar alumni. Angka lama memotongnya seolah ada gateway.
+$bruto1 = number_format((float)$r1->amount, 0, ',', '.');
+[$c, $b] = minta($SESI['sa'], 'index.php?page=admin_keuangan&cari=' . rawurlencode($id1));
+cek($c === 200 && tanpa_galat_php($b), 'Laporan Keuangan tampil', "HTTP $c");
+cek(strpos($b, 'Dibayar Alumni') !== false && strpos($b, 'Diterima Fakultas') !== false,
+    'laporan memisahkan yang dibayar alumni dari yang diterima fakultas');
+cek(substr_count($b, $bruto1) >= 2, 'pembayaran tunai dilaporkan utuh, tanpa potongan karangan', "Rp $bruto1");
+[$c, $b] = minta($SESI['sa'], 'handlers/export_keuangan.php?method=cash');
+cek(strpos($b, 'Biaya Layanan (Rp)') !== false && strpos($b, 'Diterima Fakultas (Rp)') !== false,
+    'ekspor membawa kolom biaya dan neto');
+cek(strpos($b, $bruto1) !== false, 'ekspor memuat nominal yang benar-benar dibayar', "Rp $bruto1");
+
 // ═════════════════════════════════════════════════════════════════════
 echo "\n=== K. Panel gateway pembayaran ===\n";
 

@@ -11,7 +11,6 @@ $system_logo      = !empty($sys['system_logo']) ? $sys['system_logo'] : 'uploads
 
 // Harga & Biaya Legalisir
 $price_per_doc = (int)($sys['price_per_doc'] ?? 0);
-$admin_fee     = (int)($sys['admin_fee'] ?? 0);
 $doc_types     = json_decode($sys['legalisir_document_types'] ?? '[]', true) ?: [];
 $shipping_zones = json_decode($sys['shipping_zones'] ?? '[]', true) ?: [];
 ?>

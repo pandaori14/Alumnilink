@@ -305,6 +305,7 @@ Seluruhnya diatur dari panel; tidak ada yang perlu diubah di berkas.
 | `payment_custom_charge_{legalisir,donasi}` | Biaya tambahan layanan |
 | `payment_expiry` | Masa berlaku tagihan (menit) |
 | `payment_last_test_{midtrans,flip}` | Hasil tes koneksi terakhir |
+| ~~`admin_fee`~~ | **Tidak lagi dibaca.** Laporan Keuangan dulu mengurangkannya dari setiap baris; sekarang biaya dibaca per transaksi dari `fee_breakdown` |
 | `legalisir_require_paid` | `0` = peringatan saja, `1` = pengajuan belum lunas tidak dapat diproses |
 
 Kunci pembayaran **ditolak** oleh handler Pengaturan Sistem, walau di-POST
