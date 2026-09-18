@@ -16,6 +16,7 @@ if (!$camp) {
 
 require_once __DIR__ . '/../includes/payment/service.php';
 $gateway_label = payment_gateway_label(payment_active_gateway_code());
+$bayar_online  = payment_online_available();
 ?>
 
 <div class="max-w-4xl mx-auto px-4 md:px-0 pb-24">
@@ -78,7 +79,7 @@ $gateway_label = payment_gateway_label(payment_active_gateway_code());
                 </div>
                 <div>
                     <h2 class="font-black text-slate-800 outfit text-sm uppercase tracking-wider mb-1">Pembayaran Aman</h2>
-                    <p class="text-xs text-slate-400 leading-tight">Diproses aman oleh <?php echo e($gateway_label); ?></p>
+                    <p class="text-xs text-slate-400 leading-tight"><?php echo e($bayar_online ? 'Diproses aman oleh ' . $gateway_label : 'Pembayaran online sedang tidak tersedia'); ?></p>
                 </div>
             </div>
             <div class="glass p-8 rounded-[2.5rem] border border-white shadow-sm flex items-center gap-6 group hover:bg-white transition-all">
@@ -155,10 +156,21 @@ $gateway_label = payment_gateway_label(payment_active_gateway_code());
                         <div class="flex justify-between font-black text-slate-800 pt-2 border-t border-slate-200"><span>Total dibayar</span><span id="rdTotal">-</span></div>
                     </div>
 
+                    <?php if ($bayar_online): ?>
                     <button type="submit" id="payButton" class="w-full py-8 bg-blue-600 text-white rounded-[2.5rem] font-black shadow-2xl shadow-blue-600/40 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 text-xl mt-6 group">
                         <i data-lucide="heart" class="w-8 h-8 fill-white group-hover:scale-125 transition-transform"></i>
                         Donasi Sekarang
                     </button>
+                    <?php else: ?>
+                    <div class="w-full p-6 rounded-[2.5rem] bg-amber-50 border border-amber-200 text-amber-800 mt-6 flex items-start gap-4">
+                        <i data-lucide="wallet" class="w-6 h-6 shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="font-black mb-1">Donasi sedang ditutup sementara</p>
+                            <p class="text-sm leading-relaxed">Pembayaran online sedang tidak tersedia, sehingga donasi
+                            belum dapat dikirim. Silakan coba beberapa saat lagi atau hubungi admin fakultas.</p>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </form>
             </div>
         </div>

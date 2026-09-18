@@ -13,6 +13,8 @@
  *   kredensial  mode + kunci. Rahasia hanya-tulis: kosong = tidak diubah.
  *   biaya       profil biaya satu gateway
  *   umum        biaya tambahan per layanan dan masa berlaku tagihan
+ *   sakelar     nyalakan/matikan satu gateway untuk alumni
+ *   kanal       kanal pembayaran yang ditawarkan (Midtrans)
  *   tes         tes koneksi ke API gateway
  *   aktifkan    pindahkan gateway aktif (dengan penjaga)
  *   uji         transaksi uji Rp 10.000 (khusus sandbox)
@@ -59,7 +61,7 @@ function panel_angka($kunci, $desimal)
     return $desimal ? round((float)$v, 2) : (int)round((float)$v);
 }
 
-if (in_array($aksi, ['kredensial', 'biaya', 'tes', 'aktifkan', 'uji'], true) && !$gw) {
+if (in_array($aksi, ['kredensial', 'biaya', 'tes', 'aktifkan', 'uji', 'sakelar', 'kanal'], true) && !$gw) {
     panel_kembali(false, 'Gateway tidak dikenal.');
 }
 
@@ -148,6 +150,27 @@ switch ($aksi) {
         setting_save('payment_fallback_enabled', $cadangan);
         log_activity('PAYMENT_GENERAL_SETTINGS', "Pengaturan umum pembayaran oleh $oleh: biaya tambahan legalisir Rp $leg, donasi Rp $don, masa berlaku $exp menit, wajib lunas sebelum diproses = $wajib_lunas, gateway cadangan = $cadangan.");
         panel_kembali(true, 'Pengaturan umum pembayaran disimpan. Berlaku untuk tagihan baru.', 'umum');
+
+    case 'sakelar':
+        $hasil = payment_set_gateway_enabled($gateway, ($_POST['nyala'] ?? '') === '1', $oleh,
+                                             !empty($_POST['konfirmasi_tutup']));
+        if (!$hasil['ok']) {
+            panel_kembali(false, $hasil['error'], $gateway);
+        }
+        if ($hasil['tutup'] && !payment_online_available()) {
+            notify_roles(['super_admin'], 'Pembayaran Online Ditutup',
+                'Seluruh gateway pembayaran kini dimatikan (terakhir: ' . $gw->label() . ', oleh ' . $oleh
+                . '). Alumni hanya dapat membayar tunai di loket, dan donasi tidak dapat dikirim.',
+                'warning', 'index.php?page=admin_payment_gateway');
+        }
+        panel_kembali(true, $hasil['pesan'], $gateway);
+
+    case 'kanal':
+        $hasil = payment_set_channels($gateway, (array)($_POST['kanal'] ?? []), $oleh);
+        if (!$hasil['ok']) {
+            panel_kembali(false, $hasil['error'], $gateway);
+        }
+        panel_kembali(true, $hasil['pesan'], 'kanal-' . $gateway);
 
     case 'tes':
         $hasil = $gw->testConnection();

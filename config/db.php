@@ -759,6 +759,13 @@ try {
         // sendiri tanpa menyentuh kode.
         'payment_gateway_active'          => 'flip',
         'payment_fallback_enabled'        => '1',
+        // Bawaan menyala untuk keduanya: fitur sakelar ini tidak boleh
+        // mengubah perilaku sistem yang sudah berjalan saat dipasang.
+        'payment_gateway_enabled_midtrans' => '1',
+        'payment_gateway_enabled_flip'     => '1',
+        // Kosong = seluruh kanal yang aktif di akun penyedia.
+        'payment_channels_midtrans'       => '',
+        'payment_channels_flip'           => '',
         'flip_secret_key'                 => '',
         'flip_validation_token'           => '',
         'flip_is_production'              => '0',

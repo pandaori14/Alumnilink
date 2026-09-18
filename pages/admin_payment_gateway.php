@@ -58,8 +58,15 @@ foreach (payment_gateway_codes() as $kode) {
         'profil'    => payment_fee_profile($kode),
         'contoh'    => payment_panel_examples($kode),
         'kesiapan'  => payment_gateway_readiness($kode),
+        'nyala'     => payment_gateway_enabled($kode),
+        'kanal_ada' => payment_channel_options($kode),
+        'kanal'     => payment_enabled_channels($kode),
+        'menutup'   => payment_disable_closes_online($kode),
+        // Apakah masih ada gateway LAIN yang menyala bila yang ini dimatikan.
+        'sisa_nyala'=> (bool)array_filter(array_diff(payment_gateway_codes(), [$kode]), 'payment_gateway_enabled'),
     ];
 }
+$online = payment_online_available();
 
 $umum = [
     'legalisir' => (int)setting('payment_custom_charge_legalisir', '0'),
@@ -126,6 +133,17 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
         </div>
     </div>
 
+    <?php if (!$online): ?>
+        <div class="p-4 rounded-2xl border bg-red-50 border-red-200 text-red-700 flex items-start gap-3">
+            <i data-lucide="power-off" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <span class="text-sm font-medium">
+                <b>Pembayaran online sedang tertutup.</b> Semua gateway dimatikan, sehingga halaman Legalisir
+                mengarahkan alumni membayar tunai di loket dan halaman Donasi tidak menerima donasi baru.
+                Tagihan yang sudah terbit tetap dapat dibayar seperti biasa.
+            </span>
+        </div>
+    <?php endif; ?>
+
     <?php if ($pilihan !== $aktif): ?>
         <div class="p-4 rounded-2xl border bg-amber-50 border-amber-200 text-amber-800 flex items-start gap-3">
             <i data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
@@ -167,7 +185,9 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                 <div>
                     <h2 class="text-xl font-black outfit text-slate-800"><?php echo e($g['label']); ?></h2>
                     <div class="flex flex-wrap gap-2 mt-2">
-                        <?php if ($kode === $aktif): ?>
+                        <?php if (!$g['nyala']): ?>
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white">Dimatikan</span>
+                        <?php elseif ($kode === $aktif): ?>
                             <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white">Dipakai sekarang</span>
                         <?php else: ?>
                             <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500">Cadangan</span>
@@ -187,6 +207,46 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                     </div>
                 </div>
             </div>
+
+            <!-- Sakelar aktif/nonaktif -->
+            <form method="POST" action="handlers/admin_payment_gateway_handler.php"
+                  class="form-sakelar p-4 rounded-2xl border <?php echo e($g['nyala'] ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-800 border-slate-800'); ?>"
+                  data-label="<?php echo e($g['label']); ?>" data-nyala="<?php echo e($g['nyala'] ? '1' : '0'); ?>"
+                  data-menutup="<?php echo e($g['nyala'] && $g['menutup'] ? '1' : '0'); ?>"
+                  data-sisa="<?php echo e($g['sisa_nyala'] ? '1' : '0'); ?>">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="aksi" value="sakelar">
+                <input type="hidden" name="gateway" value="<?php echo e($kode); ?>">
+                <input type="hidden" name="nyala" value="<?php echo e($g['nyala'] ? '0' : '1'); ?>">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="text-xs">
+                        <p class="font-bold <?php echo e($g['nyala'] ? 'text-emerald-800' : 'text-white'); ?>">
+                            <?php echo e($g['nyala'] ? 'Dinyalakan untuk alumni' : 'Dimatikan — tidak ditawarkan ke alumni'); ?>
+                        </p>
+                        <p class="<?php echo e($g['nyala'] ? 'text-emerald-700' : 'text-slate-300'); ?> mt-1 leading-relaxed">
+                            <?php echo e($g['nyala']
+                                ? 'Boleh dipakai tagihan baru legalisir dan donasi, sebagai pilihan utama maupun cadangan.'
+                                : 'Tidak dipakai tagihan baru, juga tidak sebagai cadangan. Tagihan yang sudah terbit tetap dapat dibayar dan dikonfirmasi.'); ?>
+                        </p>
+                    </div>
+                    <button type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 <?php echo e($g['nyala'] ? 'bg-white border border-slate-200 text-slate-700 hover:border-red-400 hover:text-red-600' : 'bg-white text-slate-900 hover:bg-slate-100'); ?>">
+                        <i data-lucide="<?php echo e($g['nyala'] ? 'power-off' : 'power'); ?>" class="w-4 h-4"></i>
+                        <?php echo e($g['nyala'] ? 'Matikan' : 'Nyalakan'); ?> <?php echo e($g['label']); ?>
+                    </button>
+                </div>
+                <?php if ($g['nyala'] && $g['menutup']): ?>
+                    <label class="flex items-start gap-2 mt-3 pt-3 border-t border-emerald-200 text-[11px] text-emerald-900 font-medium">
+                        <input type="checkbox" name="konfirmasi_tutup" value="1" class="accent-red-600 mt-0.5">
+                        <?php if ($g['sisa_nyala']): ?>
+                            Saya paham: gateway yang tersisa belum siap, sehingga tagihan baru akan gagal terbit sampai
+                            kredensial dan tarifnya dibereskan.
+                        <?php else: ?>
+                            Saya paham: ini gateway terakhir yang menyala, sehingga mematikannya menutup SELURUH
+                            pembayaran online. Alumni akan diarahkan membayar tunai di loket dan donasi tidak dapat dikirim.
+                        <?php endif; ?>
+                    </label>
+                <?php endif; ?>
+            </form>
 
             <!-- Tes koneksi -->
             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -334,6 +394,43 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                         <?php endforeach; ?>
                     </div>
                 </div>
+            </details>
+            <!-- Kanal pembayaran -->
+            <details id="kanal-<?php echo e($kode); ?>" class="rounded-2xl border border-slate-100 bg-white/60">
+                <summary class="px-5 py-4 cursor-pointer text-sm font-bold text-slate-700">Kanal pembayaran
+                    <span class="ml-2 px-2 py-0.5 rounded-lg text-[10px] <?php echo e($g['kanal'] ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'); ?>">
+                        <?php echo e($g['kanal'] ? count($g['kanal']) . ' dipilih' : 'semua kanal akun'); ?>
+                    </span>
+                </summary>
+                <?php if ($g['kanal_ada']): ?>
+                <form method="POST" action="handlers/admin_payment_gateway_handler.php" class="px-5 pb-5 space-y-4">
+                    <?php csrf_field(); ?>
+                    <input type="hidden" name="aksi" value="kanal">
+                    <input type="hidden" name="gateway" value="<?php echo e($kode); ?>">
+                    <p class="text-[11px] text-slate-500 leading-relaxed">
+                        Cara alumni membayar. Tanpa centang sama sekali, yang ditawarkan adalah seluruh kanal yang
+                        aktif di akun <?php echo e($g['label']); ?> — itu bawaannya. Mencentang sebagian membatasi
+                        pilihan di halaman bayar. Kanal yang belum diaktifkan di dashboard penyedia tetap tidak muncul
+                        walau dicentang di sini.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <?php foreach ($g['kanal_ada'] as $nilai => $nama): ?>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-700">
+                            <input type="checkbox" name="kanal[]" value="<?php echo e($nilai); ?>" class="accent-blue-600"
+                                   <?php echo e(in_array($nilai, $g['kanal'], true) ? 'checked' : ''); ?>>
+                            <?php echo e($nama); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <button type="submit" class="w-full py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all">Simpan kanal <?php echo e($g['label']); ?></button>
+                </form>
+                <?php else: ?>
+                <p class="px-5 pb-5 text-[11px] text-slate-500 leading-relaxed">
+                    <?php echo e($g['label']); ?> tidak menerima daftar kanal per tagihan: kanal yang ditawarkan
+                    ditentukan seluruhnya di dashboard <?php echo e($g['label']); ?> for Business
+                    (Pengaturan → Metode Pembayaran). Kanal yang dinonaktifkan di sana tidak akan muncul di halaman bayar.
+                </p>
+                <?php endif; ?>
             </details>
         </div>
         <?php endforeach; ?>
@@ -554,6 +651,35 @@ document.querySelectorAll('.form-aktifkan').forEach(function (f) {
             confirmButtonText: 'Ya, pindahkan',
             cancelButtonText: 'Batal',
             confirmButtonColor: '#2563eb'
+        }).then(function (r) {
+            if (r.isConfirmed) { f.dataset.konfirmasi = '1'; f.submit(); }
+        });
+    });
+});
+
+document.querySelectorAll('.form-sakelar').forEach(function (f) {
+    f.addEventListener('submit', function (ev) {
+        // Menyalakan tidak perlu konfirmasi: akibatnya hanya menambah pilihan.
+        if (f.dataset.nyala !== '1' || f.dataset.konfirmasi === '1') return;
+        ev.preventDefault();
+        const menutup = f.dataset.menutup === '1';
+        Swal.fire({
+            title: 'Matikan ' + f.dataset.label + '?',
+            html: menutup
+                ? (f.dataset.sisa === '1'
+                    ? 'Gateway yang tersisa belum siap, sehingga tagihan baru akan <b>gagal terbit</b> sampai ' +
+                      'kredensial dan tarifnya dibereskan.<br><br>' +
+                      'Centang persetujuan pada formulir bila memang itu yang dikehendaki.'
+                    : 'Ini gateway terakhir yang menyala. Mematikannya <b>menutup seluruh pembayaran online</b>: ' +
+                      'alumni diarahkan membayar tunai di loket dan donasi tidak dapat dikirim.<br><br>' +
+                      'Centang persetujuan pada formulir bila memang itu yang dikehendaki.')
+                : 'Tagihan baru tidak akan lagi terbit lewat <b>' + f.dataset.label + '</b>, juga tidak sebagai cadangan.' +
+                  '<br><br>Tagihan yang sudah terbit tetap dapat dibayar dan dikonfirmasi seperti biasa.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, matikan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc2626'
         }).then(function (r) {
             if (r.isConfirmed) { f.dataset.konfirmasi = '1'; f.submit(); }
         });

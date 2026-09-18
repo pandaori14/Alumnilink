@@ -105,6 +105,13 @@ class MidtransGateway implements PaymentGateway
         if (!empty($o['return_url'])) {
             $payload['callbacks'] = ['finish' => (string)$o['return_url']];
         }
+        // Kanal yang ditawarkan ke alumni. Dikosongkan berarti "seluruh kanal
+        // yang aktif di akun Midtrans" — daftar kosong TIDAK boleh dikirim,
+        // karena Snap akan menafsirkannya sebagai "tidak ada kanal".
+        $kanal = payment_enabled_channels('midtrans');
+        if ($kanal) {
+            $payload['enabled_payments'] = $kanal;
+        }
 
         $r = payment_http('POST', $this->snapBase() . '/snap/v1/transactions',
             $this->headers(), json_encode($payload));

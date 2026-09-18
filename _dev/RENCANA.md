@@ -16,7 +16,7 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 932 pemeriksaan |
+| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 958 pemeriksaan |
 | Versi skema | `2026.09.17.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
@@ -82,6 +82,21 @@ keputusan membuang kode ada di pemilik sistem.
 
 Diurutkan menurut akibat bila tidak dikerjakan, bukan menurut kesulitan.
 
+### Sudah dikerjakan sejak rencana ini ditulis
+
+**Sakelar aktif/nonaktif per gateway** · 18 September 2026
+Super admin kini memilih metode pembayaran mana yang benar-benar ditawarkan
+ke alumni. Gateway yang dimatikan dilewati sepenuhnya — bukan sebagai
+pilihan utama, bukan pula sebagai cadangan otomatis — sementara kredensial
+dan tarifnya tetap tersimpan. Mematikan gateway terakhir yang menyala, atau
+gateway terakhir yang siap, meminta persetujuan eksplisit karena akibatnya
+terasa langsung oleh alumni. Ketika semua gateway dimatikan, halaman
+Legalisir mengarahkan ke pembayaran tunai di loket dan halaman Donasi
+menutup tombolnya, alih-alih menerbitkan tagihan yang pasti gagal.
+Ditambah pilihan kanal pembayaran untuk Midtrans (`enabled_payments`);
+kanal Flip diatur di dashboard Flip dan panel menyatakannya apa adanya.
+Dijaga 27 pemeriksaan baru di `uji_pembayaran` dan `uji_alur_bayar`.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.1 Donasi masuk Laporan Keuangan** · sedang
@@ -90,12 +105,23 @@ Kelola Donasi, dan tidak ada satu angka pun yang menyatukan keduanya.
 *Selesai bila:* Laporan Keuangan punya penyaring jenis (legalisir/donasi/
 semua), ekspornya ikut, dan jumlah kartunya tetap sama dengan total.
 
-**1.2 `admin_fee` tidak ada di antarmuka** · kecil
-Laporan Keuangan mengurangi `admin_fee` dari setiap transaksi (produksi:
-9.997), tetapi angkanya hanya dapat diubah lewat basis data. Orang yang
-membaca laporan tidak tahu potongan itu ada.
-*Selesai bila:* ada kolomnya di Konfigurasi Sistem → Layanan & Biaya,
-dengan keterangan pengaruhnya pada laporan.
+**1.2 Laporan keuangan memakai biaya nyata, bukan `admin_fee`** · sedang
+Laporan Keuangan mengurangi potongan tetap `admin_fee` (produksi: 9.997)
+dari setiap transaksi. Angka itu tebakan: biaya yang sesungguhnya sudah
+tercatat per transaksi di `payment_transactions.fee_breakdown`, hasil
+kombinasi profil biaya gateway. Akibatnya laporan tidak cocok dengan uang
+yang benar-benar diterima fakultas.
+
+Keputusan pemilik sistem (18 Sep 2026): `admin_fee` **tidak ditampilkan di
+antarmuka mana pun**. Laporan audit harus bersih dari angka karangan, dan
+fakultas tidak boleh tombok atas biaya di luar yang dibayar alumni.
+
+*Selesai bila:* Laporan Keuangan dan ekspornya menampilkan bruto yang
+dibayar alumni, biaya layanan, dan neto yang diterima fakultas — seluruhnya
+dari `fee_breakdown`; baris lama tanpa rincian memakai cadangan yang jujur
+dan ditandai sebagai perkiraan; `admin_fee` tidak lagi dibaca di
+`pages/admin_keuangan.php`, `handlers/export_keuangan.php`, dan
+`pages/terms.php`.
 
 **1.3 CSRF pada hapus alumni dan hapus user** · kecil
 `admin_alumni_handler.php` dan `admin_user_handler.php` masih menghapus
@@ -177,4 +203,4 @@ seperti `uji_responsif`.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 932 pemeriksaan sekarang berarti.
+membuat 958 pemeriksaan sekarang berarti.

@@ -79,6 +79,55 @@ function payment_gateway_codes()
     return ['midtrans', 'flip'];
 }
 
+/**
+ * Apakah gateway dinyalakan super admin?
+ *
+ * Terpisah dari "siap": sebuah gateway bisa terkonfigurasi lengkap tetapi
+ * sengaja dimatikan, misalnya ketika kontrak dengan penyedia itu berakhir
+ * atau tarifnya sedang ditinjau.
+ */
+function payment_gateway_enabled($code)
+{
+    return setting('payment_gateway_enabled_' . preg_replace('/[^a-z]/', '', (string)$code), '1') === '1';
+}
+
+/**
+ * Kanal pembayaran yang ditawarkan ke alumni untuk sebuah gateway.
+ * Kosong = seluruh kanal yang aktif di akun penyedia.
+ */
+function payment_enabled_channels($code)
+{
+    $daftar = json_decode((string)setting('payment_channels_' . preg_replace('/[^a-z]/', '', (string)$code), ''), true);
+    return is_array($daftar) ? array_values(array_filter(array_map('strval', $daftar))) : [];
+}
+
+/** Kanal yang dapat dipilih super admin, per gateway. */
+function payment_channel_options($code)
+{
+    if ($code === 'midtrans') {
+        // Nilai enabled_payments Snap. Hanya yang aktif di akun Midtrans
+        // yang benar-benar muncul, apa pun yang dicentang di sini.
+        return [
+            'qris'            => 'QRIS',
+            'gopay'           => 'GoPay',
+            'shopeepay'       => 'ShopeePay',
+            'other_va'        => 'Virtual Account (bank lain)',
+            'bca_va'          => 'BCA Virtual Account',
+            'bni_va'          => 'BNI Virtual Account',
+            'bri_va'          => 'BRI Virtual Account',
+            'permata_va'      => 'Permata Virtual Account',
+            'echannel'        => 'Mandiri Bill',
+            'indomaret'       => 'Indomaret',
+            'alfamart'        => 'Alfamart',
+            'credit_card'     => 'Kartu Kredit',
+            'akulaku'         => 'Akulaku',
+        ];
+    }
+    // Flip tidak menerima daftar kanal per tagihan; kanalnya diatur di
+    // dashboard Flip for Business.
+    return [];
+}
+
 /** Instans gateway berdasarkan kode, atau null bila tidak dikenal. */
 function payment_gateway($code)
 {
@@ -130,6 +179,12 @@ function payment_gateway_readiness($code)
         return ['gateway tidak dikenal'];
     }
     $alasan = [];
+    if (!payment_gateway_enabled($code)) {
+        // Dimatikan super admin: tidak dipakai sebagai pilihan utama, tidak
+        // pula sebagai cadangan. Ini satu-satunya alasan "belum siap" yang
+        // merupakan keputusan, bukan kekurangan konfigurasi.
+        $alasan[] = 'dimatikan oleh super admin';
+    }
     if (!$gw->isConfigured()) {
         $alasan[] = 'kredensial belum lengkap';
     }
@@ -193,6 +248,26 @@ function payment_backup_gateway_code($code)
         }
     }
     return null;
+}
+
+/**
+ * Adakah metode pembayaran online yang DINYALAKAN super admin?
+ *
+ * Sengaja diukur dari sakelar, bukan dari kesiapan. Gateway yang menyala
+ * tetapi kredensialnya bermasalah adalah gangguan yang harus terlihat:
+ * tagihannya gagal terbit, alumni menekan "buat tagihan baru", dan panel
+ * menampilkan sebabnya. Sebaliknya, gateway yang dimatikan adalah keputusan
+ * — dan ketika semuanya dimatikan, alumni diberi tahu di muka bahwa
+ * pembayaran dilakukan tunai, alih-alih dibiarkan menabrak kegagalan.
+ */
+function payment_online_available()
+{
+    foreach (payment_gateway_codes() as $code) {
+        if (payment_gateway_enabled($code)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /** Nama gateway atau metode untuk tampilan; aman untuk 'cash'. */

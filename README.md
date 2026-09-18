@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 19 suite — **±930 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 19 suite — **±960 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -219,6 +219,22 @@ Rumus biaya, runbook pindah gateway, dan penanganan kasus tidak biasa
 [`_dev/PEMBAYARAN.md`](_dev/PEMBAYARAN.md).
 
 ---
+
+### Menyalakan dan mematikan metode pembayaran
+
+Panel **Gateway Pembayaran** punya sakelar per gateway. Yang dimatikan tidak
+lagi ditawarkan ke alumni — bukan sebagai pilihan utama, bukan pula sebagai
+cadangan — sementara kredensial dan tarifnya tetap tersimpan.
+
+Bila **seluruh** gateway dimatikan, sistem tidak menjanjikan sesuatu yang
+tidak dapat ditepati: halaman Legalisir memberi tahu di muka bahwa
+pembayaran dilakukan tunai di loket dan permohonan baru langsung ditandai
+`cash`, sedangkan halaman Donasi menutup tombolnya karena donasi tidak punya
+jalur tunai. Tagihan yang sudah terbit tetap dapat dibayar.
+
+Kanal pembayaran (QRIS, VA, e-wallet, gerai retail) dapat dibatasi untuk
+Midtrans lewat panel yang sama; Flip mengatur kanalnya di dashboard Flip.
+Rinciannya di `_dev/PEMBAYARAN.md` bagian 0.
 
 ## E-mail massal
 

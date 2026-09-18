@@ -23,7 +23,9 @@ $KUNCI = ['payment_gateway_active', 'midtrans_server_key', 'midtrans_client_key'
     'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min',
     'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'price_per_doc', 'shipping_zones',
     'payment_expiry', 'smtp_force_real', 'payment_fallback_enabled', 'payment_fallback_notice_at',
-    'fee_midtrans_reviewed', 'fee_flip_reviewed', 'payment_last_test_midtrans', 'payment_last_test_flip'];
+    'fee_midtrans_reviewed', 'fee_flip_reviewed', 'payment_last_test_midtrans', 'payment_last_test_flip',
+    'payment_gateway_enabled_midtrans', 'payment_gateway_enabled_flip',
+    'payment_channels_midtrans', 'payment_channels_flip'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
     $q = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
@@ -77,6 +79,8 @@ foreach ([
     'fee_midtrans_flat' => '5550', 'fee_midtrans_app' => '2500', 'fee_midtrans_min' => '0',
     'fee_flip_percent' => '0', 'fee_flip_vat_percent' => '0', 'fee_flip_flat' => '4000', 'fee_flip_app' => '0', 'fee_flip_min' => '0',
     'fee_midtrans_reviewed' => '1', 'fee_flip_reviewed' => '1', 'payment_fallback_enabled' => '0',
+    'payment_gateway_enabled_midtrans' => '1', 'payment_gateway_enabled_flip' => '1',
+    'payment_channels_midtrans' => '', 'payment_channels_flip' => '',
     'payment_custom_charge_legalisir' => '6500', 'payment_custom_charge_donasi' => '0',
     'price_per_doc' => '50000', 'payment_expiry' => '1440', 'smtp_force_real' => '0',
     'shipping_zones' => json_encode([
@@ -650,6 +654,122 @@ cek(!$hasil['ok'] && $hasil['txn']->gateway === 'flip' && count($GLOBALS['PANGGI
 
 setting_save('payment_fallback_enabled', '0');
 setting_save('payment_gateway_active', 'midtrans');
+
+
+// ── Sakelar aktif/nonaktif per gateway ───────────────────────────────
+//
+// Super admin memilih metode pembayaran mana yang benar-benar ditawarkan ke
+// alumni. Yang dimatikan tidak boleh dipakai lewat pintu mana pun: bukan
+// sebagai pilihan utama, bukan pula sebagai cadangan diam-diam.
+echo "\n── Sakelar aktif/nonaktif ──\n";
+
+setting_save('payment_gateway_active', 'midtrans');
+setting_save('payment_gateway_enabled_midtrans', '1');
+setting_save('payment_gateway_enabled_flip', '1');
+setting_save('payment_fallback_enabled', '0');
+all_settings(true);
+
+cek(payment_gateway_enabled('midtrans') && payment_gateway_enabled('flip'), 'bawaan: kedua gateway menyala');
+cek(payment_online_available(), 'bawaan: pembayaran online tersedia');
+
+// Dimatikan berarti tidak siap, dengan alasan yang dapat dibaca manusia
+setting_save('payment_gateway_enabled_flip', '0');
+all_settings(true);
+cek(!payment_gateway_is_ready('flip'), 'gateway yang dimatikan tidak dianggap siap');
+cek(in_array('dimatikan oleh super admin', payment_gateway_readiness('flip'), true),
+    'alasannya disebut apa adanya', implode('; ', payment_gateway_readiness('flip')));
+cek(payment_gateway('flip')->isConfigured(), 'kredensialnya tetap utuh — sakelar bukan penghapus');
+
+// Tidak dipakai sebagai pilihan utama
+setting_save('payment_gateway_active', 'flip');
+all_settings(true);
+cek(payment_preferred_gateway_code() === 'flip' && payment_active_gateway_code() === 'midtrans',
+    'pilihan utama yang dimatikan dilewati, tagihan baru terbit lewat gateway lain', payment_active_gateway_code());
+cek(payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri'])['gateway'] === 'midtrans',
+    'pratinjau memakai gateway yang benar-benar dipakai');
+
+// Tidak dipakai sebagai cadangan
+setting_save('payment_gateway_active', 'midtrans');
+setting_save('payment_fallback_enabled', '1');
+all_settings(true);
+cek(payment_backup_gateway_code('midtrans') === null, 'gateway yang dimatikan tidak dipakai sebagai cadangan');
+
+$S1 = 'LEG-UJIBAYAR-S1';
+buat_legalisir($S1, 68344);
+palsu([['POST', '#/snap/v1/transactions#', ['status' => 500, 'body' => 'Midtrans gangguan']]]);
+$GLOBALS['PANGGILAN'] = [];
+$hasil = payment_create('legalisir', $S1, $S1, payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri']), $pelanggan);
+cek(!$hasil['ok'] && $hasil['txn']->status === 'create_failed' && count($GLOBALS['PANGGILAN']) === 1,
+    'tagihan gagal TIDAK dialihkan ke gateway yang dimatikan', count($GLOBALS['PANGGILAN']) . ' panggilan');
+setting_save('payment_fallback_enabled', '0');
+
+// Mematikan gateway terakhir yang siap: wajib disetujui eksplisit
+$log_awal = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_TOGGLE'")->fetchColumn();
+all_settings(true);
+cek(payment_disable_closes_online('midtrans'), 'sistem tahu ini gateway siap yang terakhir');
+$h = payment_set_gateway_enabled('midtrans', false, 'UJIBAYAR');
+all_settings(true);
+cek(!$h['ok'] && $h['tutup'] && payment_gateway_enabled('midtrans'),
+    'mematikan gateway terakhir ditolak tanpa persetujuan', $h['error']);
+cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_TOGGLE'")->fetchColumn() === $log_awal,
+    'penolakan tidak mencatat perubahan yang tidak terjadi');
+
+$h = payment_set_gateway_enabled('midtrans', false, 'UJIBAYAR', true);
+all_settings(true);
+cek($h['ok'] && $h['tutup'], 'dengan persetujuan, gateway terakhir boleh dimatikan');
+cek(!payment_online_available(), 'pembayaran online benar-benar tertutup');
+cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_TOGGLE'")->fetchColumn() === $log_awal + 1,
+    'perubahan tercatat di Audit Trail');
+
+// Pengajuan legalisir tetap diterima, tetapi sebagai tagihan tunai
+$S2 = 'LEG-UJIBAYAR-S2';
+$q = payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri']);
+cek($q['ok'] && $q['total'] === 68344, 'rincian biaya tetap dapat dihitung walau pembayaran online tutup', $q['total']);
+buat_legalisir($S2, $q['total'], ['payment_method' => 'cash']);
+$GLOBALS['PANGGILAN'] = [];
+cek(count($GLOBALS['PANGGILAN']) === 0, 'tidak ada panggilan ke gateway mana pun saat tertutup');
+
+// Menyalakan kembali tidak perlu persetujuan apa pun
+$h = payment_set_gateway_enabled('midtrans', true, 'UJIBAYAR');
+all_settings(true);
+cek($h['ok'] && payment_online_available(), 'gateway dapat dinyalakan kembali tanpa syarat tambahan');
+$h = payment_set_gateway_enabled('midtrans', true, 'UJIBAYAR');
+cek(!$h['ok'], 'menyalakan yang sudah menyala ditolak sebagai bukan perubahan', $h['error']);
+
+setting_save('payment_gateway_enabled_flip', '1');
+all_settings(true);
+
+// ── Kanal pembayaran ─────────────────────────────────────────────────
+echo "\n── Kanal pembayaran ──\n";
+
+$h = payment_set_channels('midtrans', ['qris', 'gopay', 'kanal_karangan'], 'UJIBAYAR');
+all_settings(true);
+cek($h['ok'] && payment_enabled_channels('midtrans') === ['qris', 'gopay'],
+    'kanal di luar daftar resmi dibuang, bukan diteruskan ke gateway', json_encode(payment_enabled_channels('midtrans')));
+
+palsu([['POST', '#/snap/v1/transactions#', function ($m, $u, $h, $b) {
+    $GLOBALS['PAYLOAD_KANAL'] = json_decode($b, true);
+    return mt_token();
+}]]);
+payment_gateway('midtrans')->createCharge(['merchant_ref' => 'UJIBAYAR-K1', 'amount' => 10000, 'title' => 'Uji kanal',
+    'customer_name' => 'UJIBAYAR', 'customer_email' => 'uji@example.test', 'expiry_minutes' => 60]);
+cek(($GLOBALS['PAYLOAD_KANAL']['enabled_payments'] ?? null) === ['qris', 'gopay'],
+    'pilihan kanal benar-benar dikirim ke Midtrans', json_encode($GLOBALS['PAYLOAD_KANAL']['enabled_payments'] ?? null));
+
+$h = payment_set_channels('midtrans', [], 'UJIBAYAR');
+all_settings(true);
+unset($GLOBALS['PAYLOAD_KANAL']);
+payment_gateway('midtrans')->createCharge(['merchant_ref' => 'UJIBAYAR-K2', 'amount' => 10000, 'title' => 'Uji kanal',
+    'customer_name' => 'UJIBAYAR', 'customer_email' => 'uji@example.test', 'expiry_minutes' => 60]);
+cek(!array_key_exists('enabled_payments', $GLOBALS['PAYLOAD_KANAL']),
+    'tanpa pilihan, daftar kanal TIDAK dikirim — daftar kosong berarti "tidak ada kanal" bagi Snap');
+
+$h = payment_set_channels('flip', ['qris'], 'UJIBAYAR');
+cek(!$h['ok'], 'Flip menolak daftar kanal: kanalnya diatur di dashboard Flip', $h['error']);
+
+setting_save('payment_channels_midtrans', '');
+setting_save('payment_gateway_active', 'midtrans');
+all_settings(true);
 
 printf("\n────────────────────────────────\n  LULUS: %d   GAGAL: %d\n", $pass, $fail);
 exit($fail > 0 ? 1 : 0);

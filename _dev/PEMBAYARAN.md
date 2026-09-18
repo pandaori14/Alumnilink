@@ -22,6 +22,8 @@ Ada dua hal berbeda, dan membedakannya penting:
 
 Urutannya setiap kali tagihan dibuat:
 
+0. Gateway yang **dimatikan super admin** dilewati sepenuhnya — tidak
+   sebagai pilihan utama, tidak pula sebagai cadangan.
 1. Pilihan utama, **bila siap**.
 2. Bila belum siap → gateway lain yang siap.
 3. Bila penerbitan tagihan **gagal saat itu juga** (API mati, kunci
@@ -32,8 +34,9 @@ Urutannya setiap kali tagihan dibuat:
 5. **Tunai** selalu tersedia sebagai jalan terakhir, lewat verifikasi manual
    di Kelola Legalisir.
 
-**Siap** berarti tiga hal sekaligus: kredensial lengkap, profil biaya sah,
-dan tarifnya sudah ditandai "sudah dicocokkan dengan tarif resmi". Tarif
+**Siap** berarti empat hal sekaligus: sakelarnya menyala, kredensial
+lengkap, profil biaya sah, dan tarifnya sudah ditandai "sudah dicocokkan
+dengan tarif resmi". Tarif
 yang belum ditandai membuat gateway dianggap belum siap dengan sengaja:
 profil bawaan Flip nol, dan menagih dengan biaya nol berarti fakultas
 menanggung sendiri potongan gateway tanpa ada yang menyadarinya.
@@ -51,6 +54,47 @@ dapat dimatikan lewat sakelar di panel.
 
 Panel: **Pengaturan Sistem → Gateway Pembayaran**
 (`index.php?page=admin_payment_gateway`, khusus super admin).
+
+### Sakelar aktif/nonaktif per gateway
+
+Setiap kartu gateway punya sakelar **Matikan / Nyalakan**. Yang dimatikan
+berhenti ditawarkan ke alumni seketika, untuk legalisir maupun donasi.
+Kredensial dan tarifnya tidak dihapus, jadi menyalakannya kembali tidak
+perlu mengisi ulang apa pun.
+
+Tagihan yang **sudah terbit tetap dapat dibayar** dan tetap dikonfirmasi
+lewat gateway asalnya. Mematikan gateway tidak pernah membatalkan tagihan
+siapa pun.
+
+Dua keadaan meminta persetujuan eksplisit (centang pada formulir, bukan
+sekadar klik):
+
+| Keadaan | Akibatnya |
+|---|---|
+| Gateway terakhir yang **menyala** dimatikan | Pembayaran online tertutup. Halaman Legalisir mengarahkan alumni membayar **tunai di loket** dan permohonan barunya langsung ditandai `cash`; halaman Donasi menutup tombol donasi karena donasi tidak punya jalur tunai. |
+| Gateway terakhir yang **siap** dimatikan, sisanya menyala tetapi belum siap | Tagihan baru akan gagal terbit (`create_failed`) sampai gateway yang tersisa dibereskan. |
+
+Perubahan sakelar dicatat di Audit Trail sebagai `PAYMENT_GATEWAY_TOGGLE`.
+Menutup pembayaran online seluruhnya juga memberi tahu seluruh super admin.
+
+Mematikan gateway yang memang belum siap, sementara yang lain siap, tidak
+mengubah apa pun dan tidak meminta konfirmasi.
+
+### Kanal pembayaran
+
+Kartu gateway juga memuat **Kanal pembayaran** — cara alumni membayar
+(QRIS, VA per bank, e-wallet, gerai retail, kartu kredit).
+
+- **Midtrans**: pilihan dikirim sebagai `enabled_payments` pada tagihan
+  Snap. Tanpa centang sama sekali, yang ditawarkan adalah seluruh kanal yang
+  aktif di akun Midtrans — itu bawaannya. Daftar kosong sengaja **tidak**
+  dikirim, karena Snap menafsirkannya sebagai "tidak ada kanal".
+- **Flip**: tidak menerima daftar kanal per tagihan. Kanalnya diatur
+  sepenuhnya di dashboard Flip for Business. Panel menyatakan ini apa adanya
+  alih-alih menampilkan pilihan yang tidak berpengaruh.
+
+Kanal yang belum diaktifkan di dashboard penyedia tetap tidak muncul, walau
+dicentang di panel.
 
 ---
 
@@ -251,6 +295,8 @@ Seluruhnya diatur dari panel; tidak ada yang perlu diubah di berkas.
 | Kunci | Arti |
 |---|---|
 | `payment_gateway_active` | Gateway PILIHAN UTAMA untuk tagihan baru (`flip` / `midtrans`) |
+| `payment_gateway_enabled_{midtrans,flip}` | `1` = ditawarkan ke alumni, `0` = dimatikan. Baris yang belum ada dibaca sebagai `1`, sehingga sistem lama berperilaku sama persis |
+| `payment_channels_{midtrans,flip}` | Daftar kanal JSON; kosong = seluruh kanal yang aktif di akun penyedia. Flip mengabaikannya |
 | `payment_fallback_enabled` | `1` = coba gateway lain bila yang dipakai gagal menerbitkan tagihan |
 | `midtrans_server_key`, `midtrans_client_key`, `midtrans_is_production` | Kredensial dan mode Midtrans |
 | `flip_secret_key`, `flip_validation_token`, `flip_is_production` | Kredensial dan mode Flip |

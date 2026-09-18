@@ -126,6 +126,115 @@ function payment_switch_gateway($gateway, $oleh)
     return ['ok' => true, 'error' => null, 'dari' => $dari, 'ke' => $gateway];
 }
 
+/**
+ * Apakah mematikan $gateway berakibat besar dan perlu disetujui eksplisit?
+ *
+ * Dua keadaan, keduanya dihitung dari keadaan SESUDAHNYA:
+ *   1. tidak ada lagi gateway yang dinyalakan — alumni beralih ke tunai;
+ *   2. yang dimatikan satu-satunya yang siap — sisanya menyala tetapi belum
+ *      dapat menerbitkan tagihan, sehingga tagihan baru akan gagal terbit.
+ *
+ * Mematikan gateway yang memang belum siap, sementara yang lain siap,
+ * tidak mengubah apa pun dan tidak perlu konfirmasi.
+ */
+function payment_disable_closes_online($gateway)
+{
+    $lain_nyala = false;
+    $lain_siap  = false;
+    foreach (payment_gateway_codes() as $lain) {
+        if ($lain === $gateway) {
+            continue;
+        }
+        $lain_nyala = $lain_nyala || payment_gateway_enabled($lain);
+        $lain_siap  = $lain_siap  || payment_gateway_is_ready($lain);
+    }
+    if (!$lain_nyala) {
+        return true;
+    }
+    return !$lain_siap && payment_gateway_is_ready($gateway);
+}
+
+/**
+ * Nyalakan atau matikan satu gateway.
+ *
+ * Mematikan gateway terakhir yang siap tidak dilarang — fakultas boleh saja
+ * memilih tunai saja — tetapi wajib dikonfirmasi eksplisit, karena akibatnya
+ * terasa langsung oleh alumni: tombol bayar online hilang dari legalisir dan
+ * donasi ditutup.
+ *
+ * @return array ok, error, tutup (bool), pesan
+ */
+function payment_set_gateway_enabled($gateway, $nyala, $oleh, $konfirmasi_tutup = false)
+{
+    if (!payment_gateway($gateway)) {
+        return ['ok' => false, 'error' => 'Gateway tidak dikenal.', 'tutup' => false, 'pesan' => ''];
+    }
+    $nyala = (bool)$nyala;
+    $label = payment_gateway_label($gateway);
+    $kunci = 'payment_gateway_enabled_' . $gateway;
+
+    if (payment_gateway_enabled($gateway) === $nyala) {
+        return ['ok' => false, 'error' => $label . ' memang sudah ' . ($nyala ? 'menyala' : 'dimatikan') . '.', 'tutup' => false, 'pesan' => ''];
+    }
+    $tutup = !$nyala && payment_disable_closes_online($gateway);
+    if ($tutup && !$konfirmasi_tutup) {
+        $sisa_nyala = false;
+        foreach (payment_gateway_codes() as $lain) {
+            $sisa_nyala = $sisa_nyala || ($lain !== $gateway && payment_gateway_enabled($lain));
+        }
+        return ['ok' => false, 'tutup' => true, 'pesan' => '',
+                'error' => 'Mematikan ' . $label . ($sisa_nyala
+                    ? ' menyisakan gateway yang belum siap, sehingga tagihan baru akan gagal terbit. '
+                    : ' menutup SELURUH pembayaran online: tidak ada gateway lain yang dinyalakan. ')
+                    . 'Centang persetujuan pada formulir bila memang itu yang dikehendaki.'];
+    }
+
+    setting_save($kunci, $nyala ? '1' : '0');
+    log_activity('PAYMENT_GATEWAY_TOGGLE', sprintf('%s %s oleh %s.%s', $label,
+        $nyala ? 'dinyalakan' : 'DIMATIKAN', $oleh,
+        $tutup ? ' Pembayaran online kini tertutup seluruhnya; alumni hanya dapat membayar tunai.' : ''));
+
+    $pesan = $label . ($nyala ? ' dinyalakan.' : ' dimatikan.');
+    if ($nyala) {
+        $alasan = payment_gateway_readiness($gateway);
+        $pesan .= $alasan
+            ? ' Masih belum dipakai karena ' . implode(' dan ', $alasan) . '.'
+            : ' Siap dipakai tagihan baru.';
+    } elseif (!payment_online_available()) {
+        $pesan .= ' Pembayaran online TERTUTUP — alumni diarahkan membayar tunai di loket, dan donasi tidak dapat dikirim.';
+    } elseif ($tutup) {
+        $pesan .= ' PERHATIAN: tidak ada lagi gateway yang siap, sehingga tagihan baru akan gagal terbit sampai gateway yang tersisa dibereskan.';
+    } else {
+        $pesan .= ' Tagihan baru terbit lewat ' . payment_gateway_label(payment_active_gateway_code()) . '.'
+                . ' Tagihan yang sudah terbit tetap diproses ' . $label . '.';
+    }
+    return ['ok' => true, 'error' => null, 'tutup' => $tutup, 'pesan' => $pesan];
+}
+
+/**
+ * Simpan kanal pembayaran yang ditawarkan ke alumni.
+ *
+ * Daftar kosong berarti "semua kanal yang aktif di akun penyedia" — itu
+ * bawaannya, dan itu pula yang berlaku sebelum fitur ini ada.
+ *
+ * @return array ok, error, pesan
+ */
+function payment_set_channels($gateway, array $kanal, $oleh)
+{
+    $pilihan = payment_channel_options($gateway);
+    if (!$pilihan) {
+        return ['ok' => false, 'error' => payment_gateway_label($gateway) . ' tidak menerima daftar kanal dari sistem ini.', 'pesan' => ''];
+    }
+    $bersih = array_values(array_intersect(array_keys($pilihan), array_map('strval', $kanal)));
+    setting_save('payment_channels_' . $gateway, $bersih ? json_encode($bersih) : '');
+    log_activity('PAYMENT_CHANNELS', sprintf('Kanal %s oleh %s: %s.', payment_gateway_label($gateway), $oleh,
+        $bersih ? implode(', ', $bersih) : 'semua kanal akun'));
+    return ['ok' => true, 'error' => null,
+            'pesan' => $bersih
+                ? 'Kanal ' . payment_gateway_label($gateway) . ' dibatasi menjadi ' . count($bersih) . ' pilihan. Berlaku untuk tagihan BARU.'
+                : 'Kanal ' . payment_gateway_label($gateway) . ' dikembalikan ke seluruh kanal yang aktif di akun penyedia.'];
+}
+
 /** "Terisi · ••••A1B2" tanpa pernah mencetak rahasianya. */
 function payment_secret_hint($nilai)
 {

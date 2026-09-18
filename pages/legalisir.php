@@ -1,4 +1,9 @@
 <?php
+// payment_online_available(): halaman ini menyesuaikan diri ketika seluruh
+// gateway dimatikan super admin, alih-alih menjanjikan pembayaran online
+// yang tidak akan terbit.
+require_once __DIR__ . '/../includes/payment/service.php';
+
 $user_id = $_SESSION['user_id'];
 
 // Fetch user data
@@ -70,6 +75,19 @@ if (isset($_GET['error'])) {
 ?>
 
 <div class="max-w-5xl mx-auto">
+    <?php if (!payment_online_available()): ?>
+        <div class="mb-8 p-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-[2rem] flex items-start gap-4 shadow-sm">
+            <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                <i data-lucide="wallet" class="w-6 h-6 text-amber-600"></i>
+            </div>
+            <div>
+                <p class="font-bold mb-1">Pembayaran online sedang tidak tersedia</p>
+                <p class="text-sm leading-relaxed">Permohonan Anda tetap dapat diajukan seperti biasa. Pembayarannya
+                dilakukan <b>tunai di loket Fakultas</b>, lalu diverifikasi petugas. Jumlah yang harus dibayar tetap
+                sama dengan yang tertera pada rincian.</p>
+            </div>
+        </div>
+    <?php endif; ?>
     <?php if (!$is_verified): ?>
         <div class="mb-8 p-6 bg-orange-50 border border-orange-200 text-orange-800 rounded-[2rem] flex items-start gap-4 shadow-sm">
             <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
@@ -532,7 +550,7 @@ if (isset($_GET['error'])) {
 
                 <button type="submit" id="submitBtn" disabled class="w-full py-4 bg-slate-200 text-slate-400 rounded-2xl font-black shadow-lg cursor-not-allowed transition-all flex items-center justify-center gap-2">
                     <i data-lucide="credit-card" class="w-5 h-5"></i>
-                    Ajukan &amp; Lanjut ke Pembayaran
+                    <?php echo e(payment_online_available() ? 'Ajukan & Lanjut ke Pembayaran' : 'Ajukan (bayar tunai di loket)'); ?>
                 </button>
 
                 <!-- Spacer for Mobile Nav -->

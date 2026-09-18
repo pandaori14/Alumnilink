@@ -33,6 +33,10 @@ $label_bayar = payment_gateway_label($txn_bayar->gateway ?? payment_active_gatew
 // Rincian biaya yang TERSIMPAN saat tagihan terbit. Halaman ini dulu
 // menghitung ulang dari setting SAAT INI, sehingga begitu tarif diubah,
 // rincian tagihan lama ikut berubah dan tidak lagi berjumlah sama.
+// Seluruh gateway dimatikan: tombol "buat tagihan" hanya akan gagal, jadi
+// yang ditampilkan adalah cara membayar yang benar-benar tersedia.
+$bayar_online = payment_online_available();
+
 $rincian = null;
 foreach ($transaksi as $t) {
     if ($t->fee_breakdown && ($r = json_decode($t->fee_breakdown, true)) && isset($r['documents'], $r['admin_total'])) {
@@ -254,6 +258,8 @@ foreach ($transaksi as $t) {
                                             Tagihan sebelumnya sudah kedaluwarsa. Buat tagihan baru di bawah.
                                         <?php elseif ($txn_terbaru && $txn_terbaru->status === 'failed'): ?>
                                             Pembayaran sebelumnya gagal. Buat tagihan baru di bawah.
+                                        <?php elseif (!$bayar_online): ?>
+                                            Pembayaran online sedang tidak tersedia. Lihat keterangan di bawah.
                                         <?php else: ?>
                                             Tagihan pembayaran belum tersedia. Buat tagihan di bawah.
                                         <?php endif; ?>
@@ -273,6 +279,17 @@ foreach ($transaksi as $t) {
                                 <div class="flex-1 h-px bg-orange-200"></div>
                             </div>
 
+                            <?php if (!$bayar_online): ?>
+                            <div class="p-4 rounded-2xl bg-white border border-orange-200 space-y-1">
+                                <p class="text-sm font-black text-slate-800">Bayar tunai di loket Fakultas</p>
+                                <p class="text-[11px] text-slate-500 leading-relaxed">
+                                    Pembayaran online sedang tidak tersedia. Bawa ID Pesanan di atas ke loket, bayar
+                                    sejumlah tagihan, lalu petugas menandai permohonan Anda lunas. Dokumen diproses
+                                    setelah pembayaran diverifikasi.
+                                </p>
+                            </div>
+                            <?php else: ?>
+
                             <!-- Tombol Perbarui Token -->
                             <form action="handlers/regenerate_payment.php" method="POST" id="regen-form">
                                 <?php if (function_exists('csrf_field')): csrf_field(); endif; ?>
@@ -287,6 +304,7 @@ foreach ($transaksi as $t) {
                             <p class="text-center text-[10px] text-slate-400 font-medium leading-relaxed px-2">
                                 Tagihan baru berlaku <?php echo e(round(setting_int('payment_expiry', 1440, 15) / 60)); ?> jam. Data dokumen dan jumlah tagihan tidak berubah.
                             </p>
+                            <?php endif; ?>
                         </div>
                     </div>
 

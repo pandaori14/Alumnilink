@@ -69,6 +69,13 @@ if (!$campaign || !$campaign->is_active || ($campaign->end_date && $campaign->en
     donasi_gagal('Program donasi ini sudah tidak menerima donasi.');
 }
 
+// Donasi tidak punya jalur tunai: tanpa gateway yang siap, tidak ada cara
+// menerima uangnya. Ditolak SEBELUM baris donasi dibuat, supaya tidak
+// meninggalkan donasi pending yang tak pernah dapat dibayar.
+if (!payment_online_available()) {
+    donasi_gagal('Pembayaran online sedang tidak tersedia. Silakan coba beberapa saat lagi atau hubungi admin fakultas.', 503);
+}
+
 $quote = payment_quote('donasi', ['amount' => $amount]);
 if (!$quote['ok']) {
     error_log('Donasi: rincian biaya ditolak: ' . $quote['error']);

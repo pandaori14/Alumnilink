@@ -198,6 +198,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Seluruh gateway dimatikan super admin (atau belum ada yang siap):
+    // permohonan tetap diterima, tetapi ditandai tunai sejak awal alih-alih
+    // menerbitkan tagihan yang pasti gagal. Alumni membayar di loket dan
+    // admin memverifikasinya seperti biasa.
+    $online = payment_online_available();
+
     $order_id = 'LEG-' . strtoupper(uniqid());
     $documents_json = json_encode($uploaded_files);
     $shipping_address_json = $shipping_address ? json_encode($shipping_address, JSON_UNESCAPED_UNICODE) : null;
@@ -210,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (id, user_id, documents, delivery_method, shipping_address, amount, status, payment_status, payment_method)
              VALUES (?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)")
             ->execute([$order_id, $user_id, $documents_json, $delivery_method,
-                       $shipping_address_json, $quote['total'], $quote['gateway']]);
+                       $shipping_address_json, $quote['total'], $online ? $quote['gateway'] : 'cash']);
     } catch (PDOException $e) {
         error_log("Legalisir Request Error: " . $e->getMessage());
         error_system('Terjadi kesalahan sistem saat memproses pengajuan legalisir. Silakan hubungi administrator.');
@@ -223,12 +229,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Kegagalan gateway tidak membatalkan permohonan: berkasnya sudah
     // tersimpan, dan alumni dapat meminta tagihan ulang dari halaman detail.
-    $tagihan = payment_create('legalisir', $order_id, $order_id, $quote, [
-        'name'    => $alumni_name,
-        'email'   => $u->email ?? '',
-        'phone'   => $shipping_address['phone'] ?? ($u->phone ?? ''),
-        'address' => $u->address ?? '',
-    ], $user_id);
+    $tagihan = $online
+        ? payment_create('legalisir', $order_id, $order_id, $quote, [
+            'name'    => $alumni_name,
+            'email'   => $u->email ?? '',
+            'phone'   => $shipping_address['phone'] ?? ($u->phone ?? ''),
+            'address' => $u->address ?? '',
+        ], $user_id)
+        : ['ok' => true, 'error' => null, 'txn' => null];
 
     log_activity('REQUEST_LEGALISIR', "User requested legalisir ($order_id) with total amount: Rp " . number_format($quote['total'], 0, ',', '.'));
     reset_rate_limit('REQUEST_LEGALISIR');
@@ -240,7 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($u->email)) {
         $docs_desc = $doc_count > 1 ? "$doc_count Berkas" : "1 Berkas";
         send_invoice_email($u->email, $alumni_name, $order_id, $quote['total'], $docs_desc,
-            payment_gateway_label($quote['gateway']) . ' / Pembayaran Online');
+            $online ? payment_gateway_label($quote['gateway']) . ' / Pembayaran Online'
+                    : 'Tunai di loket Fakultas');
     }
 
     header("Location: ../index.php?page=legalisir_detail&id=" . rawurlencode($order_id)

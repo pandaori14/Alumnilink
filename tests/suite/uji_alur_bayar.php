@@ -34,7 +34,8 @@ $KUNCI = ['midtrans_server_key', 'midtrans_client_key', 'midtrans_is_production'
           // Ditulis ulang oleh setiap POST ke handler Pengaturan (bagian K)
           'google_oauth_auto_verify', 'dashboard_bg_animation', 'email_send_direct', 'audit_log_auto_erase',
           'rbac_enforce', 'cron_token', 'ujialur_kunci_bebas', 'legalisir_require_paid',
-          'payment_fallback_enabled', 'fee_midtrans_reviewed'];
+          'payment_fallback_enabled', 'fee_midtrans_reviewed',
+          'payment_gateway_enabled_midtrans', 'payment_gateway_enabled_flip'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
     $q = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
@@ -444,6 +445,22 @@ cek($don && $don->status === 'failed', 'donasi tercatat gagal, tidak menggantung
 cek($td && $td[0]->status === 'create_failed' && (float)$td[0]->amount_expected === (float)$kutipan['total'],
     'ledger: nominal = pratinjau donasi', ($td[0]->amount_expected ?? '-') . ' vs ' . $kutipan['total']);
 cek($don && $don->midtrans_order_id === ($td[0]->merchant_ref ?? null), 'referensi donasi = merchant_ref ledger');
+
+// Seluruh gateway dimatikan super admin: donasi tidak punya jalur tunai,
+// jadi ditolak SEBELUM baris donasi dibuat — bukan dibiarkan menggantung
+// sebagai pending yang tidak pernah dapat dibayar.
+$donasi_awal = (int)$pdo->query("SELECT COUNT(*) FROM donations")->fetchColumn();
+setting_save('payment_gateway_enabled_midtrans', '0');
+setting_save('payment_gateway_enabled_flip', '0');
+[$c, $b] = $donasi($SESI['alumni'], []);
+cek($c === 503 && strpos($b, 'tidak tersedia') !== false, 'gateway dimatikan: donasi ditolak dengan alasan', "HTTP $c");
+cek((int)$pdo->query("SELECT COUNT(*) FROM donations")->fetchColumn() === $donasi_awal,
+    'tidak ada donasi menggantung saat pembayaran online tutup');
+[$c, $b] = minta($SESI['alumni'], "index.php?page=donasi_detail&id=$k_aktif");
+cek($c === 200 && strpos($b, 'Donasi sedang ditutup sementara') !== false && strpos($b, 'id="payButton"') === false,
+    'halaman donasi menyembunyikan tombol dan menjelaskan sebabnya');
+setting_save('payment_gateway_enabled_midtrans', '1');
+setting_save('payment_gateway_enabled_flip', '1');
 
 [$c, $b] = minta($SESI['alumni'], 'index.php?page=donasi&status=success');
 cek(strpos($b, 'Terima kasih! Donasi Anda sudah kami terima.') !== false, 'halaman donasi membaca status kembali');
