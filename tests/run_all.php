@@ -149,7 +149,8 @@ echo "  Seluruh pemeriksaan lulus.\n\n";
 // di-deploy dengan menimpa berkas lewat FTP, keduanya kerap berbeda jauh
 // lebih lama daripada yang disangka siapa pun.
 echo "
-  Untuk memeriksa SERVER (hanya GET, aman terhadap produksi):
+  Untuk memeriksa SERVER (aman terhadap produksi; hanya membaca, kecuali
+  dua callback pembayaran yang sengaja ditolak):
 ";
 echo "      php tests/verify_deploy.php <url-server>
 ";

@@ -10,11 +10,17 @@
  * dan berita, lalu menghapusnya. Karena itu ia menolak menyentuh alamat
  * bukan-lokal.
  *
- * Berkas ini hanya melakukan GET. Tidak menulis apa pun, tidak butuh sesi,
- * tidak butuh kredensial. Justru itulah gunanya: ia menjawab pertanyaan yang
- * selama ini tidak bisa dijawab siapa pun setelah upload lewat FTP —
- * "apakah yang saya unggah benar-benar sampai, dan apakah penjagaannya
- * bekerja?"
+ * Berkas ini tidak butuh sesi dan tidak butuh kredensial. Justru itulah
+ * gunanya: ia menjawab pertanyaan yang selama ini tidak bisa dijawab siapa
+ * pun setelah upload lewat FTP — "apakah yang saya unggah benar-benar
+ * sampai, dan apakah penjagaannya bekerja?"
+ *
+ * Hampir seluruhnya GET. SATU pengecualian, bagian 10: dua POST ke endpoint
+ * callback pembayaran, membawa tanda tangan dan token yang SENGAJA salah.
+ * Keduanya tidak dapat mengubah data apa pun — itulah yang diperiksa — dan
+ * memang harus lewat POST, karena callback menolak GET. Jejaknya: dua baris
+ * di jurnal callback (outcome auth_failed/invalid) yang terlihat di monitor
+ * panel gateway. Tidak ada tulisan lain ke basis data.
  *
  * ── Cara memakainya yang benar ─────────────────────────────────────────
  * Jalankan DUA KALI: sebelum upload dan sesudahnya.
