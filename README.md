@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 18 suite — **±880 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 19 suite — **±930 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -79,6 +79,7 @@ dan otomatis dilewati di mesin yang tidak memasangnya:
 | `uji_js_render.php` | Skrip yang rusak hanya SETELAH nilai PHP disisipkan — kerangkanya sah, hasil render-nya tidak |
 | `uji_responsif.php` | Halaman yang dapat digeser ke samping di ponsel, tablet, atau laptop; isi yang tertutup menu bawah |
 | `uji_alur_bayar.php` | Alur pembayaran lewat HTTP, tanpa satu pun panggilan ke gateway sungguhan |
+| `uji_pengaturan.php` | Kolom yang berhenti tersimpan, penyimpanan yang merembet ke nilai lain, rahasia yang ikut tercetak ke halaman, dan pengaturan yang tak terjangkau antarmuka |
 
 ---
 
@@ -129,7 +130,47 @@ penjagaan sesi, verifikasi, mode perawatan, dan RBAC.
   menu tersembunyi tetapi aksinya boleh, keduanya mustahil.
 - **Escape saat menampilkan, bukan saat menyimpan.** Data yang sama dipakai
   di HTML, CSV, e-mail, dan JSON — masing-masing butuh escape berbeda.
-  Fungsinya `e()` di `includes/settings.php`.
+  Fungsinya `e()` di `includes/settings.php`; untuk isi blok skrip
+  `js_json()`, karena di sana `e()` justru merusak JSON.
+- **Aset dipanggil dengan penanda versi** (`aset()`), diturunkan dari waktu
+  ubah berkas. Tanpa itu, peramban terus memakai `app.css` lama setelah
+  upload — dan yang terlihat adalah tata letak baru dengan gaya lama.
+
+---
+
+## Konfigurasi Sistem
+
+Satu halaman untuk seluruh pengaturan (`index.php?page=admin_settings`,
+khusus super admin), dibagi lima bagian yang dapat ditautkan langsung lewat
+tanda pagar — `#keamanan`, `#operasional`, dan seterusnya:
+
+```
+Identitas & Tampilan   logo, favicon, warna, kontak bantuan, halaman depan
+Layanan & Biaya        harga, ongkir, jenis dokumen, stempel, SLA, tracer
+Integrasi & E-mail     SMTP, antrean, Google SSO, kunci Analitik AI
+Keamanan & Akses       RBAC, menu per peran, kata sandi, laju, audit
+Operasional            cadangan, cron, peta, batas unggah dan impor
+```
+
+Satu tombol menyimpan **seluruh bagian**, termasuk yang sedang tidak
+terbuka. Karena halaman ini memuat lebih dari seratus kolom, ada kotak
+pencarian yang menyaring lintas bagian; tiap kartu membawa kata kunci
+sehari-hari, sehingga "ongkir" menemukan *Tarif Pengiriman (Zona)* dan
+"backup" menemukan *Cadangan Basis Data*.
+
+Tiga aturan yang dijaga uji:
+
+- **Rahasia tidak pernah dirender kembali.** Kata sandi SMTP, secret Google,
+  dan kunci Gemini dikirim kosong; kosong berarti "tidak diubah", dan ada
+  kotak "Kosongkan" tersendiri. `type="password"` hanya menyembunyikan di
+  layar — sumber halaman tetap terbaca siapa pun.
+- **Kunci pembayaran ditolak di sini**, walau di-POST langsung. Satu-satunya
+  jalur yang menulisnya adalah panel Gateway Pembayaran.
+- **Tidak ada pengaturan yang tersembunyi.** Setiap kunci yang dibaca kode
+  harus punya kolom di antarmuka atau terdaftar sebagai internal beserta
+  alasannya.
+
+Rencana pengembangan berikutnya ada di [`_dev/RENCANA.md`](_dev/RENCANA.md).
 
 ---
 
