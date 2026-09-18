@@ -16,7 +16,7 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 973 pemeriksaan |
+| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 982 pemeriksaan |
 | Versi skema | `2026.09.17.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
@@ -44,6 +44,7 @@ keputusan membuang kode ada di pemilik sistem.
 
 | Berkas | Keterangan | Saran |
 |---|---|---|
+| `handlers/admin_alumni_handler.php?action=delete` | Cabang hapus alumni. Terjaga POST + token sejak 18 September 2026, tetapi **tidak ada tombol** yang memanggilnya; penghapusan alumni dilakukan dari Kelola User. | Pasang tombolnya di Kelola Alumni, atau hapus cabangnya. |
 | `handlers/admin_use_repository.php` | Fitur "pakai berkas dari Repositori Dokumen untuk memenuhi pengajuan legalisir". Handler-nya lengkap dan terjaga kapabilitas, tetapi **tidak ada tombol di halaman mana pun** yang memanggilnya. | Pasang tombolnya di Kelola Legalisir (Prioritas 2.3), atau hapus berkasnya. |
 | `handlers/midtrans_notification.php` | Alias URL lama untuk webhook. | **Pertahankan.** Bila dashboard Midtrans terlanjur memakai nama ini, menghapusnya memutus konfirmasi pembayaran. |
 | `handlers/payment_finish.php` | Tujuan kembali versi lama, kini meneruskan ke `payment_return.php`. | **Pertahankan** sampai dipastikan tidak ada tagihan lama yang memakainya. |
@@ -110,6 +111,17 @@ tersimpan saat tagihan terbit), dan diterima fakultas. Baris lama tanpa
 rincian ditandai "tanpa rincian" dan dihitung nol, bukan ditebak.
 `admin_fee` tidak lagi dibaca kode mana pun. Dijaga 15 pemeriksaan baru.
 
+**Hapus akun tidak lagi lewat tautan** · 18 September 2026
+`admin_alumni_handler.php` dan `admin_user_handler.php` menghapus lewat GET
+tanpa token, sementara `validate_csrf()` hanya memeriksa POST. Keduanya kini
+menolak selain POST (405), memvalidasi token lewat `validate_csrf_request()`,
+dan mencatat penghapusan di Audit Trail. Ditambah dua penjaga: akun sendiri
+tidak dapat dihapus, dan akun yang punya pengajuan legalisir **lunas** tidak
+dapat dihapus — sebab `users -> legalisir_requests` memakai ON DELETE CASCADE,
+sehingga menghapusnya ikut menghapus catatan uang dari Laporan Keuangan.
+Halaman Kelola User yang selama ini membuang seluruh pesan galat dari handler
+kini menampilkannya. Dijaga 9 pemeriksaan baru di `uji_rbac`.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.1 Donasi masuk Laporan Keuangan** · sedang
@@ -117,13 +129,6 @@ Laporan Keuangan hanya menghitung legalisir. Rekap donasi terpisah di
 Kelola Donasi, dan tidak ada satu angka pun yang menyatukan keduanya.
 *Selesai bila:* Laporan Keuangan punya penyaring jenis (legalisir/donasi/
 semua), ekspornya ikut, dan jumlah kartunya tetap sama dengan total.
-
-**1.3 CSRF pada hapus alumni dan hapus user** · kecil
-`admin_alumni_handler.php` dan `admin_user_handler.php` masih menghapus
-lewat tautan GET tanpa token. Satu tautan yang dibuka admin dapat menghapus
-alumni beserta seluruh pengajuan legalisirnya (FK CASCADE).
-*Selesai bila:* keduanya memakai token seperti hapus legalisir, dan uji
-RBAC menutupnya.
 
 **1.4 Riwayat perubahan pengaturan** · sedang
 Audit Trail hanya mencatat "Administrator updated system settings" — tanpa
@@ -191,11 +196,10 @@ seperti `uji_responsif`.
 
 1. **Unggah dulu** kode yang sudah selesai (lihat `_dev/UPLOAD.md`), lalu
    konfigurasi Flip (lihat `_dev/PEMBAYARAN.md` bagian 5–6).
-2. Prioritas 1.3 — kecil, langsung menutup risiko.
-3. Prioritas 1.1 dan 1.4 — menyentuh laporan dan jejak audit.
+2. Prioritas 1.1 dan 1.4 — menyentuh laporan dan jejak audit.
 4. Prioritas 2.2 (Status Sistem) — paling terasa bagi operator harian.
 5. Sisanya sesuai kebutuhan.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 973 pemeriksaan sekarang berarti.
+membuat 982 pemeriksaan sekarang berarti.

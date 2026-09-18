@@ -114,7 +114,61 @@ foreach ($endpoint as $ep => $kap) {
 }
 cek($semua_boleh, 'super_admin tidak pernah ditolak', count($endpoint) . ' endpoint');
 
-// ── Mode audit: pelanggaran dicatat, bukan ditolak ──────────────────
+// ---- Hapus akun: wajib POST bertoken, jejak uang dilindungi --------
+//
+// Dulu keduanya menghapus lewat tautan GET tanpa token, sementara
+// validate_csrf() hanya memeriksa POST. Karena users -> legalisir_requests
+// memakai ON DELETE CASCADE, satu tautan yang dibuka admin sudah cukup untuk
+// menghapus seorang alumni beserta seluruh pengajuannya.
+echo "\n=== hapus akun ===\n";
+
+$korban_nim = 'UJIRBAC' . substr((string)time(), -6);
+$korban = 'UJIRBAC-' . bin2hex(random_bytes(4));
+$pdo->prepare("INSERT INTO users (id, name, email, password, nim, role, is_verified)
+               VALUES (?, 'Uji Hapus', ?, '', ?, 'alumni', 1)")
+    ->execute([$korban, $korban . '@example.test', $korban_nim]);
+
+foreach ([['alumni', 'admin_alumni_handler.php'], ['user', 'admin_user_handler.php']] as [$nama, $berkas]) {
+    [$c] = panggil($sid_sa, "$BASE/handlers/$berkas?action=delete&id=" . rawurlencode($korban) . "&csrf_token=$csrf");
+    $masih = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE id = " . $pdo->quote($korban))->fetchColumn();
+    cek($c === 405 && $masih === 1, "hapus $nama lewat GET ditolak, datanya utuh", "HTTP $c");
+
+    [$c] = panggil($sid_sa, "$BASE/handlers/$berkas?action=delete", ['id' => $korban, 'csrf_token' => 'salah']);
+    $masih = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE id = " . $pdo->quote($korban))->fetchColumn();
+    cek($c === 403 && $masih === 1, "hapus $nama dengan token salah ditolak", "HTTP $c");
+}
+
+// Akun dengan pengajuan LUNAS tidak boleh dihapus: laporan keuangan membaca
+// legalisir_requests, dan barisnya ikut terhapus oleh CASCADE.
+$leg = 'LEG-UJIRBAC-' . bin2hex(random_bytes(3));
+$pdo->prepare("INSERT INTO legalisir_requests (id, user_id, documents, delivery_method, amount, status, payment_status, payment_method)
+               VALUES (?, ?, '[]', 'ambil_sendiri', 68344, 'completed', 'settlement', 'cash')")
+    ->execute([$leg, $korban]);
+[$c, $raw] = panggil($sid_sa, "$BASE/handlers/admin_user_handler.php?action=delete", ['id' => $korban, 'csrf_token' => $csrf]);
+$masih = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE id = " . $pdo->quote($korban))->fetchColumn();
+cek($masih === 1 && strpos($raw, 'delete_blocked') !== false, 'akun dengan pengajuan LUNAS tidak dapat dihapus', "HTTP $c");
+cek((int)$pdo->query("SELECT COUNT(*) FROM legalisir_requests WHERE id = " . $pdo->quote($leg))->fetchColumn() === 1,
+    'pengajuan lunasnya tetap ada');
+
+// Super admin tidak dapat menghapus akunnya sendiri
+[$c, $raw] = panggil($sid_sa, "$BASE/handlers/admin_user_handler.php?action=delete", ['id' => $uid, 'csrf_token' => $csrf]);
+cek((int)$pdo->query("SELECT COUNT(*) FROM users WHERE id = " . $pdo->quote($uid))->fetchColumn() === 1
+    && strpos($raw, 'delete_blocked') !== false, 'akun sendiri tidak dapat dihapus', "HTTP $c");
+
+// Tanpa penghalang, penghapusan yang sah tetap berjalan dan tercatat
+$pdo->prepare("DELETE FROM legalisir_requests WHERE id = ?")->execute([$leg]);
+$log_awal = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'DELETE_USER'")->fetchColumn();
+[$c] = panggil($sid_sa, "$BASE/handlers/admin_user_handler.php?action=delete", ['id' => $korban, 'csrf_token' => $csrf]);
+cek((int)$pdo->query("SELECT COUNT(*) FROM users WHERE id = " . $pdo->quote($korban))->fetchColumn() === 0,
+    'penghapusan yang sah tetap berjalan', "HTTP $c");
+cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'DELETE_USER'")->fetchColumn() === $log_awal + 1,
+    'penghapusan tercatat di Audit Trail');
+
+$pdo->exec("DELETE FROM users WHERE id LIKE 'UJIRBAC-%'");
+$pdo->exec("DELETE FROM legalisir_requests WHERE id LIKE 'LEG-UJIRBAC-%'");
+$pdo->exec("DELETE FROM activity_logs WHERE action = 'DELETE_USER' AND description LIKE '%UJIRBAC%'");
+
+// ---- Mode audit: pelanggaran dicatat, bukan ditolak ----------------
 echo "\n=== perbandingan mode audit ===\n";
 $pdo->exec("UPDATE settings SET setting_value='0' WHERE setting_key='rbac_enforce'");
 $sid_k = sesi_palsu($uid, 'keuangan', $csrf);

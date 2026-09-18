@@ -96,15 +96,61 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+/**
+ * Alasan sebuah akun tidak boleh dihapus. Kosong = boleh.
+ *
+ * users -> legalisir_requests memakai ON DELETE CASCADE, jadi menghapus satu
+ * akun ikut menghapus seluruh pengajuannya. Untuk pengajuan yang SUDAH LUNAS
+ * itu berarti menghapus jejak uang yang sudah diterima fakultas — persis yang
+ * ditolak handlers/admin_delete_legalisir.php untuk satu pengajuan. Aturannya
+ * disamakan supaya tidak ada pintu belakang lewat halaman pengguna.
+ *
+ * Ledger payment_transactions tidak ikut terhapus (sengaja tanpa FK), tetapi
+ * laporan membaca legalisir_requests, jadi angkanya tetap berubah.
+ */
+function alasan_tidak_boleh_hapus(PDO $pdo, $id)
+{
+    $alasan = [];
+    if ((string)$id === (string)($_SESSION['user_id'] ?? '')) {
+        $alasan[] = 'Anda tidak dapat menghapus akun Anda sendiri.';
+    }
+    $q = $pdo->prepare("SELECT COUNT(*) FROM legalisir_requests WHERE user_id = ? AND payment_status = 'settlement'");
+    $q->execute([$id]);
+    if ($n = (int)$q->fetchColumn()) {
+        $alasan[] = "Akun ini punya $n pengajuan legalisir yang sudah LUNAS. Menghapusnya ikut menghapus catatan uang itu dari Laporan Keuangan. Batalkan verifikasinya bila akun perlu dinonaktifkan.";
+    }
+    return $alasan;
+}
+
 if ($action === 'delete') {
     if ($_SESSION['user_role'] !== 'super_admin') {
         header("Location: ../index.php?page=admin_users&error=unauthorized_delete");
         exit();
     }
-    $id = $_GET['id'];
+    // Dulu: tautan GET tanpa token, dengan CASCADE ke legalisir_requests.
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+        header('Allow: POST');
+        http_response_code(405);
+        exit('Penghapusan hanya dapat dilakukan lewat formulir di halaman Kelola User.');
+    }
+    validate_csrf_request();
+
+    $id = (string)($_POST['id'] ?? '');
+    $q = $pdo->prepare("SELECT name, email, role FROM users WHERE id = ?");
+    $q->execute([$id]);
+    $sasaran = $q->fetch(PDO::FETCH_OBJ);
+    if (!$sasaran) {
+        header("Location: ../index.php?page=admin_users&error=not_found");
+        exit();
+    }
+    if ($alasan = alasan_tidak_boleh_hapus($pdo, $id)) {
+        header("Location: ../index.php?page=admin_users&error=delete_blocked&reason=" . rawurlencode(implode(' ', $alasan)));
+        exit();
+    }
     try {
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$id]);
+        $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+        log_activity('DELETE_USER', "Pengguna {$sasaran->name} ({$sasaran->email}, peran {$sasaran->role}) dihapus oleh "
+            . ($_SESSION['user_name'] ?? $_SESSION['user_id']) . '.');
         header("Location: ../index.php?page=admin_users&success=deleted");
         exit();
     } catch (PDOException $e) {

@@ -9,6 +9,12 @@ require_once __DIR__ . '/_bootstrap.php';
 $DIR  = uji_fixture();
 $BASE = uji_base_url();
 
+// Pembatas laju impor: 5 percobaan per 15 menit, dihitung per alamat IP.
+// Suite ini memakai lebih dari itu, jadi menjalankannya dua kali dalam 15
+// menit akan gagal seolah ada regresi. Dibersihkan di muka supaya kegagalan
+// yang muncul benar-benar berarti.
+$pdo->exec("DELETE FROM rate_limits WHERE action = 'IMPORT_ALUMNI'");
+
 
 
 function kirim($sid, $url, $post = null, $berkas = null) {

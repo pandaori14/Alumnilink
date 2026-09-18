@@ -66,6 +66,9 @@ $pesan_galat_alumni = [
     'email_ganda'    => 'E-mail tersebut sudah dipakai oleh ' . htmlspecialchars($_GET['nama'] ?? 'pengguna lain') . '.',
     'nim_ganda'      => 'NIM tersebut sudah dipakai oleh ' . htmlspecialchars($_GET['nama'] ?? 'pengguna lain') . '.',
     'nim_tidak_sah'  => 'NIM harus 6-20 huruf/angka tanpa spasi.',
+    'not_found'      => 'Data alumni tersebut tidak ditemukan.',
+    // Alasannya disusun handler dan dicetak lewat e(); jangan di-escape dua kali.
+    'delete_blocked' => mb_substr((string)($_GET['reason'] ?? 'Akun ini tidak dapat dihapus.'), 0, 400),
 ];
 
 // Fetch distinct majors (joined with official majors table) for filters

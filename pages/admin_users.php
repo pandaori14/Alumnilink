@@ -38,6 +38,29 @@ foreach ($pdo->query("SELECT role, COUNT(*) n FROM users GROUP BY role") as $r) 
         <h1 class="text-xl md:text-2xl font-bold outfit text-slate-800 tracking-tight">Kelola User</h1>
         <p class="text-slate-400 text-xs md:text-sm mt-1 font-medium">Manajemen akun alumni, staf, dan administrator sistem.</p>
     </div>
+    <?php
+    // Halaman ini sebelumnya mengabaikan seluruh pesan galat dari handler:
+    // penghapusan yang ditolak terlihat persis seperti penghapusan berhasil.
+    $pesan_pengguna = [
+        'unauthorized_delete' => 'Hanya Super Administrator yang dapat menghapus akun.',
+        'not_found'           => 'Akun tersebut tidak ditemukan.',
+        'delete_blocked'      => mb_substr((string)($_GET['reason'] ?? 'Akun ini tidak dapat dihapus.'), 0, 400),
+    ];
+    ?>
+    <?php if (isset($_GET['error'], $pesan_pengguna[$_GET['error']])): ?>
+        <div class="mb-6 flex items-start gap-3 p-5 rounded-2xl bg-red-50 border border-red-200">
+            <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5"></i>
+            <div class="text-sm text-red-700 leading-relaxed">
+                <span class="font-bold block mb-0.5">Akun tidak dihapus</span>
+                <?php echo e($pesan_pengguna[$_GET['error']]); ?>
+            </div>
+        </div>
+    <?php elseif (isset($_GET['success']) && $_GET['success'] === 'deleted'): ?>
+        <div class="mb-6 flex items-start gap-3 p-5 rounded-2xl bg-emerald-50 border border-emerald-200">
+            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"></i>
+            <div class="text-sm text-emerald-700 font-medium">Akun dihapus. Tindakan ini tercatat di Audit Trail.</div>
+        </div>
+    <?php endif; ?>
     <div class="flex flex-col md:flex-row md:items-center justify-end gap-6 mb-10 px-1">
         <button onclick="openUserModal()" class="bg-blue-600 text-white px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2 w-full md:w-auto justify-center">
             <i data-lucide="user-plus" class="w-5 h-5"></i>
@@ -393,9 +416,15 @@ foreach ($pdo->query("SELECT role, COUNT(*) n FROM users GROUP BY role") as $r) 
         </p>
         
         <div class="flex flex-col gap-3">
-            <a href="#" id="confirmDeleteBtn" class="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all">
-                Ya, Hapus Sekarang
-            </a>
+            <!-- POST + token: aksi yang menghapus data tidak boleh dapat
+                 dipicu hanya dengan membuka sebuah tautan. -->
+            <form id="deleteUserForm" action="handlers/admin_user_handler.php?action=delete" method="POST">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="id" id="deleteUserId" value="">
+                <button type="submit" class="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all">
+                    Ya, Hapus Sekarang
+                </button>
+            </form>
             <button onclick="closeDeleteModal()" class="w-full py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl font-bold text-sm hover:bg-slate-50 active:scale-95 transition-all">
                 Batal
             </button>
@@ -474,7 +503,7 @@ foreach ($pdo->query("SELECT role, COUNT(*) n FROM users GROUP BY role") as $r) 
 
     function openDeleteModal(id, name) {
         document.getElementById('deleteUserName').innerText = name;
-        document.getElementById('confirmDeleteBtn').href = `handlers/admin_user_handler.php?action=delete&id=${id}`;
+        document.getElementById('deleteUserId').value = id;
         
         const modal = document.getElementById('deleteModal');
         const content = document.getElementById('deleteModalContent');

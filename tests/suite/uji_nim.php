@@ -12,6 +12,12 @@ require_once __DIR__ . '/_bootstrap.php';
 require_once AKAR . '/includes/import_lib.php';
 
 $BASE = uji_base_url();
+
+// Pembatas laju impor: 5 percobaan per 15 menit, dihitung per alamat IP.
+// Suite ini memakai lebih dari itu, jadi menjalankannya dua kali dalam 15
+// menit akan gagal seolah ada regresi. Dibersihkan di muka supaya kegagalan
+// yang muncul benar-benar berarti.
+$pdo->exec("DELETE FROM rate_limits WHERE action = 'IMPORT_ALUMNI'");
 function kirim($sid, $url, $post = null, $berkas = null) {
     $ch = curl_init($url);
     $o = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 60, CURLOPT_HEADER => true,

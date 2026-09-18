@@ -309,6 +309,7 @@ $is_super = ($current_role === 'super_admin');
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Kelola Pengguna & Audit Trail</h3>
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Di menu <b>Kelola User</b>, Anda dapat mengubah *Role* pengguna, mereset password mereka, atau memblokir akses. Menu <b>Audit Trail</b> melacak seluruh pergerakan sensitif pengguna (Login, Update, Delete) beserta IP dan deteksi lokasi (Geocoding).</p>
+                            <p><b>Menghapus akun</b> hanya dapat dilakukan Super Administrator, lewat tombol di halaman ini — bukan lewat tautan, supaya tidak dapat dipicu tanpa sengaja. Dua hal ditolak sistem: menghapus akun Anda sendiri, dan menghapus akun yang punya pengajuan legalisir <b>sudah lunas</b>, karena catatan uang itu ikut terhapus dan Laporan Keuangan berubah. Setiap penghapusan tercatat di Audit Trail beserta nama dan e-mail akunnya.</p>
                         </div>
                     </div>
 
