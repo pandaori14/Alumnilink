@@ -22,7 +22,7 @@ $KUNCI = ['payment_gateway_active', 'midtrans_server_key', 'midtrans_client_key'
     'fee_midtrans_percent', 'fee_midtrans_vat_percent', 'fee_midtrans_flat', 'fee_midtrans_app', 'fee_midtrans_min',
     'fee_flip_percent', 'fee_flip_vat_percent', 'fee_flip_flat', 'fee_flip_app', 'fee_flip_min',
     'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'price_per_doc', 'shipping_zones',
-    'payment_expiry', 'smtp_force_real',
+    'payment_expiry', 'smtp_force_real', 'payment_fallback_enabled', 'payment_fallback_notice_at',
     'fee_midtrans_reviewed', 'fee_flip_reviewed', 'payment_last_test_midtrans', 'payment_last_test_flip'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
@@ -76,6 +76,7 @@ foreach ([
     'fee_midtrans_percent' => '5.00', 'fee_midtrans_vat_percent' => '11.00',
     'fee_midtrans_flat' => '5550', 'fee_midtrans_app' => '2500', 'fee_midtrans_min' => '0',
     'fee_flip_percent' => '0', 'fee_flip_vat_percent' => '0', 'fee_flip_flat' => '4000', 'fee_flip_app' => '0', 'fee_flip_min' => '0',
+    'fee_midtrans_reviewed' => '1', 'fee_flip_reviewed' => '1', 'payment_fallback_enabled' => '0',
     'payment_custom_charge_legalisir' => '6500', 'payment_custom_charge_donasi' => '0',
     'price_per_doc' => '50000', 'payment_expiry' => '1440', 'smtp_force_real' => '0',
     'shipping_zones' => json_encode([
@@ -170,7 +171,15 @@ cek($jumlah_item === $q['total'], 'item_details berjumlah sama dengan total (sya
 cek(!payment_quote('legalisir', ['doc_count' => 0])['ok'], 'nol dokumen ditolak');
 cek(!payment_quote('donasi', ['amount' => 9000])['ok'], 'donasi < Rp 10.000 ditolak');
 setting_save('fee_midtrans_percent', '-3');
-cek(!payment_quote('donasi', ['amount' => 50000])['ok'], 'profil biaya negatif MENOLAK transaksi');
+cek(!payment_quote('donasi', ['amount' => 50000], 'midtrans')['ok'],
+    'profil biaya negatif MENOLAK transaksi di gateway itu');
+// Profil yang rusak membuat gateway dianggap belum siap, jadi tagihan
+// dialihkan ke gateway lain yang siap — bukan berhenti total.
+cek(payment_quote('donasi', ['amount' => 50000])['gateway'] === 'flip',
+    'profil rusak: tagihan dialihkan ke gateway yang siap');
+setting_save('fee_flip_percent', '-1');
+cek(!payment_quote('donasi', ['amount' => 50000])['ok'], 'kedua profil rusak: transaksi ditolak');
+setting_save('fee_flip_percent', '0');
 setting_save('fee_midtrans_percent', '5.00');
 cek(payment_fee_compute(10000, 0, ['percent' => 0, 'vat_percent' => 0, 'flat' => 0, 'app' => 0, 'min' => 7000]) === 7000,
     'biaya minimum diterapkan');
@@ -539,5 +548,108 @@ cek(strpos($keluaran_cron, '1 berubah') !== false, 'cron: ringkasan jalan tercet
 $masih = $pdo->query("SELECT id, last_checked_at FROM payment_transactions
                        WHERE status = 'pending' AND merchant_ref NOT LIKE '%UJIBAYAR%'")->fetchAll(PDO::FETCH_KEY_PAIR);
 cek($masih == $lain, 'cron: tagihan lain dikembalikan persis', count($masih) . ' baris');
+
+// ═════════════════════════════════════════════════════════════════════
+echo "\n=== I. Pilihan utama, kesiapan, dan gateway cadangan ===\n";
+
+// Keadaan awal bagian ini: kedua gateway terkonfigurasi dan tarifnya
+// ditandai sudah ditinjau.
+setting_save('payment_gateway_active', 'flip');
+setting_save('fee_flip_reviewed', '1');
+setting_save('fee_midtrans_reviewed', '1');
+setting_save('payment_fallback_enabled', '0');
+
+cek(payment_preferred_gateway_code() === 'flip' && payment_active_gateway_code() === 'flip',
+    'pilihan siap: dipakai apa adanya', payment_active_gateway_code());
+
+// Tarif Flip belum ditinjau -> BELUM SIAP, tagihan lewat Midtrans
+setting_save('fee_flip_reviewed', '0');
+cek(payment_preferred_gateway_code() === 'flip' && payment_active_gateway_code() === 'midtrans',
+    'tarif belum ditinjau: pilihan tetap Flip, tagihan lewat Midtrans', payment_active_gateway_code());
+cek(strpos(implode(' ', payment_gateway_readiness('flip')), 'tarif belum ditandai') !== false,
+    'alasan belum siap dapat dibaca manusia', implode('; ', payment_gateway_readiness('flip')));
+cek(payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri'])['gateway'] === 'midtrans',
+    'pratinjau memakai gateway yang benar-benar dipakai');
+
+// Kredensial Flip kosong -> juga belum siap
+setting_save('fee_flip_reviewed', '1');
+setting_save('flip_secret_key', '');
+cek(payment_active_gateway_code() === 'midtrans', 'kredensial kosong: jatuh ke gateway siap lainnya');
+setting_save('flip_secret_key', 'rahasia-flip-uji');
+
+// Tidak ada yang siap -> pilihan tetap dikembalikan, kegagalannya jelas
+setting_save('fee_midtrans_reviewed', '0');
+setting_save('fee_flip_reviewed', '0');
+cek(payment_active_gateway_code() === 'flip', 'tidak ada yang siap: pilihan utama tetap dikembalikan');
+setting_save('fee_midtrans_reviewed', '1');
+setting_save('fee_flip_reviewed', '1');
+
+// ── Gateway cadangan saat penerbitan tagihan gagal ───────────────────
+$M = 'LEG-UJIBAYAR-M';
+buat_legalisir($M, 68344);
+$qm = payment_quote('legalisir', ['doc_count' => 1, 'delivery_method' => 'ambil_sendiri']);
+cek($qm['gateway'] === 'flip', 'tagihan baru memakai Flip', $qm['gateway']);
+
+// Cadangan MATI: kegagalan tetap kegagalan
+palsu([['POST', '#/v2/pwf/bill$#', ['status' => 500, 'body' => 'Flip sedang gangguan']]]);
+$hasil = payment_create('legalisir', $M, $M, $qm, $pelanggan);
+cek(!$hasil['ok'] && $hasil['txn']->status === 'create_failed' && $hasil['txn']->gateway === 'flip',
+    'cadangan dimatikan: gagal tetap gagal di gateway pilihan', $hasil['txn']->status);
+
+// Cadangan HIDUP: tagihan tetap terbit lewat Midtrans
+setting_save('payment_fallback_enabled', '1');
+$N = 'LEG-UJIBAYAR-N';
+buat_legalisir($N, 68344);
+$log_awal = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_FALLBACK'")->fetchColumn();
+setting_save('payment_fallback_notice_at', '0');
+palsu([
+    ['POST', '#/v2/pwf/bill$#', ['status' => 500, 'body' => 'Flip sedang gangguan']],
+    ['POST', '#/snap/v1/transactions#', fn() => mt_token()],
+]);
+$hasil = payment_create('legalisir', $N, $N, $qm, $pelanggan);
+$tN = $hasil['txn'];
+cek($hasil['ok'] && $tN->gateway === 'midtrans' && $tN->status === 'pending' && $tN->snap_token,
+    'Flip gagal: tagihan terbit lewat Midtrans, alumni tetap dapat membayar', $tN->gateway . '/' . $tN->status);
+cek((float)$tN->amount_expected === (float)$qm['total'],
+    'nominal TIDAK dihitung ulang saat berpindah gateway', (string)$tN->amount_expected);
+cek(kolom_lama($N)->payment_method === 'midtrans', 'kolom lama ikut menunjuk gateway yang benar');
+cek((int)$pdo->query("SELECT COUNT(*) FROM activity_logs WHERE action = 'PAYMENT_GATEWAY_FALLBACK'")->fetchColumn() === $log_awal + 1,
+    'perpindahan tercatat di Audit Trail');
+$q = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE title = 'Gateway pembayaran dialihkan otomatis' AND message LIKE ?");
+$q->execute(['%' . $N . '%']);
+cek((int)$q->fetchColumn() > 0, 'super admin diberi tahu sekali');
+
+// Notifikasi dibatasi, catatan audit tidak
+$O = 'LEG-UJIBAYAR-O';
+buat_legalisir($O, 68344);
+$notif_awal = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE title = 'Gateway pembayaran dialihkan otomatis'")->fetchColumn();
+$hasil = payment_create('legalisir', $O, $O, $qm, $pelanggan);
+cek($hasil['ok'] && $hasil['txn']->gateway === 'midtrans', 'pengajuan berikutnya juga tetap terbit');
+cek((int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE title = 'Gateway pembayaran dialihkan otomatis'")->fetchColumn() === $notif_awal,
+    'notifikasi kedua ditahan 30 menit, banjir notifikasi dicegah');
+
+// Keduanya gagal: berhenti di create_failed, tanpa berputar
+$P = 'LEG-UJIBAYAR-P';
+buat_legalisir($P, 68344);
+palsu([
+    ['POST', '#/v2/pwf/bill$#', ['status' => 500, 'body' => 'Flip gangguan']],
+    ['POST', '#/snap/v1/transactions#', ['status' => 500, 'body' => 'Midtrans gangguan']],
+]);
+$GLOBALS['PANGGILAN'] = [];
+$hasil = payment_create('legalisir', $P, $P, $qm, $pelanggan);
+cek(!$hasil['ok'] && $hasil['txn']->status === 'create_failed', 'kedua gateway gagal: berhenti sebagai create_failed');
+cek(count($GLOBALS['PANGGILAN']) === 2, 'tepat dua percobaan, tidak berputar', count($GLOBALS['PANGGILAN']) . ' panggilan');
+
+// Transaksi uji tidak boleh dialihkan diam-diam
+setting_save('flip_is_production', '0');
+palsu([['POST', '#/v2/pwf/bill$#', ['status' => 500, 'body' => 'Flip gangguan']]]);
+$GLOBALS['PANGGILAN'] = [];
+$hasil = payment_create_test('flip', $pelanggan, 'UJIBAYAR');
+cek(!$hasil['ok'] && $hasil['txn']->gateway === 'flip' && count($GLOBALS['PANGGILAN']) === 1,
+    'transaksi uji tidak dialihkan ke gateway lain', $hasil['txn']->gateway);
+
+setting_save('payment_fallback_enabled', '0');
+setting_save('payment_gateway_active', 'midtrans');
+
 printf("\n────────────────────────────────\n  LULUS: %d   GAGAL: %d\n", $pass, $fail);
 exit($fail > 0 ? 1 : 0);

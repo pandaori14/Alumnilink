@@ -16,6 +16,7 @@
  */
 
 require_once __DIR__ . '/http.php';
+require_once __DIR__ . '/fee.php';
 
 interface PaymentGateway
 {
@@ -98,20 +99,100 @@ function payment_gateway($code)
 }
 
 /**
- * Kode gateway untuk transaksi BARU.
+ * Gateway PILIHAN UTAMA super admin — belum tentu siap dipakai.
  *
- * Nilai yang tidak dikenal jatuh ke 'midtrans' — perilaku sistem sebelum
- * sakelar ini ada — alih-alih membuat pembayaran berhenti total.
+ * Bawaannya 'flip'. Nilai yang tidak dikenal jatuh ke 'flip' juga, bukan
+ * berhenti total.
+ */
+function payment_preferred_gateway_code()
+{
+    $code = setting('payment_gateway_active', 'flip');
+    return in_array($code, payment_gateway_codes(), true) ? $code : 'flip';
+}
+
+/**
+ * Alasan sebuah gateway BELUM dapat menerbitkan tagihan. Kosong = siap.
+ *
+ * Sengaja TIDAK memeriksa tes koneksi terakhir. Kesiapan di sini dipakai
+ * setiap kali tagihan dibuat; menautkannya pada tes yang kedaluwarsa tiap
+ * 24 jam akan membuat gateway berpindah sendiri di tengah malam. Tes
+ * koneksi tetap wajib untuk memindahkan PILIHAN secara manual
+ * (payment_switch_blockers di panel.php).
+ *
+ * Tarif yang belum ditandai "sudah dicocokkan" dianggap belum siap: profil
+ * biaya bawaan Flip nol, dan menagih dengan biaya nol berarti fakultas
+ * menanggung sendiri potongan gateway tanpa ada yang menyadarinya.
+ */
+function payment_gateway_readiness($code)
+{
+    $gw = payment_gateway($code);
+    if (!$gw) {
+        return ['gateway tidak dikenal'];
+    }
+    $alasan = [];
+    if (!$gw->isConfigured()) {
+        $alasan[] = 'kredensial belum lengkap';
+    }
+    $profil = payment_fee_profile($code);
+    if ($galat = payment_fee_profile_error($profil)) {
+        $alasan[] = 'profil biaya tidak sah (' . $galat . ')';
+    } elseif (!$profil['reviewed']) {
+        $alasan[] = 'tarif belum ditandai sudah dicocokkan dengan tarif resmi';
+    }
+    return $alasan;
+}
+
+function payment_gateway_is_ready($code)
+{
+    return payment_gateway_readiness($code) === [];
+}
+
+/**
+ * Gateway yang BENAR-BENAR dipakai transaksi baru.
+ *
+ * Pilihan utama bila siap; bila belum, gateway lain yang siap. Dengan
+ * begitu "pilihan utama" dapat disetel ke gateway yang kredensialnya belum
+ * ada tanpa menghentikan pembayaran — begitu kredensial dan tarifnya diisi,
+ * tagihan baru berpindah sendiri tanpa menyentuh kode.
+ *
+ * Bila tidak ada yang siap, pilihan utama tetap dikembalikan supaya
+ * kegagalannya muncul satu kali di tempat yang jelas (payment_charge),
+ * lengkap dengan pesan dari adaptornya.
  */
 function payment_active_gateway_code()
 {
-    $code = setting('payment_gateway_active', 'midtrans');
-    return in_array($code, payment_gateway_codes(), true) ? $code : 'midtrans';
+    $pilihan = payment_preferred_gateway_code();
+    if (payment_gateway_is_ready($pilihan)) {
+        return $pilihan;
+    }
+    foreach (payment_gateway_codes() as $code) {
+        if ($code !== $pilihan && payment_gateway_is_ready($code)) {
+            return $code;
+        }
+    }
+    return $pilihan;
 }
 
 function payment_active_gateway()
 {
     return payment_gateway(payment_active_gateway_code());
+}
+
+/**
+ * Gateway cadangan untuk dicoba bila $code gagal menerbitkan tagihan.
+ * null bila tidak ada yang siap atau fitur cadangan dimatikan.
+ */
+function payment_backup_gateway_code($code)
+{
+    if (setting('payment_fallback_enabled', '1') !== '1') {
+        return null;
+    }
+    foreach (payment_gateway_codes() as $lain) {
+        if ($lain !== $code && payment_gateway_is_ready($lain)) {
+            return $lain;
+        }
+    }
+    return null;
 }
 
 /** Nama gateway atau metode untuk tampilan; aman untuk 'cash'. */

@@ -5,11 +5,49 @@ Dokumen ini untuk **super admin** yang mengoperasikan pembayaran dan
 gateway saat salah satunya bermasalah, dan cara menangani kasus yang tidak
 biasa.
 
-Ringkasnya: ada dua gateway — **Midtrans** dan **Flip** — tetapi hanya
-**satu yang aktif** pada satu waktu. Yang aktif menentukan lewat mana
-**tagihan baru** terbit. Tagihan yang sudah terbit tetap dibayar dan
-dikonfirmasi lewat gateway asalnya, jadi memindahkan sakelar tidak pernah
+Ringkasnya: ada dua gateway — **Flip** (pilihan utama) dan **Midtrans**
+(cadangan) — dan satu jalur manual, **tunai**. Satu gateway dipakai pada
+satu waktu untuk **tagihan baru**. Tagihan yang sudah terbit tetap dibayar
+dan dikonfirmasi lewat gateway asalnya, jadi berpindah gateway tidak pernah
 membatalkan tagihan siapa pun.
+
+## 0. Urutan pemilihan gateway
+
+Ada dua hal berbeda, dan membedakannya penting:
+
+| Istilah | Artinya |
+|---|---|
+| **Pilihan utama** | Yang dikehendaki fakultas. Setting `payment_gateway_active`, bawaannya `flip`. |
+| **Dipakai sekarang** | Yang benar-benar menerbitkan tagihan. Dihitung dari kesiapan. |
+
+Urutannya setiap kali tagihan dibuat:
+
+1. Pilihan utama, **bila siap**.
+2. Bila belum siap → gateway lain yang siap.
+3. Bila penerbitan tagihan **gagal saat itu juga** (API mati, kunci
+   ditolak) → dicoba sekali lagi lewat gateway lain yang siap, dan
+   transaksinya berpindah ke sana. Nominalnya tidak dihitung ulang.
+4. Bila keduanya gagal → pengajuan tetap tersimpan sebagai `create_failed`;
+   alumni dapat meminta tagihan baru dari halaman detail.
+5. **Tunai** selalu tersedia sebagai jalan terakhir, lewat verifikasi manual
+   di Kelola Legalisir.
+
+**Siap** berarti tiga hal sekaligus: kredensial lengkap, profil biaya sah,
+dan tarifnya sudah ditandai "sudah dicocokkan dengan tarif resmi". Tarif
+yang belum ditandai membuat gateway dianggap belum siap dengan sengaja:
+profil bawaan Flip nol, dan menagih dengan biaya nol berarti fakultas
+menanggung sendiri potongan gateway tanpa ada yang menyadarinya.
+
+Akibat praktisnya: **pilihan utama boleh disetel ke Flip sekarang juga**,
+meski kredensialnya belum ada. Selama Flip belum siap, tagihan terbit lewat
+Midtrans. Begitu kredensial dan tarif Flip diisi, tagihan baru berpindah ke
+Flip sendiri — tidak ada tombol yang perlu ditekan dan tidak ada kode yang
+perlu diubah.
+
+Perpindahan otomatis karena kegagalan (nomor 3) dicatat di Audit Trail
+sebagai `PAYMENT_GATEWAY_FALLBACK` dan diberitahukan ke super admin,
+dibatasi satu notifikasi per 30 menit supaya tidak membanjiri. Fiturnya
+dapat dimatikan lewat sakelar di panel.
 
 Panel: **Pengaturan Sistem → Gateway Pembayaran**
 (`index.php?page=admin_payment_gateway`, khusus super admin).
@@ -200,7 +238,7 @@ pembayarannya memang belum sampai ke gateway.
 | **Bayar ganda** (satu pengajuan lunas dua kali) | Transaksi kedua ditandai `double_payment`, disorot merah di monitor, super admin diberi tahu. E-mail "lunas" tidak dikirim dua kali. | Refund manual lewat dashboard gateway. |
 | **Nominal tidak cocok** | Status TIDAK diubah menjadi lunas; transaksi ditandai `amount_mismatch` dan super admin diberi tahu sekali. Retry berikutnya tetap diproses. | Periksa di dashboard gateway. Bila nominalnya memang benar, cocokkan manual. |
 | **Tagihan kedaluwarsa** | Setelah 30 menit lewat masa berlaku dan gateway tidak pernah melihat pembayaran, statusnya menjadi `expired`. | Alumni dapat menekan "Buat Tagihan Pembayaran" sendiri di halaman detail. |
-| **Gateway menolak saat tagihan dibuat** | Pengajuan tetap tersimpan dengan status `create_failed`; alumni diberi tahu dan dapat meminta tagihan ulang. Tidak ada transaksi yatim. | Periksa tes koneksi dan kredensial. |
+| **Gateway menolak saat tagihan dibuat** | Dicoba sekali lagi lewat gateway lain yang siap. Bila itu pun gagal, pengajuan tetap tersimpan sebagai `create_failed` dan alumni dapat meminta tagihan ulang. Tidak ada transaksi yatim. | Periksa tes koneksi dan kredensial; perpindahan otomatis ada di Audit Trail. |
 | **Pembayaran tunai** | Verifikasi tunai menutup tagihan online yang masih terbuka, lalu mencatat transaksi `cash`. Ditolak bila sudah lunas online. | Gunakan tombol verifikasi tunai di Kelola Legalisir. |
 | **Pengajuan lunas dihapus** | Ditolak. Uang yang sudah diterima tidak boleh hilang dari Laporan Keuangan. | Tolak pengajuannya bila memang dibatalkan. |
 
@@ -212,7 +250,8 @@ Seluruhnya diatur dari panel; tidak ada yang perlu diubah di berkas.
 
 | Kunci | Arti |
 |---|---|
-| `payment_gateway_active` | Gateway untuk tagihan BARU (`midtrans` / `flip`) |
+| `payment_gateway_active` | Gateway PILIHAN UTAMA untuk tagihan baru (`flip` / `midtrans`) |
+| `payment_fallback_enabled` | `1` = coba gateway lain bila yang dipakai gagal menerbitkan tagihan |
 | `midtrans_server_key`, `midtrans_client_key`, `midtrans_is_production` | Kredensial dan mode Midtrans |
 | `flip_secret_key`, `flip_validation_token`, `flip_is_production` | Kredensial dan mode Flip |
 | `fee_{midtrans,flip}_{percent,vat_percent,flat,app,min}` | Profil biaya per gateway |

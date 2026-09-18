@@ -418,7 +418,8 @@ $color_map = [
                         <div>
                             <h2 class="text-xl font-bold outfit text-slate-800">Gateway Pembayaran</h2>
                             <p class="text-xs text-slate-400">
-                                Aktif: <span class="font-bold text-slate-600"><?php echo e(payment_gateway_label($gw_aktif)); ?></span>.
+                                Dipakai sekarang: <span class="font-bold text-slate-600"><?php echo e(payment_gateway_label($gw_aktif)); ?></span>,
+                                pilihan utama <span class="font-bold text-slate-600"><?php echo e(payment_gateway_label(payment_preferred_gateway_code())); ?></span>.
                                 Kredensial, tarif, sakelar Midtrans/Flip, transaksi uji, dan monitor kini ada di halaman tersendiri.
                             </p>
                         </div>

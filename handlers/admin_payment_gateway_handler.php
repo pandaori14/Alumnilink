@@ -140,11 +140,13 @@ switch ($aksi) {
             panel_kembali(false, 'Masa berlaku tagihan harus antara 15 menit dan 7 hari (10080 menit).', 'umum');
         }
         $wajib_lunas = !empty($_POST['legalisir_require_paid']) ? '1' : '0';
+        $cadangan    = !empty($_POST['payment_fallback_enabled']) ? '1' : '0';
         setting_save('payment_custom_charge_legalisir', (string)$leg);
         setting_save('payment_custom_charge_donasi', (string)$don);
         setting_save('payment_expiry', (string)$exp);
         setting_save('legalisir_require_paid', $wajib_lunas);
-        log_activity('PAYMENT_GENERAL_SETTINGS', "Pengaturan umum pembayaran oleh $oleh: biaya tambahan legalisir Rp $leg, donasi Rp $don, masa berlaku $exp menit, wajib lunas sebelum diproses = $wajib_lunas.");
+        setting_save('payment_fallback_enabled', $cadangan);
+        log_activity('PAYMENT_GENERAL_SETTINGS', "Pengaturan umum pembayaran oleh $oleh: biaya tambahan legalisir Rp $leg, donasi Rp $don, masa berlaku $exp menit, wajib lunas sebelum diproses = $wajib_lunas, gateway cadangan = $cadangan.");
         panel_kembali(true, 'Pengaturan umum pembayaran disimpan. Berlaku untuk tagihan baru.', 'umum');
 
     case 'tes':

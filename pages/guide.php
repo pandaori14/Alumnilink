@@ -284,7 +284,9 @@ $is_super = ($current_role === 'super_admin');
                         <div class="space-y-2 text-sm text-slate-600">
                             <p>Menu <b>Gateway Pembayaran</b> mengatur seluruh urusan uang: kredensial, tarif, dan penyedia mana yang dipakai.</p>
                             <ul class="list-disc pl-5 space-y-1">
-                                <li><b>Satu penyedia aktif.</b> Yang aktif menentukan lewat mana tagihan BARU terbit. Tagihan yang sudah terbit tetap dibayar lewat penyedia asalnya, jadi memindahkan sakelar tidak membatalkan tagihan siapa pun.</li>
+                                <li><b>Pilihan utama vs yang dipakai.</b> Pilihan utama adalah penyedia yang dikehendaki fakultas. Ia dipakai bila sudah siap — kredensial lengkap, tarif sah dan sudah dicocokkan. Bila belum siap, tagihan otomatis terbit lewat penyedia lain yang siap, dan panel menjelaskan alasannya. Begitu yang utama siap, tagihan berpindah sendiri tanpa menekan tombol apa pun.</li>
+                                <li><b>Cadangan otomatis.</b> Bila penyedia yang sedang dipakai menolak menerbitkan tagihan, sistem langsung mencoba penyedia lain sekali lagi; alumni tidak melihat kegagalan. Perpindahan itu tercatat di Audit Trail dan diberitahukan ke Anda. Tagihan yang sudah terbit tetap dibayar lewat penyedia asalnya.</li>
+                                <li><b>Tunai</b> selalu menjadi jalan terakhir: tandai lunas lewat verifikasi tunai di Kelola Legalisir.</li>
                                 <li><b>Kredensial hanya-tulis.</b> Kunci yang sudah tersimpan tidak pernah ditampilkan kembali; kolom yang dikosongkan berarti "tidak diubah". Mengubah kunci atau mode membatalkan hasil tes koneksi terakhir.</li>
                                 <li><b>Tes koneksi dulu.</b> Penyedia hanya bisa diaktifkan bila kredensialnya lengkap, tes koneksi berhasil dalam 24 jam terakhir pada mode yang sama, dan tarifnya sudah Anda cocokkan dengan tarif resmi.</li>
                                 <li><b>Tarif.</b> Setiap perubahan menampilkan contoh perhitungan langsung. Tarif hanya berlaku untuk tagihan baru; tagihan yang sudah terbit tidak berubah.</li>

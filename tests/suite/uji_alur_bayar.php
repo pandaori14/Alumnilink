@@ -33,7 +33,8 @@ $KUNCI = ['midtrans_server_key', 'midtrans_client_key', 'midtrans_is_production'
           'payment_custom_charge_legalisir', 'payment_custom_charge_donasi', 'payment_expiry',
           // Ditulis ulang oleh setiap POST ke handler Pengaturan (bagian K)
           'google_oauth_auto_verify', 'dashboard_bg_animation', 'email_send_direct', 'audit_log_auto_erase',
-          'rbac_enforce', 'cron_token', 'ujialur_kunci_bebas', 'legalisir_require_paid'];
+          'rbac_enforce', 'cron_token', 'ujialur_kunci_bebas', 'legalisir_require_paid',
+          'payment_fallback_enabled', 'fee_midtrans_reviewed'];
 $SEMULA = [];
 foreach ($KUNCI as $k) {
     $q = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
@@ -110,7 +111,9 @@ setting_save('smtp_force_real', '0');           // e-mail ke log, bukan ke alumn
 setting_save('midtrans_server_key', '');        // tagihan gagal SEBELUM koneksi dibuka
 setting_save('flip_secret_key', '');
 setting_save('flip_validation_token', '');
-setting_save('payment_gateway_active', 'midtrans');
+setting_save('payment_gateway_active', 'midtrans');   // pilihan dikunci: yang diuji alurnya, bukan pemilihannya
+setting_save('fee_midtrans_reviewed', '1');
+setting_save('payment_fallback_enabled', '0');        // kegagalan gateway harus tetap terlihat sebagai kegagalan
 $pdo->prepare("UPDATE users SET is_verified = 1, last_tracer_update = NOW() WHERE id = ?")->execute([$al->id]);
 bersihkan_batas();
 
@@ -530,7 +533,9 @@ setting_save('midtrans_server_key', $rahasia);
 cek($c === 200 && tanpa_galat_php($b) && strpos($b, 'Gateway Pembayaran') !== false, 'panel tampil bagi super admin', "HTTP $c");
 cek(strpos($b, $rahasia) === false && strpos($b, '••••9876') !== false, 'server key tidak pernah dicetak, hanya 4 karakter terakhir');
 cek(strpos($b, 'handlers/midtrans_webhook.php') !== false && strpos($b, 'handlers/flip_callback.php') !== false, 'kedua URL callback ditampilkan');
-cek(strpos($b, 'Belum dapat dijadikan aktif') !== false, 'Flip tanpa tes: penghalang sakelar ditampilkan');
+cek(strpos($b, 'Belum dapat dijadikan pilihan utama') !== false, 'Flip tanpa tes: penghalang sakelar ditampilkan');
+cek(strpos($b, 'Dipakai sekarang') !== false && strpos($b, 'Pilihan utama') !== false,
+    'panel membedakan pilihan utama dan gateway yang dipakai');
 setting_save('midtrans_server_key', '');
 
 $SESI['legalisir'] = sesi_palsu($uid_sa, 'admin_legalisir', $CSRF);

@@ -26,7 +26,8 @@ if (($_SESSION['user_role'] ?? '') !== 'super_admin') {
 
 require_once __DIR__ . '/../includes/payment/panel.php';
 
-$aktif = payment_active_gateway_code();
+$pilihan = payment_preferred_gateway_code();   // yang dikehendaki fakultas
+$aktif   = payment_active_gateway_code();      // yang benar-benar dipakai sekarang
 $flash = $_SESSION['panel_bayar_flash'] ?? null;
 unset($_SESSION['panel_bayar_flash']);
 
@@ -56,6 +57,7 @@ foreach (payment_gateway_codes() as $kode) {
         'callback'  => payment_callback_url($kode),
         'profil'    => payment_fee_profile($kode),
         'contoh'    => payment_panel_examples($kode),
+        'kesiapan'  => payment_gateway_readiness($kode),
     ];
 }
 
@@ -64,6 +66,7 @@ $umum = [
     'donasi'    => (int)setting('payment_custom_charge_donasi', '0'),
     'expiry'    => setting_int('payment_expiry', 1440, 15),
     'wajib_lunas' => setting('legalisir_require_paid', '0') === '1',
+    'cadangan'    => setting('payment_fallback_enabled', '1') === '1',
 ];
 $diproses_belum_lunas = (int)$pdo->query("SELECT COUNT(*) FROM activity_logs
     WHERE action = 'LEGALISIR_UNPAID_PROCESSED' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)")->fetchColumn();
@@ -114,14 +117,26 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
             <h1 class="text-2xl md:text-3xl font-black outfit text-slate-800">Gateway Pembayaran</h1>
-            <p class="text-slate-500 text-sm mt-1">Satu gateway aktif untuk tagihan baru. Tagihan yang sudah terbit tetap diproses gateway asalnya.</p>
+            <p class="text-slate-500 text-sm mt-1">Pilihan utama dipakai bila sudah siap; bila belum, tagihan baru terbit lewat gateway lain yang siap. Tagihan yang sudah terbit tetap diproses gateway asalnya.</p>
         </div>
         <div class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-900 text-white">
             <i data-lucide="zap" class="w-5 h-5"></i>
-            <span class="text-sm font-bold">Aktif: <?php echo e(payment_gateway_label($aktif)); ?>
+            <span class="text-sm font-bold">Dipakai sekarang: <?php echo e(payment_gateway_label($aktif)); ?>
                 · <?php echo e($gateway[$aktif]['produksi'] ? 'PRODUKSI' : 'sandbox'); ?></span>
         </div>
     </div>
+
+    <?php if ($pilihan !== $aktif): ?>
+        <div class="p-4 rounded-2xl border bg-amber-50 border-amber-200 text-amber-800 flex items-start gap-3">
+            <i data-lucide="info" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <span class="text-sm font-medium">
+                Pilihan utama fakultas adalah <b><?php echo e(payment_gateway_label($pilihan)); ?></b>, tetapi tagihan
+                baru sementara terbit lewat <b><?php echo e(payment_gateway_label($aktif)); ?></b> karena
+                <?php echo e(implode(' dan ', $gateway[$pilihan]['kesiapan'])); ?>.
+                Begitu keduanya dibereskan, tagihan baru berpindah sendiri — tidak ada tombol yang perlu ditekan.
+            </span>
+        </div>
+    <?php endif; ?>
 
     <?php if ($flash): ?>
         <div class="p-4 rounded-2xl border flex items-start gap-3 <?php echo e($flash['ok'] ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'); ?>">
@@ -153,9 +168,15 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                     <h2 class="text-xl font-black outfit text-slate-800"><?php echo e($g['label']); ?></h2>
                     <div class="flex flex-wrap gap-2 mt-2">
                         <?php if ($kode === $aktif): ?>
-                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white">Aktif</span>
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white">Dipakai sekarang</span>
                         <?php else: ?>
-                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500">Siaga</span>
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-500">Cadangan</span>
+                        <?php endif; ?>
+                        <?php if ($kode === $pilihan): ?>
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-900 text-white">Pilihan utama</span>
+                        <?php endif; ?>
+                        <?php if ($g['kesiapan']): ?>
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700">Belum siap</span>
                         <?php endif; ?>
                         <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider <?php echo e($g['produksi'] ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'); ?>">
                             <?php echo e($g['produksi'] ? 'Produksi' : 'Sandbox'); ?>
@@ -191,10 +212,10 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
             </div>
 
             <!-- Sakelar -->
-            <?php if ($kode !== $aktif): ?>
+            <?php if ($kode !== $pilihan): ?>
                 <?php if ($g['penghalang']): ?>
                     <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                        <p class="font-bold mb-2">Belum dapat dijadikan aktif:</p>
+                        <p class="font-bold mb-2">Belum dapat dijadikan pilihan utama:</p>
                         <ul class="list-disc pl-5 space-y-1">
                             <?php foreach ($g['penghalang'] as $alasan): ?>
                                 <li><?php echo e($alasan); ?></li>
@@ -209,7 +230,7 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                         <input type="hidden" name="aksi" value="aktifkan">
                         <input type="hidden" name="gateway" value="<?php echo e($kode); ?>">
                         <button type="submit" class="w-full py-3.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                            <i data-lucide="repeat" class="w-4 h-4"></i> Jadikan gateway aktif
+                            <i data-lucide="repeat" class="w-4 h-4"></i> Jadikan pilihan utama
                         </button>
                     </form>
                 <?php endif; ?>
@@ -338,6 +359,16 @@ $rp = function ($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); };
                 <input id="u_exp" type="number" min="15" max="10080" step="1" name="payment_expiry" value="<?php echo e($umum['expiry']); ?>" required class="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none text-sm font-bold">
             </div>
             <button type="submit" class="py-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-all">Simpan</button>
+            <label class="md:col-span-4 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
+                <input type="checkbox" name="payment_fallback_enabled" value="1" <?php echo e($umum['cadangan'] ? 'checked' : ''); ?> class="accent-blue-600 mt-0.5">
+                <span>
+                    <span class="font-bold text-slate-800 block mb-1">Pakai gateway cadangan bila yang utama gagal</span>
+                    Bila penyedia yang sedang dipakai menolak menerbitkan tagihan (API mati, kunci ditolak), tagihan
+                    langsung dicoba sekali lagi lewat penyedia lain yang siap, sehingga alumni tidak melihat kegagalan
+                    apa pun. Perpindahan dicatat di Audit Trail dan diberitahukan ke super admin. Pembayaran tunai
+                    tetap menjadi jalan terakhir lewat verifikasi manual.
+                </span>
+            </label>
             <label class="md:col-span-4 flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
                 <input type="checkbox" name="legalisir_require_paid" value="1" <?php echo e($umum['wajib_lunas'] ? 'checked' : ''); ?> class="accent-blue-600 mt-0.5">
                 <span>

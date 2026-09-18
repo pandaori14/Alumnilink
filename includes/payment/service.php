@@ -132,7 +132,7 @@ function payment_return_url($merchant_ref)
  * @param array $customer name, email, phone, address
  * @return array ok, error, txn
  */
-function payment_create($purpose, $subject_id, $merchant_ref, array $quote, array $customer, $created_by = null)
+function payment_create($purpose, $subject_id, $merchant_ref, array $quote, array $customer, $created_by = null, $boleh_cadangan = true)
 {
     global $pdo;
 
@@ -150,7 +150,7 @@ function payment_create($purpose, $subject_id, $merchant_ref, array $quote, arra
         ]);
     $txn = payment_txn_get($pdo->lastInsertId());
 
-    return payment_charge($txn, $quote['items'] ?? [], $customer);
+    return payment_charge($txn, $quote['items'] ?? [], $customer, $boleh_cadangan);
 }
 
 /** Rincian yang disimpan per transaksi — tidak dihitung ulang dari setting saat ini. */
@@ -173,12 +173,33 @@ function payment_breakdown_snapshot(array $quote)
     ];
 }
 
-/** Minta tagihan ke gateway untuk transaksi yang sudah tercatat. */
-function payment_charge($txn, array $items, array $customer)
+/**
+ * Minta tagihan ke gateway untuk transaksi yang sudah tercatat.
+ *
+ * Bila gateway itu gagal — API tidak membalas, kunci ditolak, kanal mati —
+ * tagihan dicoba SEKALI LAGI lewat gateway cadangan yang siap, dan
+ * transaksinya berpindah ke gateway itu. Alumni tidak perlu tahu salah satu
+ * penyedia sedang bermasalah; yang penting tagihannya terbit.
+ *
+ * Nominalnya TIDAK dihitung ulang: yang dipakai tetap amount_expected yang
+ * sudah tersimpan, meski profil biaya kedua gateway berbeda. Angka yang
+ * dilihat alumni di pratinjau tidak boleh berubah karena kejadian di sisi
+ * kami.
+ *
+ * @param bool $boleh_cadangan false pada percobaan cadangan itu sendiri,
+ *                             supaya tidak berputar.
+ */
+function payment_charge($txn, array $items, array $customer, $boleh_cadangan = true)
 {
     global $pdo;
 
     $gw = payment_gateway($txn->gateway);
+    if (!$gw) {
+        $pdo->prepare("UPDATE payment_transactions SET status = 'create_failed', last_error = ? WHERE id = ?")
+            ->execute(['Gateway ' . $txn->gateway . ' tidak dikenal.', $txn->id]);
+        $txn = payment_txn_get($txn->id);
+        return ['ok' => false, 'error' => 'Gateway tidak dikenal.', 'txn' => $txn];
+    }
     $hasil = $gw->createCharge([
         'merchant_ref'     => $txn->merchant_ref,
         'amount'           => (int)round((float)$txn->amount_expected),
@@ -201,11 +222,53 @@ function payment_charge($txn, array $items, array $customer)
         error_log("Pembayaran: gagal membuat tagihan {$txn->merchant_ref} di {$txn->gateway}: {$hasil['error']}");
         $pdo->prepare("UPDATE payment_transactions SET status = 'create_failed', last_error = ? WHERE id = ?")
             ->execute([substr((string)$hasil['error'], 0, 255), $txn->id]);
+
+        $cadangan = $boleh_cadangan ? payment_backup_gateway_code($txn->gateway) : null;
+        if ($cadangan) {
+            $gagal = $txn->gateway;
+            $pdo->prepare("UPDATE payment_transactions SET gateway = ?, status = 'pending' WHERE id = ?")
+                ->execute([$cadangan, $txn->id]);
+            $ulang = payment_charge(payment_txn_get($txn->id), $items, $customer, false);
+            payment_report_fallback($gagal, $cadangan, $ulang['ok'], (string)$hasil['error'], $ulang['txn']);
+            return $ulang;
+        }
     }
 
     $txn = payment_txn_get($txn->id);
     payment_sync_legacy($txn->purpose, $txn->subject_id);
     return ['ok' => (bool)$hasil['ok'], 'error' => $hasil['error'] ?? null, 'txn' => $txn];
+}
+
+/**
+ * Catat perpindahan ke gateway cadangan.
+ *
+ * Selalu masuk Audit Trail; notifikasi ke super admin dibatasi satu kali
+ * per 30 menit. Bila satu gateway tumbang di jam sibuk, setiap pengajuan
+ * akan memicu perpindahan — dan 40 notifikasi identik justru membuat
+ * kejadian pentingnya tenggelam.
+ */
+function payment_report_fallback($gagal, $cadangan, $berhasil, $galat, $txn)
+{
+    $pesan = sprintf('%s gagal menerbitkan tagihan %s (%s). Dialihkan ke %s: %s.',
+        payment_gateway_label($gagal), $txn->merchant_ref ?? '-', substr($galat, 0, 120),
+        payment_gateway_label($cadangan), $berhasil ? 'berhasil' : 'JUGA GAGAL');
+
+    if (function_exists('log_activity')) {
+        log_activity('PAYMENT_GATEWAY_FALLBACK', $pesan);
+    }
+    error_log('Pembayaran: ' . $pesan);
+
+    $terakhir = (int)setting('payment_fallback_notice_at', '0');
+    if (time() - $terakhir < 1800) {
+        return;
+    }
+    setting_save('payment_fallback_notice_at', (string)time());
+    if (function_exists('notify_roles')) {
+        notify_roles(['super_admin'], 'Gateway pembayaran dialihkan otomatis',
+            $pesan . ' Tagihan baru sementara memakai ' . payment_gateway_label($cadangan)
+            . '. Periksa tes koneksi di panel Gateway Pembayaran.',
+            $berhasil ? 'warning' : 'error', 'index.php?page=admin_payment_gateway');
+    }
 }
 
 /**

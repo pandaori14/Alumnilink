@@ -109,7 +109,9 @@ function payment_switch_blockers($gateway)
  */
 function payment_switch_gateway($gateway, $oleh)
 {
-    $dari = payment_active_gateway_code();
+    // Yang dipindah adalah PILIHAN UTAMA. Gateway yang benar-benar dipakai
+    // tetap ditentukan kesiapan (payment_active_gateway_code).
+    $dari = payment_preferred_gateway_code();
     if ($gateway === $dari) {
         return ['ok' => false, 'error' => payment_gateway_label($gateway) . ' sudah menjadi gateway aktif.', 'dari' => $dari, 'ke' => $gateway];
     }
@@ -182,5 +184,8 @@ function payment_create_test($gateway, array $customer, $oleh)
         return ['ok' => false, 'error' => $quote['error'], 'txn' => null];
     }
     $ref = payment_unique_ref('UJI-' . strtoupper(uniqid()));
-    return payment_create('uji', $ref, $ref, $quote, $customer, $oleh);
+    // Tanpa cadangan: transaksi uji harus membuktikan gateway YANG DIUJI.
+    // Bila ia dialihkan diam-diam ke gateway lain, ujinya tidak membuktikan
+    // apa pun tentang gateway yang sedang disiapkan.
+    return payment_create('uji', $ref, $ref, $quote, $customer, $oleh, false);
 }

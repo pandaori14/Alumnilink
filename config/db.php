@@ -739,7 +739,13 @@ try {
     };
     $semai_bayar = $pdo->prepare("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)");
     foreach ([
-        'payment_gateway_active'          => 'midtrans',
+        // Pilihan utama fakultas adalah Flip. Selama kredensial dan tarif
+        // Flip belum diisi, includes/payment/gateway.php otomatis memakai
+        // gateway lain yang siap (Midtrans), jadi menyemai nilai ini TIDAK
+        // menghentikan pembayaran. Begitu Flip siap, tagihan baru berpindah
+        // sendiri tanpa menyentuh kode.
+        'payment_gateway_active'          => 'flip',
+        'payment_fallback_enabled'        => '1',
         'flip_secret_key'                 => '',
         'flip_validation_token'           => '',
         'flip_is_production'              => '0',

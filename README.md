@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 13 suite — **±500 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 18 suite — **±880 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -68,7 +68,17 @@ dari kesalahan yang pernah lolos ke produksi:
 |---|---|
 | `tests/lint_syntax.php` | Galat sintaks di seluruh berkas |
 | `tests/lint_leaked_php.php` | Kode PHP yang tercetak sebagai teks — `?>` liar pernah membocorkan 2 KB kode sumber ke setiap halaman, dan `php -l` tetap bersih |
-| `tests/lint_unescaped.php` | Keluaran variabel tanpa escape (XSS) |
+| `tests/lint_unescaped.php` | Keluaran variabel tanpa escape (XSS), termasuk JSON yang di-escape HTML di dalam blok skrip |
+| `tests/lint_inline_js.php` | Galat sintaks di JavaScript yang ditulis langsung di berkas PHP |
+
+Tiga suite memakai peramban sungguhan (Chrome headless, tanpa paket npm)
+dan otomatis dilewati di mesin yang tidak memasangnya:
+
+| Suite | Menangkap |
+|---|---|
+| `uji_js_render.php` | Skrip yang rusak hanya SETELAH nilai PHP disisipkan — kerangkanya sah, hasil render-nya tidak |
+| `uji_responsif.php` | Halaman yang dapat digeser ke samping di ponsel, tablet, atau laptop; isi yang tertutup menu bawah |
+| `uji_alur_bayar.php` | Alur pembayaran lewat HTTP, tanpa satu pun panggilan ke gateway sungguhan |
 
 ---
 
@@ -125,11 +135,20 @@ penjagaan sesi, verifikasi, mode perawatan, dan RBAC.
 
 ## Pembayaran
 
-Dua gateway — **Midtrans** dan **Flip** — tetapi hanya **satu aktif** pada
-satu waktu. Yang aktif menentukan lewat mana tagihan **baru** terbit;
-tagihan yang sudah terbit tetap dibayar dan dikonfirmasi lewat gateway
-asalnya. Sakelarnya ada di **Pengaturan Sistem → Gateway Pembayaran**
-(khusus super admin), bukan di berkas konfigurasi.
+Dua gateway — **Flip** sebagai pilihan utama dan **Midtrans** sebagai
+cadangan — ditambah **tunai** sebagai jalur manual. Satu gateway dipakai
+pada satu waktu untuk tagihan **baru**; tagihan yang sudah terbit tetap
+dibayar dan dikonfirmasi lewat gateway asalnya. Semuanya diatur di
+**Pengaturan Sistem → Gateway Pembayaran** (khusus super admin), bukan di
+berkas konfigurasi.
+
+Pilihan utama dan gateway yang benar-benar dipakai adalah dua hal berbeda:
+pilihan utama dipakai **bila siap** (kredensial lengkap, profil biaya sah,
+tarif sudah dicocokkan); bila belum, tagihan terbit lewat gateway lain yang
+siap. Jadi `payment_gateway_active` boleh menunjuk Flip sebelum
+kredensialnya ada — begitu diisi, tagihan berpindah sendiri. Bila gateway
+yang dipakai menolak saat tagihan dibuat, tagihan dicoba sekali lagi lewat
+gateway lain dan alumni tidak melihat kegagalan apa pun.
 
 URL yang harus didaftarkan di dashboard gateway:
 
