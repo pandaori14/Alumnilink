@@ -58,7 +58,7 @@ keputusan membuang kode ada di pemilik sistem.
 | `tracer_needs_update()` | `includes/settings.php` | Logikanya kini ada di `index.php`. Aman dihapus. |
 | `error_unauthenticated()` | `includes/error_page.php` | Bagian dari kumpulan halaman galat; **pertahankan** agar lengkap. |
 | `setting_bool()`, `require_login()` | `includes/settings.php`, `auth_guard.php` | Pustaka bersama yang belum terpakai. Pertahankan. |
-| `checkMatch()` | `pages/reset_password.php` (JavaScript) | Pemeriksa kecocokan kata sandi yang tidak pernah dipasang ke kolomnya — **kemungkinan cacat UI**, bukan kode mati. Periksa (Prioritas 3.1). |
+| ~~`checkMatch()`~~ | `pages/reset_password.php` (JavaScript) | **Keliru dilaporkan.** Fungsinya terpasang benar lewat `addEventListener('input', checkMatch)` — tanpa tanda kurung, sehingga pemeriksa statis menghitungnya "tidak pernah dipanggil". Diperiksa 19 September 2026: indikator "kata sandi tidak cocok" berfungsi, dan pengiriman form juga ditahan bila tidak cocok. |
 
 ### 2.3 Data lama yang tidak lagi dibaca
 
@@ -196,24 +196,20 @@ sementara dan melaporkan hasilnya ke super admin.
 
 ### Prioritas 3 — Kenyamanan dan kualitas
 
-**3.1 Periksa `checkMatch()` di halaman atur ulang kata sandi** · kecil
-Fungsinya ada tetapi tidak pernah dipasang; kemungkinan indikator
-"kata sandi cocok" tidak pernah muncul.
-
-**3.2 Kirim e-mail uji dari panel SMTP** · kecil
+**3.1 Kirim e-mail uji dari panel SMTP** · kecil
 Saat ini satu-satunya cara menguji SMTP adalah memakai fitur sungguhan.
 
-**3.3 Pratinjau e-mail sebelum broadcast** · sedang
+**3.2 Pratinjau e-mail sebelum broadcast** · sedang
 
-**3.4 Wizard pemasangan awal** · sedang
+**3.3 Wizard pemasangan awal** · sedang
 Untuk pemasangan di fakultas lain: memandu logo, SMTP, gateway, dan akun
 super admin pertama.
 
-**3.5 Uji end-to-end alumni** · sedang
+**3.4 Uji end-to-end alumni** · sedang
 Satu suite yang menempuh daftar → verifikasi → tracer → legalisir → bayar →
 selesai, sebagai jaring pengaman terakhir.
 
-**3.6 Pemeriksa aksesibilitas otomatis** · sedang
+**3.5 Pemeriksa aksesibilitas otomatis** · sedang
 Kontras warna, label kolom, dan urutan fokus — diperiksa di Chrome headless
 seperti `uji_responsif`.
 
