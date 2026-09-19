@@ -16,8 +16,8 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 27 langkah, 1009 pemeriksaan |
-| Versi skema | `2026.09.18.1` |
+| Rangkaian uji | `php tests/run_all.php` — 27 langkah, 1018 pemeriksaan |
+| Versi skema | `2026.09.19.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
 diunggah, produksi masih memakai kode lama.
@@ -170,6 +170,29 @@ HTML-nya lengkap, skripnya sah secara sintaks, konsol bersih. Karena itu
 ditambahkan `tests/suite/uji_interaksi.php`: menekan tombol sungguhan di
 Chrome lewat koordinat, lalu membuktikan sesuatu benar-benar berubah.
 
+**Notifikasi peran berhenti terlihat saat perannya dicabut** · 19 September 2026
+Diaudit atas permintaan pemilik sistem: adakah notifikasi admin yang nyasar
+ke akun lain? Datanya bersih — seluruh notifikasi admin berada di akun
+super admin, tidak ada satu pun judul khusus admin di akun alumni, tidak ada
+baris tanpa pemilik. `notify_roles()` menyasar menurut peran, setiap
+`add_notification()` menyasar pemilik datanya sendiri, dan API notifikasi
+menyaring menurut `user_id` di setiap aksinya.
+
+Yang belum terjaga adalah waktu: notifikasi dikirim menurut peran **saat
+itu**, lalu menetap di akun selamanya. Seseorang yang dulu super admin lalu
+dikembalikan menjadi alumni tetap dapat membaca peringatan keamanan, nama
+alumni lain, dan nominal pembayaran yang dikirim kepadanya sebagai admin.
+
+Kolom `notifications.audience_roles` kini mencatat peran yang menjadi alasan
+pengiriman, dan API menyaringnya menurut peran **sekarang**. Baris tidak
+dihapus — hanya berhenti tampil bagi yang tidak lagi berhak, dan kembali
+tampil bila perannya dipulihkan. Notifikasi pribadi (NULL) tidak tersentuh.
+
+Pengisian mundur dilakukan dengan dua rem: hanya judul yang di dalam kode
+HANYA dikirim lewat `notify_roles()`, dan hanya baris milik orang yang
+sekarang memegang peran admin. Dua judul sengaja dilewati karena judul yang
+sama juga dikirim ke alumninya sendiri. Versi skema naik ke `2026.09.19.1`.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.4 Riwayat perubahan pengaturan** · sedang
@@ -240,4 +263,4 @@ seperti `uji_responsif`.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 1009 pemeriksaan sekarang berarti.
+membuat 1018 pemeriksaan sekarang berarti.

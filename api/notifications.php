@@ -40,6 +40,20 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+
+/**
+ * Penyaring kepemilikan: baris milik pengguna ini DAN masih pantas dilihat.
+ *
+ * notify_roles() mencatat peran yang menjadi alasan pengiriman. Seseorang
+ * yang dulu super admin lalu dikembalikan menjadi alumni tidak boleh terus
+ * membaca peringatan keamanan, nama alumni lain, dan nominal pembayaran yang
+ * dikirim kepadanya sebagai admin. Baris lama (audience_roles NULL) dan
+ * notifikasi pribadi tetap tampil, karena memang ditujukan kepada orangnya.
+ */
+$peran_kini = (string)($_SESSION['user_role'] ?? '');
+const NOTIF_MILIK = " user_id = ? AND (audience_roles IS NULL OR audience_roles = ''
+                      OR FIND_IN_SET(?, audience_roles)) ";
+$MILIK = [$user_id, $peran_kini];
 $action  = $_GET['action'] ?? $_POST['action'] ?? '';
 
 // Seluruh tindakan yang mengubah data wajib membawa token CSRF.
@@ -111,22 +125,22 @@ try {
             $filter = ($_GET['filter'] ?? 'unread') === 'all' ? 'all' : 'unread';
             $limit  = min(100, max(1, (int)($_GET['limit'] ?? 30)));
 
-            $sql = "SELECT * FROM notifications WHERE user_id = ?";
+            $sql = "SELECT * FROM notifications WHERE " . NOTIF_MILIK;
             if ($filter === 'unread') {
                 $sql .= " AND is_read = 0";
             }
             $sql .= " ORDER BY created_at DESC LIMIT " . $limit;
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$user_id]);
+            $stmt->execute($MILIK);
 
             $items = array_map('bentuk_notifikasi', $stmt->fetchAll());
 
-            $unread = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
-            $unread->execute([$user_id]);
+            $unread = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE " . NOTIF_MILIK . " AND is_read = 0");
+            $unread->execute($MILIK);
 
-            $total = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ?");
-            $total->execute([$user_id]);
+            $total = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE " . NOTIF_MILIK);
+            $total->execute($MILIK);
 
             echo json_encode([
                 'success' => true,
@@ -138,8 +152,8 @@ try {
 
         // ── Jumlah belum dibaca (untuk lencana) ──────────────────────
         case 'count':
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
-            $stmt->execute([$user_id]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE " . NOTIF_MILIK . " AND is_read = 0");
+            $stmt->execute($MILIK);
             echo json_encode(['success' => true, 'unread' => (int)$stmt->fetchColumn()]);
             break;
 
@@ -148,8 +162,8 @@ try {
             $id = (int)($_POST['id'] ?? 0);
 
             // Ambil dulu sekaligus verifikasi kepemilikan.
-            $stmt = $pdo->prepare("SELECT link FROM notifications WHERE id = ? AND user_id = ?");
-            $stmt->execute([$id, $user_id]);
+            $stmt = $pdo->prepare("SELECT link FROM notifications WHERE id = ? AND " . NOTIF_MILIK);
+            $stmt->execute(array_merge([$id], $MILIK));
             $row = $stmt->fetch();
 
             if (!$row) {
@@ -161,8 +175,8 @@ try {
             $upd = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?");
             $upd->execute([$id, $user_id]);
 
-            $sisa = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
-            $sisa->execute([$user_id]);
+            $sisa = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE " . NOTIF_MILIK . " AND is_read = 0");
+            $sisa->execute($MILIK);
 
             // Tujuan berasal dari basis data, bukan dari masukan pengguna.
             // Tautan absolut ke domain luar sengaja ditolak.
@@ -180,19 +194,23 @@ try {
 
         // ── Tandai seluruhnya dibaca ─────────────────────────────────
         case 'read_all':
-            $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
-            $stmt->execute([$user_id]);
+            // Hanya yang memang terlihat baginya. Baris yang tersembunyi
+            // karena perannya berubah tidak ikut ditandai — bila perannya
+            // dikembalikan, statusnya harus apa adanya, bukan "sudah dibaca"
+            // oleh tindakan yang tidak pernah melihatnya.
+            $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE " . NOTIF_MILIK . " AND is_read = 0");
+            $stmt->execute($MILIK);
             echo json_encode(['success' => true, 'affected' => $stmt->rowCount(), 'unread' => 0]);
             break;
 
         // ── Hapus satu ───────────────────────────────────────────────
         case 'delete':
             $id   = (int)($_POST['id'] ?? 0);
-            $stmt = $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
-            $stmt->execute([$id, $user_id]);
+            $stmt = $pdo->prepare("DELETE FROM notifications WHERE id = ? AND " . NOTIF_MILIK);
+            $stmt->execute(array_merge([$id], $MILIK));
 
-            $sisa = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
-            $sisa->execute([$user_id]);
+            $sisa = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE " . NOTIF_MILIK . " AND is_read = 0");
+            $sisa->execute($MILIK);
 
             echo json_encode([
                 'success' => $stmt->rowCount() > 0,
@@ -202,8 +220,8 @@ try {
 
         // ── Bersihkan riwayat yang sudah dibaca ──────────────────────
         case 'delete_read':
-            $stmt = $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND is_read = 1");
-            $stmt->execute([$user_id]);
+            $stmt = $pdo->prepare("DELETE FROM notifications WHERE " . NOTIF_MILIK . " AND is_read = 1");
+            $stmt->execute($MILIK);
             echo json_encode(['success' => true, 'affected' => $stmt->rowCount()]);
             break;
 

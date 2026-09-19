@@ -285,13 +285,18 @@ function get_device_type($ua) {
 }
 
 /**
- * Create a single notification for a specific user
+ * Buat satu notifikasi untuk satu pengguna.
+ *
+ * @param string|null $audience_roles Daftar peran (dipisah koma) yang menjadi
+ *        alasan notifikasi ini dikirim. NULL berarti ditujukan kepada ORANGNYA
+ *        — status legalisirnya sendiri, akunnya sendiri — dan tetap miliknya
+ *        apa pun perannya kelak. Diisi hanya oleh notify_roles().
  */
-function add_notification($user_id, $title, $message, $type = 'info', $link = null) {
+function add_notification($user_id, $title, $message, $type = 'info', $link = null, $audience_roles = null) {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type, is_read, link, created_at) VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)");
-        return $stmt->execute([$user_id, $title, $message, $type, $link]);
+        $stmt = $pdo->prepare("INSERT INTO notifications (user_id, title, message, type, is_read, link, audience_roles, created_at) VALUES (?, ?, ?, ?, 0, ?, ?, CURRENT_TIMESTAMP)");
+        return $stmt->execute([$user_id, $title, $message, $type, $link, $audience_roles]);
     } catch (PDOException $e) {
         error_log("Failed to insert notification: " . $e->getMessage());
         return false;
@@ -316,8 +321,12 @@ function notify_roles($roles, $title, $message, $type = 'info', $link = null) {
         $stmt->execute($roles);
         $uids = $stmt->fetchAll(PDO::FETCH_COLUMN);
         
+        // Peran yang menjadi alasan pengiriman ikut dicatat. Bila kelak
+        // peran seseorang dicabut, notifikasi ini berhenti tampil baginya —
+        // isinya memang bukan untuk dia lagi. Lihat api/notifications.php.
+        $audiens = implode(',', $roles);
         foreach ($uids as $uid) {
-            add_notification($uid, $title, $message, $type, $link);
+            add_notification($uid, $title, $message, $type, $link, $audiens);
         }
         return true;
     } catch (PDOException $e) {

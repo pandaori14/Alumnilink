@@ -32,7 +32,7 @@ define('BASE_URL', getenv('APP_URL') ?: $default_url);
  * Naikkan nomor versi di bawah setiap kali menambahkan migrasi baru, agar
  * migrasi tersebut ikut berjalan sekali di server setelah di-upload.
  */
-define('ALUMNILINK_SCHEMA_VERSION', '2026.09.18.1');
+define('ALUMNILINK_SCHEMA_VERSION', '2026.09.19.1');
 
 /**
  * Benar bila skema database sudah sesuai versi yang diharapkan kode ini.
@@ -617,6 +617,61 @@ try {
     //
     // Bawaannya 0 (tetap tampil) agar perilaku tidak berubah mendadak bagi
     // yang sudah ada; alumni dapat menonaktifkan sendiri lewat halaman Profil.
+    // Peran yang menjadi ALASAN sebuah notifikasi dikirim (daftar dipisah
+    // koma), diisi notify_roles(). NULL berarti notifikasi pribadi: status
+    // legalisir orang itu sendiri, akunnya sendiri, donasinya sendiri.
+    //
+    // Dipakai api/notifications.php untuk menyembunyikan notifikasi peran
+    // dari orang yang perannya sudah dicabut. Tanpa ini, seseorang yang dulu
+    // super admin lalu dikembalikan menjadi alumni tetap dapat membaca
+    // peringatan keamanan, nama alumni lain, dan nominal pembayaran yang
+    // dulu dikirim kepadanya sebagai admin.
+    //
+    // Baris lama sengaja dibiarkan NULL: isinya sudah telanjur ada di akun
+    // masing-masing, dan menebak audiens dari judulnya akan salah pada kedua
+    // arah. Yang lama tetap tampil; yang baru dijaga sejak dikirim.
+    $kolom_audiens = $pdo->query("SHOW COLUMNS FROM notifications LIKE 'audience_roles'")->fetch();
+    if (!$kolom_audiens) {
+        $pdo->exec("ALTER TABLE notifications ADD COLUMN audience_roles VARCHAR(160) DEFAULT NULL AFTER link");
+
+        // Pengisian mundur, dengan dua rem sekaligus supaya tidak ada
+        // notifikasi pribadi yang tersembunyi karena tebakan yang salah:
+        //
+        //   1. Hanya judul yang di dalam kode HANYA dikirim lewat
+        //      notify_roles(). Dua judul sengaja TIDAK ada di sini —
+        //      "Pembayaran Tunai Terverifikasi" dan "Pembayaran Legalisir
+        //      Sukses" — karena judul yang sama juga dikirim ke alumninya
+        //      sendiri, dan membedakannya dari judul saja tidak mungkin.
+        //   2. Hanya baris milik orang yang SEKARANG memegang peran admin.
+        //      Bila barisnya ada di akun alumni, ia dibiarkan apa adanya:
+        //      entah memang miliknya, entah salah sasaran sejak dulu — dan
+        //      menyembunyikannya diam-diam bukan cara memperbaikinya.
+        $audiens_lama = [
+            'super_admin' => ['Alamat e-mail dinonaktifkan otomatis', 'Cadangan basis data GAGAL',
+                'Gateway Pembayaran Dipindah', 'Gateway pembayaran dialihkan otomatis',
+                'Impor data alumni', 'Nominal pembayaran TIDAK COCOK', 'Pembayaran GANDA terdeteksi',
+                'Pembayaran Online Ditutup', 'Pendaftaran Alumni Baru (Google)', 'Pendaftaran Alumni Baru',
+                'Peringatan Keamanan: Akses Tanpa Izin!', 'Peringatan Keamanan: Upaya Brute Force!',
+                'Peringatan Keamanan: Sesi Mencurigakan!', 'Transaksi Uji Lunas'],
+            // 'Pembayaran Cash Terverifikasi' judul lama yang sudah tidak
+            // dipakai kode mana pun; barisnya hanya ada di akun admin.
+            'super_admin,admin_legalisir' => ['Pengajuan Legalisir Baru', 'Pembayaran Cash Terverifikasi'],
+            'super_admin,admin_tracer' => ['Tracer Study Baru Masuk'],
+            'super_admin,keuangan' => ['Donasi Sukses Diterima', 'Pendaftaran Donasi Baru (Pending)'],
+        ];
+        $peran_admin = "'super_admin','admin_legalisir','admin_tracer','keuangan'";
+        foreach ($audiens_lama as $peran => $judul) {
+            $tanda = implode(',', array_fill(0, count($judul), '?'));
+            $upd = $pdo->prepare("UPDATE notifications n
+                                    JOIN users u ON u.id = n.user_id
+                                     SET n.audience_roles = ?
+                                   WHERE n.audience_roles IS NULL
+                                     AND n.title IN ($tanda)
+                                     AND u.role IN ($peran_admin)");
+            $upd->execute(array_merge([$peran], $judul));
+        }
+    }
+
     $kolom_optout = $pdo->query("SHOW COLUMNS FROM users LIKE 'map_opt_out'")->fetch();
     if (!$kolom_optout) {
         $pdo->exec("ALTER TABLE users ADD COLUMN map_opt_out TINYINT(1) NOT NULL DEFAULT 0 AFTER address");

@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 20 suite — **±1010 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 20 suite — **±1020 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 

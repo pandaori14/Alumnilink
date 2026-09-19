@@ -145,6 +145,9 @@ CREATE TABLE `notifications` (
   `type` varchar(50) DEFAULT 'info',
   `is_read` tinyint(1) DEFAULT 0,
   `link` varchar(255) DEFAULT NULL,
+  -- Peran yang menjadi alasan notifikasi ini dikirim (dipisah koma).
+  -- NULL = notifikasi pribadi, tetap milik orangnya apa pun perannya kelak.
+  `audience_roles` varchar(160) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),

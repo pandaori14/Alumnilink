@@ -168,6 +168,63 @@ $pdo->exec("DELETE FROM users WHERE id LIKE 'UJIRBAC-%'");
 $pdo->exec("DELETE FROM legalisir_requests WHERE id LIKE 'LEG-UJIRBAC-%'");
 $pdo->exec("DELETE FROM activity_logs WHERE action = 'DELETE_USER' AND description LIKE '%UJIRBAC%'");
 
+// ---- Sasaran notifikasi -------------------------------------------
+//
+// notify_roles() mengirim ke SEMUA pemegang peran itu, dan isinya kerap
+// memuat nama alumni lain, nominal pembayaran, dan peringatan keamanan.
+// Dua hal yang harus dijaga: notifikasi tidak nyasar ke akun lain, dan
+// notifikasi peran berhenti terlihat begitu peran itu dicabut.
+echo "\n=== sasaran notifikasi ===\n";
+
+require_once AKAR . '/includes/logger.php';
+
+$uid_al2 = $pdo->query("SELECT id FROM users WHERE role='alumni' LIMIT 1")->fetchColumn();
+$peran_asli = $pdo->query("SELECT role FROM users WHERE id = " . $pdo->quote($uid))->fetchColumn();
+$awal_notif = (int)$pdo->query("SELECT COALESCE(MAX(id),0) FROM notifications")->fetchColumn();
+
+notify_roles(['super_admin'], 'UJIRBAC Notifikasi Peran', 'Isi khusus admin', 'warning', 'index.php?page=admin_logs');
+add_notification($uid_al2, 'UJIRBAC Notifikasi Pribadi', 'Isi untuk orangnya sendiri', 'info', 'index.php?page=profile');
+
+$penerima = $pdo->query("SELECT n.user_id, u.role FROM notifications n JOIN users u ON u.id = n.user_id
+                          WHERE n.title = 'UJIRBAC Notifikasi Peran'")->fetchAll(PDO::FETCH_OBJ);
+$bukan_sa = array_filter($penerima, fn($r) => $r->role !== 'super_admin');
+cek($penerima && !$bukan_sa, 'notifikasi peran hanya masuk ke pemegang peran itu',
+    count($penerima) . ' penerima, ' . count($bukan_sa) . ' salah sasaran');
+
+$audiens = $pdo->query("SELECT audience_roles FROM notifications WHERE title = 'UJIRBAC Notifikasi Peran' LIMIT 1")->fetchColumn();
+cek($audiens === 'super_admin', 'alasan pengiriman ikut tercatat di barisnya', var_export($audiens, true));
+$pribadi = $pdo->query("SELECT audience_roles FROM notifications WHERE title = 'UJIRBAC Notifikasi Pribadi' LIMIT 1")->fetchColumn();
+cek($pribadi === null, 'notifikasi pribadi tidak ditandai peran apa pun', var_export($pribadi, true));
+
+// Alumni tidak boleh melihat notifikasi admin milik siapa pun, termasuk
+// lewat API-nya sendiri.
+$sid_al2 = sesi_palsu($uid_al2, 'alumni', $csrf);
+[$c, $raw] = panggil($sid_al2, "$BASE/api/notifications.php?action=list&filter=all&limit=100");
+$body = substr($raw, strpos($raw, '{') ?: 0);
+cek($c === 200 && strpos($body, 'UJIRBAC Notifikasi Peran') === false,
+    'alumni tidak melihat notifikasi khusus admin', "HTTP $c");
+cek(strpos($body, 'UJIRBAC Notifikasi Pribadi') !== false, 'alumni tetap melihat notifikasi pribadinya');
+
+// Peran dicabut: notifikasi admin yang sudah telanjur ada ikut hilang.
+$sid_sa2 = sesi_palsu($uid, 'super_admin', $csrf);
+[$c, $raw] = panggil($sid_sa2, "$BASE/api/notifications.php?action=list&filter=all&limit=100");
+cek(strpos($raw, 'UJIRBAC Notifikasi Peran') !== false, 'super admin melihatnya selama masih super admin');
+
+$sid_turun = sesi_palsu($uid, 'alumni', $csrf);   // orang yang sama, peran dicabut
+[$c, $raw] = panggil($sid_turun, "$BASE/api/notifications.php?action=list&filter=all&limit=100");
+cek(strpos($raw, 'UJIRBAC Notifikasi Peran') === false,
+    'PERAN DICABUT: notifikasi admin berhenti terlihat, meski barisnya masih ada', "HTTP $c");
+
+$masih = (int)$pdo->query("SELECT COUNT(*) FROM notifications WHERE title = 'UJIRBAC Notifikasi Peran'")->fetchColumn();
+cek($masih > 0, 'barisnya tidak dihapus, hanya disembunyikan dari yang tidak berhak', "$masih baris");
+
+[$c, $raw] = panggil($sid_turun, "$BASE/api/notifications.php?action=count");
+$j = json_decode(substr($raw, strpos($raw, '{') ?: 0), true);
+cek(isset($j['unread']), 'lencana tetap terbaca setelah peran berubah', 'unread=' . ($j['unread'] ?? '-'));
+
+$pdo->exec("DELETE FROM notifications WHERE id > $awal_notif AND title LIKE 'UJIRBAC%'");
+foreach ([$sid_al2, $sid_sa2, $sid_turun] as $x) { sesi_hapus($x); }
+
 // ---- Mode audit: pelanggaran dicatat, bukan ditolak ----------------
 echo "\n=== perbandingan mode audit ===\n";
 $pdo->exec("UPDATE settings SET setting_value='0' WHERE setting_key='rbac_enforce'");
