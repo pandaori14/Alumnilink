@@ -53,7 +53,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 19 suite — **±995 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 20 suite — **±1010 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -71,13 +71,14 @@ dari kesalahan yang pernah lolos ke produksi:
 | `tests/lint_unescaped.php` | Keluaran variabel tanpa escape (XSS), termasuk JSON yang di-escape HTML di dalam blok skrip |
 | `tests/lint_inline_js.php` | Galat sintaks di JavaScript yang ditulis langsung di berkas PHP |
 
-Tiga suite memakai peramban sungguhan (Chrome headless, tanpa paket npm)
-dan otomatis dilewati di mesin yang tidak memasangnya:
+Beberapa suite memakai peramban sungguhan (Chrome headless, tanpa paket
+npm) dan otomatis dilewati di mesin yang tidak memasangnya:
 
 | Suite | Menangkap |
 |---|---|
 | `uji_js_render.php` | Skrip yang rusak hanya SETELAH nilai PHP disisipkan — kerangkanya sah, hasil render-nya tidak |
 | `uji_responsif.php` | Halaman yang dapat digeser ke samping di ponsel, tablet, atau laptop; isi yang tertutup menu bawah |
+| `uji_interaksi.php` | Tombol yang **tidak melakukan apa-apa** saat ditekan — pendengar yang tidak pernah terpasang, elemen yang tertutup elemen lain. Tidak terlihat dari kode maupun konsol |
 | `uji_alur_bayar.php` | Alur pembayaran lewat HTTP, tanpa satu pun panggilan ke gateway sungguhan |
 | `uji_pengaturan.php` | Kolom yang berhenti tersimpan, penyimpanan yang merembet ke nilai lain, rahasia yang ikut tercetak ke halaman, dan pengaturan yang tak terjangkau antarmuka |
 

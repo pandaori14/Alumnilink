@@ -16,7 +16,7 @@ ulang Konfigurasi Sistem.
 | Berkas PHP | 178 (±50.000 baris, termasuk uji) |
 | Tabel basis data | 28 |
 | Kunci pengaturan | 120 |
-| Rangkaian uji | `php tests/run_all.php` — 26 langkah, 994 pemeriksaan |
+| Rangkaian uji | `php tests/run_all.php` — 27 langkah, 1009 pemeriksaan |
 | Versi skema | `2026.09.18.1` |
 
 Sepuluh commit terakhir belum diunggah ke server produksi. Selama belum
@@ -31,7 +31,9 @@ diunggah, produksi masih memakai kode lama.
   kunci pembayaran ditolak; tidak ada pengaturan yang tersembunyi dari
   antarmuka.
 - **Tata letak**: 12 halaman × 3 lebar layar tanpa geser mendatar.
-- **JavaScript**: seluruh skrip hasil render diurai mesin V8.
+- **JavaScript**: seluruh skrip hasil render diurai mesin V8, dan tombol
+  yang menentukan — lonceng notifikasi, perpindahan bagian Konfigurasi
+  Sistem — benar-benar diklik di Chrome lalu dibuktikan akibatnya.
 
 ---
 
@@ -155,6 +157,19 @@ menyimpan donasi POKOK, sedangkan yang dibayar donatur termasuk biaya
 layanan. Metode bayarnya juga dari ledger, karena tabel donasi tidak pernah
 menyimpannya. Dijaga 11 pemeriksaan baru.
 
+**Tombol lonceng notifikasi ternyata mati total** · 19 September 2026
+Blok skripnya berada di dalam `<head>`, sementara tombol dan panelnya baru
+muncul di `<body>` ratusan baris di bawah. Saat skrip dijalankan,
+`getElementById` mengembalikan null, penjaga `if (!btn || !panel) return;`
+keluar diam-diam, dan tidak ada satu pun pendengar yang terpasang: menekan
+lonceng tidak melakukan apa-apa, tanpa galat di konsol. Teks "Memuat…" yang
+terlihat di panel adalah isi statis di markup.
+
+Tidak ada satu pun dari 994 pemeriksaan yang menangkapnya — PHP tidak error,
+HTML-nya lengkap, skripnya sah secara sintaks, konsol bersih. Karena itu
+ditambahkan `tests/suite/uji_interaksi.php`: menekan tombol sungguhan di
+Chrome lewat koordinat, lalu membuktikan sesuatu benar-benar berubah.
+
 ### Prioritas 1 — Uang dan keamanan
 
 **1.4 Riwayat perubahan pengaturan** · sedang
@@ -225,4 +240,4 @@ seperti `uji_responsif`.
 
 Setiap pekerjaan diakhiri dengan `php tests/run_all.php` hijau dan satu uji
 baru yang menutup perilakunya. Itu pola yang dipakai sejauh ini, dan yang
-membuat 994 pemeriksaan sekarang berarti.
+membuat 1009 pemeriksaan sekarang berarti.

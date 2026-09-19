@@ -262,6 +262,7 @@ $dashboard_bg_animation = ($sys_settings['dashboard_bg_animation'] ?? '1') == '1
          * dapat disalahgunakan untuk mengarahkan pengguna ke situs luar.
          */
         (function () {
+        function pasangLonceng() {
             const btn   = document.getElementById('notifBtn');
             const panel = document.getElementById('notifPanel');
             const listE = document.getElementById('notifPanelList');
@@ -377,6 +378,20 @@ $dashboard_bg_animation = ($sys_settings['dashboard_bg_animation'] ?? '1') == '1
                     btn.focus();
                 }
             });
+        }
+
+        // Blok skrip ini berada di dalam <head>, sementara tombol lonceng dan
+        // panelnya baru muncul jauh di bawah, di dalam <body>. Dijalankan
+        // langsung, getElementById mengembalikan null, penjaga di baris
+        // pertama fungsi ini keluar diam-diam, dan TIDAK ADA satu pun
+        // pendengar yang terpasang: tombol lonceng tidak melakukan apa-apa,
+        // tanpa galat apa pun di konsol. Teks "Memuat…" yang terlihat di
+        // panel adalah isi statis di markup, bukan tanda sedang memuat.
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pasangLonceng);
+        } else {
+            pasangLonceng();
+        }
         })();
 
         function showSwalAlert(title, text, icon = 'info') {
