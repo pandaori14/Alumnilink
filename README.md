@@ -8,11 +8,24 @@ PHP 8 native tanpa framework, MariaDB, Tailwind yang di-build lokal.
 Di-deploy lewat FTP: **tidak ada langkah build maupun perintah apa pun yang
 harus dijalankan di server.**
 
+[Menjalankan secara lokal](#menjalankan-secara-lokal) ·
+[Uji](#uji) ·
+[Migrasi](#migrasi) ·
+[Struktur](#struktur) ·
+[Konfigurasi Sistem](#konfigurasi-sistem) ·
+[Pembayaran](#pembayaran) ·
+[E-mail massal](#e-mail-massal) ·
+[Lisensi](#lisensi)
+
 ---
 
 ## Menjalankan secara lokal
 
-Butuh PHP 8.1+, MySQL/MariaDB, dan Apache (XAMPP sudah cukup).
+Butuh PHP 8.1+, MySQL/MariaDB, dan Apache (XAMPP sudah cukup). Ekstensi
+yang dipakai: `pdo_mysql`, `curl` (gateway pembayaran), `mbstring`, `openssl`
+(SMTP TLS), dan `fileinfo` (unggahan) — semuanya aktif secara bawaan di
+XAMPP. `zlib` membuat cadangan basis data terkompresi; tanpanya cadangan
+tetap dibuat, hanya tidak dipadatkan.
 
 ```bash
 git clone https://github.com/pandaori14/Alumnilink.git
@@ -25,6 +38,20 @@ mysql -u root alumnilink < schema.sql
 
 Buka `http://localhost/alumnilink/`. **Skema dan pengaturan menyusul
 sendiri** pada permintaan pertama — lihat "Migrasi" di bawah.
+
+### Akun super admin pertama
+
+Tidak ada akun bawaan dan belum ada wizard pemasangan (lihat
+[`_dev/RENCANA.md`](_dev/RENCANA.md)). Daftar lewat halaman Registrasi
+seperti alumni biasa, lalu naikkan perannya sekali lewat basis data:
+
+```sql
+UPDATE users SET role = 'super_admin', is_verified = 1
+ WHERE email = 'anda@contoh.ac.id';
+```
+
+Sesudah itu seluruh peran lain diatur dari **Kelola User** di dalam
+aplikasi.
 
 ### Berkas `.env.local`
 
@@ -53,7 +80,7 @@ APP_ENV=local        # WAJIB: menahan e-mail agar tidak benar-benar terkirim
 php tests/run_all.php
 ```
 
-Menjalankan lint statis, uji asap, dan 20 suite — **±1020 pemeriksaan**.
+Menjalankan lint statis, uji asap, dan 21 suite — **1.018 pemeriksaan**.
 Mengembalikan kode keluar bukan-nol bila ada yang gagal, jadi layak dipakai
 sebagai gerbang sebelum deploy.
 
@@ -61,7 +88,7 @@ Uji ini **menulis ke basis data** yang ditunjuk (membuat lalu menghapus data
 uji). Ia menolak berjalan terhadap alamat bukan-lokal kecuali diberi
 `--saya-yakin-ini-bukan-produksi`.
 
-Tiga pemeriksa statis layak disebut tersendiri, karena masing-masing lahir
+Empat pemeriksa statis layak disebut tersendiri, karena masing-masing lahir
 dari kesalahan yang pernah lolos ke produksi:
 
 | Pemeriksa | Menangkap |
@@ -71,15 +98,21 @@ dari kesalahan yang pernah lolos ke produksi:
 | `tests/lint_unescaped.php` | Keluaran variabel tanpa escape (XSS), termasuk JSON yang di-escape HTML di dalam blok skrip |
 | `tests/lint_inline_js.php` | Galat sintaks di JavaScript yang ditulis langsung di berkas PHP |
 
-Beberapa suite memakai peramban sungguhan (Chrome headless, tanpa paket
-npm) dan otomatis dilewati di mesin yang tidak memasangnya:
+Sebagian suite butuh alat di luar PHP, dan **melewati dirinya sendiri**
+(lulus kosong) di mesin yang tidak memasangnya — tanpa paket npm satu pun:
+
+| Suite | Butuh | Menangkap |
+|---|---|---|
+| `uji_js_render.php` | Node | Skrip yang rusak hanya SETELAH nilai PHP disisipkan — kerangkanya sah, hasil render-nya tidak |
+| `uji_responsif.php` | Node + Chrome | Halaman yang dapat digeser ke samping di ponsel, tablet, atau laptop; isi yang tertutup menu bawah |
+| `uji_interaksi.php` | Node + Chrome | Tombol yang **tidak melakukan apa-apa** saat ditekan — pendengar yang tidak pernah terpasang, elemen yang tertutup elemen lain. Tidak terlihat dari kode maupun dari konsol |
+
+Chrome dapat ditunjuk lewat `ALUMNILINK_CHROME`. Sisanya berjalan dengan PHP
+saja, termasuk dua yang paling banyak menangkap masalah:
 
 | Suite | Menangkap |
 |---|---|
-| `uji_js_render.php` | Skrip yang rusak hanya SETELAH nilai PHP disisipkan — kerangkanya sah, hasil render-nya tidak |
-| `uji_responsif.php` | Halaman yang dapat digeser ke samping di ponsel, tablet, atau laptop; isi yang tertutup menu bawah |
-| `uji_interaksi.php` | Tombol yang **tidak melakukan apa-apa** saat ditekan — pendengar yang tidak pernah terpasang, elemen yang tertutup elemen lain. Tidak terlihat dari kode maupun konsol |
-| `uji_alur_bayar.php` | Alur pembayaran lewat HTTP, tanpa satu pun panggilan ke gateway sungguhan |
+| `uji_alur_bayar.php` | Alur pembayaran lewat HTTP sungguhan, tanpa satu pun panggilan ke gateway asli |
 | `uji_pengaturan.php` | Kolom yang berhenti tersimpan, penyimpanan yang merembet ke nilai lain, rahasia yang ikut tercetak ke halaman, dan pengaturan yang tak terjangkau antarmuka |
 
 ---
@@ -124,7 +157,7 @@ penjagaan sesi, verifikasi, mode perawatan, dan RBAC.
   `assets/`, versinya terkunci dan tercatat di `tests/dependencies.json`,
   diverifikasi `tests/check_versions.php` lewat sha256.
 - **Tanpa Composer.** Server tidak punya akses shell. PHPMailer disalin
-  manual — tiga berkas. Lihat `_dev/DEPENDENSI.md`.
+  manual — tiga berkas. Lihat [`_dev/DEPENDENSI.md`](_dev/DEPENDENSI.md).
 - **Kapabilitas diturunkan dari menu**, bukan ditulis terpisah
   (`includes/auth_guard.php`). Dengan begitu menu, halaman, dan handler
   tidak dapat menyimpang: menu yang tampil tetapi aksinya ditolak, atau
@@ -219,8 +252,6 @@ Rumus biaya, runbook pindah gateway, dan penanganan kasus tidak biasa
 (bayar ganda, nominal tidak cocok, tunai) ada di
 [`_dev/PEMBAYARAN.md`](_dev/PEMBAYARAN.md).
 
----
-
 ### Laporan Keuangan
 
 Satu halaman untuk legalisir **dan** donasi, dengan penyaring jenis, bulan,
@@ -244,7 +275,9 @@ jalur tunai. Tagihan yang sudah terbit tetap dapat dibayar.
 
 Kanal pembayaran (QRIS, VA, e-wallet, gerai retail) dapat dibatasi untuk
 Midtrans lewat panel yang sama; Flip mengatur kanalnya di dashboard Flip.
-Rinciannya di `_dev/PEMBAYARAN.md` bagian 0.
+Rinciannya di [`_dev/PEMBAYARAN.md`](_dev/PEMBAYARAN.md) bagian 0.
+
+---
 
 ## E-mail massal
 
@@ -252,7 +285,8 @@ Batasnya bukan sistem ini melainkan penyedia SMTP. Google Workspace
 membatasi ±2.000 e-mail/hari, sehingga 20.000 penerima memakan sepuluh hari.
 Layar kirim menampilkan perkiraan itu sebelum tombol ditekan.
 
-`_dev/EMAIL.md` memuat perbandingan penyedia dan langkah SPF/DKIM/DMARC.
+[`_dev/EMAIL.md`](_dev/EMAIL.md) memuat perbandingan penyedia dan langkah
+SPF/DKIM/DMARC.
 Berpindah penyedia **tidak menuntut perubahan kode** — seluruh pengaturan
 SMTP dibaca dari basis data.
 
@@ -273,7 +307,10 @@ Fakultas Kedokteran Universitas Muhammadiyah Surakarta memegang lisensi
 pemasangan berdasarkan perjanjian terpisah. Lisensi itu tidak berpindah
 kepada pihak ketiga.
 
-Melaporkan kerentanan keamanan tidak memerlukan izin dan selalu diterima.
+Melaporkan kerentanan keamanan tidak memerlukan izin dan selalu diterima —
+lewat Issues di repositori ini, atau ke pengelola sistem di Fakultas
+Kedokteran UMS. Mohon jangan menyertakan data alumni sungguhan di dalam
+laporan.
 
 ---
 
